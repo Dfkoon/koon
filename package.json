@@ -1,0 +1,33 @@
+{
+    "name": "koon.admin",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "lint": "eslint .",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "@emotion/react": "^11.14.0",
+        "@emotion/styled": "^11.14.1",
+        "@mui/icons-material": "^7.3.6",
+        "@mui/material": "^7.3.6",
+        "firebase": "^12.6.0",
+        "framer-motion": "^12.23.26",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
+        "react-hot-toast": "^2.6.0",
+        "react-router-dom": "^7.10.1",
+        "recharts": "^3.6.0"
+    },
+    "devDependencies": {
+        "@tailwindcss/vite": "^4.1.18",
+        "@vitejs/plugin-react": "^5.1.1",
+        "autoprefixer": "^10.4.23",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^4.1.18",
+        "vite": "^7.2.4"
+    }
+}
