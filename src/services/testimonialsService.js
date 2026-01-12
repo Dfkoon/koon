@@ -9,8 +9,9 @@ export const testimonialsService = {
         try {
             await addDoc(collection(db, COLLECTION_NAME), {
                 ...data, // author, role, company (major), quote
+                text: data.quote || data.text || '', // Save both for compatibility
                 status: 'pending', // pending, approved, rejected
-                createdAt: new Date().toISOString(), // Use string for easier sorting on client if timestamp is complex
+                createdAt: new Date().toISOString(),
                 avatarColor: getRandomColor()
             });
             return { success: true };

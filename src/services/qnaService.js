@@ -7,13 +7,18 @@ export const qnaService = {
     // Get all suggestions
     async getAllSuggestions() {
         try {
-            const q = query(collection(db, COLLECTION_NAME), orderBy('timestamp', 'desc'));
+            const q = query(collection(db, COLLECTION_NAME));
             const snapshot = await getDocs(q);
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().timestamp?.toDate().toISOString() || new Date().toISOString()
-            }));
+            const data = snapshot.docs.map(doc => {
+                const d = doc.data();
+                return {
+                    id: doc.id,
+                    ...d,
+                    text: d.text || d.message || d.content || '',
+                    createdAt: d.timestamp?.toDate ? d.timestamp.toDate().toISOString() : (d.createdAt || new Date().toISOString())
+                };
+            });
+            return data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         } catch (error) {
             console.error("Error fetching suggestions:", error);
             return [];
@@ -62,13 +67,17 @@ export const qnaService = {
     // Get all reports
     async getAllReports() {
         try {
-            const q = query(collection(db, 'question_reports'), orderBy('timestamp', 'desc'));
+            const q = query(collection(db, 'question_reports'));
             const snapshot = await getDocs(q);
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().timestamp?.toDate().toISOString() || new Date().toISOString()
-            }));
+            const data = snapshot.docs.map(doc => {
+                const d = doc.data();
+                return {
+                    id: doc.id,
+                    ...d,
+                    createdAt: d.timestamp?.toDate ? d.timestamp.toDate().toISOString() : (d.createdAt || new Date().toISOString())
+                };
+            });
+            return data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         } catch (error) {
             console.error("Error fetching reports:", error);
             return [];

@@ -119,7 +119,7 @@ export default function ManageTestimonials() {
                                                 position: 'relative',
                                                 zIndex: 1
                                             }}>
-                                                {t.quote ? `"${t.quote}"` : (isAr ? '"لا يوجد نص"' : '"No text provided"')}
+                                                {(t.quote || t.text || t.content) ? `"${t.quote || t.text || t.content}"` : (isAr ? '"لا يوجد نص"' : '"No text provided"')}
                                             </Typography>
                                         </Box>
 
@@ -135,16 +135,16 @@ export default function ManageTestimonials() {
                                                     boxShadow: '0 0 15px rgba(211, 47, 47, 0.3)'
                                                 }}
                                             >
-                                                {(t.author ? t.author[0] : 'U').toUpperCase()}
+                                                {(t.author || t.name || 'U')[0].toUpperCase()}
                                             </Avatar>
                                             <Box>
                                                 <Typography variant="h6" sx={{ fontWeight: 900, color: '#FFF', lineHeight: 1.2 }}>
-                                                    {t.author || (isAr ? 'طالب مجهول' : 'Anonymous Student')}
+                                                    {t.author || t.name || (isAr ? 'طالب مجهول' : 'Anonymous Student')}
                                                 </Typography>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                                                     <School sx={{ fontSize: '0.9rem', color: 'var(--primary)' }} />
                                                     <Typography variant="caption" sx={{ color: 'var(--primary)', fontWeight: 'bold' }}>
-                                                        {t.company || (isAr ? 'تخصص غير محدد' : 'General Major')}
+                                                        {t.company || t.major || t.role || (isAr ? 'تخصص غير محدد' : 'General Major')}
                                                     </Typography>
                                                 </Box>
                                             </Box>

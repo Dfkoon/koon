@@ -35,6 +35,8 @@ export const LanguageProvider = ({ children }) => {
             login: 'تسجيل الدخول',
             adminConnect: 'اتصال المسؤول',
             logout: 'تسجيل الخروج',
+            adminSuggestions: 'الاقتراحات والشكاوى',
+            adminReports: 'بلاغات الأسئلة',
         },
         en: {
             home: 'Home',
@@ -55,6 +57,8 @@ export const LanguageProvider = ({ children }) => {
             login: 'Login',
             adminConnect: 'Admin Connect',
             logout: 'Logout',
+            adminSuggestions: 'Suggestions & Feedback',
+            adminReports: 'Question Reports',
         }
     };
 
