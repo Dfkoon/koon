@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Box, Typography, Paper, Card, CardContent,
-    Button, Grid, TextField, Dialog, DialogTitle,
+    Box, Typography, Button, Grid, TextField, Dialog, DialogTitle,
     DialogContent, DialogActions, Chip, Divider,
-    IconButton, Tooltip
+    IconButton, Tooltip, Avatar, useTheme
 } from '@mui/material';
 import {
     Delete, Reply, CheckCircle,
-    ErrorOutline, Person, Category,
-    Email as EmailIcon
+    Person, Category, Email as EmailIcon,
+    ChatBubbleOutline, Send, Close
 } from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
 import { qnaService as suggestionsService } from '../../services/qnaService';
 import ShinyHeader from '../../components/ShinyHeader';
 import { useLanguage } from '../../context/LanguageContext';
@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 
 export default function AdminSuggestions() {
     const { t, language } = useLanguage();
+    const theme = useTheme();
     const isAr = language === 'ar';
     const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +33,6 @@ export default function AdminSuggestions() {
     };
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadMessages();
     }, []);
 
@@ -66,111 +66,230 @@ export default function AdminSuggestions() {
     };
 
     return (
-        <Box>
-            <Box sx={{ mb: 4 }}>
-                <ShinyHeader text={t('adminSuggestions')} variant="h4" gutterBottom />
+        <Box sx={{ p: { xs: 1, md: 3 } }}>
+            <Box sx={{ mb: 6 }}>
+                <ShinyHeader text={t('adminSuggestions')} variant="h3" gutterBottom />
             </Box>
 
             {isLoading ? (
-                <Typography>{isAr ? 'جاري التحميل...' : 'Loading...'}</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
+                    <Typography variant="h5" color="text.muted" className="animate-pulse">
+                        {isAr ? 'جاري التحميل...' : 'Loading suggestions...'}
+                    </Typography>
+                </Box>
             ) : messages.length === 0 ? (
-                <Paper sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
-                    <Typography variant="h6">{t('noSuggestions')}</Typography>
-                </Paper>
+                <Box className="glass-card" sx={{ p: 6, textAlign: 'center', borderRadius: '30px' }}>
+                    <Typography variant="h6" color="text.muted">{t('noSuggestions')}</Typography>
+                </Box>
             ) : (
-                <Grid container spacing={3}>
-                    {messages.map((msg) => (
-                        <Grid item xs={12} md={6} key={msg.id}>
-                            <Card sx={{
-                                height: '100%',
-                                borderLeft: msg.isPublic ? '5px solid #4caf50' : '5px solid #ff9800',
-                                position: 'relative',
-                                display: 'flex',
-                                flexDirection: 'column'
-                            }}>
-                                <CardContent sx={{ flexGrow: 1 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Person color="primary" fontSize="small" />
-                                            <Typography variant="subtitle1" fontWeight="bold">
-                                                {msg.name || (isAr ? 'فاعل خير' : 'Anonymous')}
-                                            </Typography>
+                <Grid container spacing={4}>
+                    <AnimatePresence>
+                        {messages.map((msg, index) => (
+                            <Grid item xs={12} key={msg.id}>
+                                <motion.div
+                                    initial={{ opacity: 0, x: isAr ? 50 : -50 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                                >
+                                    <Box className="glass-card" sx={{
+                                        p: 0,
+                                        display: 'flex',
+                                        flexDirection: { xs: 'column', md: 'row' },
+                                        borderRadius: '30px',
+                                        overflow: 'hidden',
+                                        border: '1px solid var(--glass-border)',
+                                        background: 'var(--bg-card)',
+                                        transition: 'var(--transition-smooth)',
+                                        '&:hover': {
+                                            borderColor: msg.isPublic ? 'var(--success)' : 'var(--warning)',
+                                            boxShadow: msg.isPublic ? '0 0 30px rgba(0, 230, 118, 0.1)' : '0 0 30px rgba(255, 171, 0, 0.1)'
+                                        }
+                                    }}>
+                                        {/* Status Glow Bar */}
+                                        <Box sx={{
+                                            width: { xs: '100%', md: '8px' },
+                                            height: { xs: '4px', md: 'auto' },
+                                            bgcolor: msg.isPublic ? 'var(--success)' : 'var(--warning)',
+                                            boxShadow: `0 0 15px ${msg.isPublic ? 'var(--success)' : 'var(--warning)'}`
+                                        }} />
+
+                                        {/* Ticket Side - User Info */}
+                                        <Box sx={{
+                                            p: 4,
+                                            minWidth: '250px',
+                                            bgcolor: 'rgba(255,255,255,0.02)',
+                                            borderRight: isAr ? 'none' : '1px solid var(--glass-border)',
+                                            borderLeft: isAr ? '1px solid var(--glass-border)' : 'none',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: 2
+                                        }}>
+                                            <Avatar sx={{
+                                                width: 80,
+                                                height: 80,
+                                                bgcolor: 'var(--bg-dark)',
+                                                border: `2px solid ${msg.isPublic ? 'var(--success)' : 'var(--warning)'}`,
+                                                boxShadow: `0 0 20px ${msg.isPublic ? 'var(--success)22' : 'var(--warning)22'}`
+                                            }}>
+                                                <Person sx={{ fontSize: '3rem', color: msg.isPublic ? 'var(--success)' : 'var(--warning)' }} />
+                                            </Avatar>
+                                            <Box sx={{ textAlign: 'center' }}>
+                                                <Typography variant="h6" sx={{ fontWeight: 900, color: '#FFF' }}>
+                                                    {msg.name || (isAr ? 'فاعل خير' : 'Anonymous')}
+                                                </Typography>
+                                                <Chip
+                                                    icon={<Category sx={{ fontSize: '1rem !important' }} />}
+                                                    label={msg.type}
+                                                    size="small"
+                                                    sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', fontWeight: 700 }}
+                                                />
+                                            </Box>
                                         </Box>
-                                        <Chip
-                                            label={isAr ? (msg.isPublic ? 'منشور' : 'قيد الانتظار') : (msg.isPublic ? 'Public' : 'Pending')}
-                                            size="small"
-                                            color={msg.isPublic ? 'success' : 'warning'}
-                                        />
-                                    </Box>
 
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                        <Category color="action" fontSize="small" />
-                                        <Typography variant="caption" color="text.secondary">
-                                            {msg.type}
-                                        </Typography>
-                                    </Box>
+                                        {/* Content Side */}
+                                        <Box sx={{ p: 4, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                                                <Typography variant="caption" sx={{ color: 'var(--text-muted)', fontWeight: 700 }}>
+                                                    {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-US') : '---'}
+                                                </Typography>
+                                                <Chip
+                                                    label={isAr ? (msg.isPublic ? 'منشور' : 'بانتظار الموافقة') : (msg.isPublic ? 'Published' : 'Pending Review')}
+                                                    variant="outlined"
+                                                    color={msg.isPublic ? 'success' : 'warning'}
+                                                    size="small"
+                                                    sx={{ fontWeight: 900 }}
+                                                />
+                                            </Box>
 
-                                    <Typography variant="body1" sx={{ mb: 2, whiteSpace: 'pre-wrap' }}>
-                                        {msg.message}
-                                    </Typography>
-
-                                    {msg.reply && (
-                                        <Paper sx={{ p: 2, bgcolor: 'action.hover', borderRight: '3px solid #1a237e', mt: 2 }}>
-                                            <Typography variant="caption" fontWeight="bold" color="primary" display="block" gutterBottom>
-                                                {isAr ? 'رد الإدارة:' : 'Admin Reply:'}
+                                            <Typography variant="body1" sx={{
+                                                fontSize: '1.2rem',
+                                                lineHeight: 1.8,
+                                                color: 'var(--text-main)',
+                                                mb: 4,
+                                                whiteSpace: 'pre-wrap'
+                                            }}>
+                                                {msg.message || msg.text}
                                             </Typography>
-                                            <Typography variant="body2">{msg.reply}</Typography>
-                                        </Paper>
-                                    )}
-                                </CardContent>
 
-                                <Divider />
+                                            {msg.reply && (
+                                                <Box sx={{
+                                                    p: 3,
+                                                    bgcolor: 'rgba(211, 47, 47, 0.05)',
+                                                    borderRadius: '20px',
+                                                    border: '1px solid rgba(211, 47, 47, 0.1)',
+                                                    position: 'relative',
+                                                    mt: 'auto'
+                                                }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                                        <Send sx={{ fontSize: '1rem', color: 'var(--primary)' }} />
+                                                        <Typography variant="caption" sx={{ fontWeight: 900, color: 'var(--primary)', letterSpacing: 1 }}>
+                                                            {isAr ? 'رد الإدارة' : 'OFFICIAL REPLY'}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Typography variant="body2" sx={{ color: 'var(--text-main)', opacity: 0.9 }}>
+                                                        {msg.reply}
+                                                    </Typography>
+                                                </Box>
+                                            )}
 
-                                <Box sx={{ p: 1, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                                    <Tooltip title={isAr ? 'تغيير الحالة' : 'Toggle Status'}>
-                                        <IconButton onClick={() => toggleStatus(msg.id, msg.isPublic)} size="small" color="info">
-                                            <CheckCircle fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Button
-                                        size="small"
-                                        startIcon={<Reply />}
-                                        onClick={() => { setSelectedMsg(msg); setOpenReply(true); }}
-                                    >
-                                        {isAr ? 'رد' : 'Reply'}
-                                    </Button>
-                                    <IconButton onClick={() => handleDelete(msg.id)} size="small" color="error">
-                                        <Delete fontSize="small" />
-                                    </IconButton>
-                                </Box>
-                            </Card>
-                        </Grid>
-                    ))}
+                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+                                                <Tooltip title={isAr ? 'تغيير حالة النشر' : 'Toggle Visibility'}>
+                                                    <IconButton
+                                                        onClick={() => toggleStatus(msg.id, msg.isPublic)}
+                                                        sx={{ bgcolor: 'rgba(255,255,255,0.05)', color: msg.isPublic ? 'var(--success)' : 'var(--text-muted)' }}
+                                                    >
+                                                        <CheckCircle />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Button
+                                                    variant="contained"
+                                                    color="primary"
+                                                    startIcon={<Reply />}
+                                                    onClick={() => { setSelectedMsg(msg); setOpenReply(true); }}
+                                                    sx={{ borderRadius: '12px', fontWeight: 900 }}
+                                                >
+                                                    {isAr ? 'رد إداري' : 'Official Reply'}
+                                                </Button>
+                                                <IconButton
+                                                    onClick={() => handleDelete(msg.id)}
+                                                    sx={{ bgcolor: 'rgba(255, 23, 68, 0.1)', color: 'var(--error)' }}
+                                                >
+                                                    <Delete />
+                                                </IconButton>
+                                            </Box>
+                                        </Box>
+                                    </Box>
+                                </motion.div>
+                            </Grid>
+                        ))}
+                    </AnimatePresence>
                 </Grid>
             )}
 
-            <Dialog open={openReply} onClose={() => setOpenReply(false)} fullWidth maxWidth="sm">
-                <DialogTitle>{isAr ? 'الرد على الاقتراح' : 'Reply to Suggestion'}</DialogTitle>
-                <DialogContent>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-                        {selectedMsg?.text}
-                    </Typography>
+            {/* Premium Reply Dialog */}
+            <Dialog
+                open={openReply}
+                onClose={() => setOpenReply(false)}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{
+                    sx: {
+                        borderRadius: '30px',
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--glass-border)',
+                        boxShadow: '0 30px 60px rgba(0,0,0,0.8)'
+                    }
+                }}
+            >
+                <DialogTitle sx={{ p: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 900 }}>{isAr ? 'الرد على الاقتراح' : 'Admin Response'}</Typography>
+                    <IconButton onClick={() => setOpenReply(false)} sx={{ color: 'var(--text-muted)' }}><Close /></IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ px: 4, pb: 2 }}>
+                    <Box sx={{ p: 3, mb: 4, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: '20px', border: '1px solid var(--glass-border)' }}>
+                        <Typography variant="caption" sx={{ color: 'var(--primary)', fontWeight: 900, mb: 1, display: 'block' }}>
+                            {isAr ? 'نص الاقتراح:' : 'SUGGESTION CONTENT:'}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'var(--text-main)', opacity: 0.8 }}>
+                            {selectedMsg?.message || selectedMsg?.text}
+                        </Typography>
+                    </Box>
                     <TextField
                         autoFocus
                         fullWidth
                         multiline
-                        rows={4}
-                        label={isAr ? 'اكتب ردك هنا' : 'Write your reply'}
+                        rows={6}
+                        label={isAr ? 'اكتب رد الإدارة الرسمي هنا...' : 'Type the official response...'}
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        sx={{ mt: 1 }}
+                        variant="filled"
+                        sx={{
+                            '& .MuiFilledInput-root': {
+                                bgcolor: 'rgba(255,255,255,0.03)',
+                                borderRadius: '20px',
+                                border: '1px solid var(--glass-border)',
+                                '&:before, &:after': { display: 'none' }
+                            }
+                        }}
                     />
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenReply(false)}>{t('delete')}</Button>
-                    <Button variant="contained" onClick={() => handleReply(selectedMsg.id)}>{t('submitReply')}</Button>
+                <DialogActions sx={{ p: 4 }}>
+                    <Button onClick={() => setOpenReply(false)} sx={{ color: 'var(--text-muted)', fontWeight: 900 }}>{isAr ? 'إلغاء' : 'Cancel'}</Button>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        size="large"
+                        startIcon={<Send />}
+                        onClick={() => handleReply(selectedMsg.id)}
+                        sx={{ borderRadius: '15px', px: 4, fontWeight: 900 }}
+                    >
+                        {isAr ? 'إرسال الرد' : 'Send Response'}
+                    </Button>
                 </DialogActions>
             </Dialog>
         </Box>
     );
 }
+

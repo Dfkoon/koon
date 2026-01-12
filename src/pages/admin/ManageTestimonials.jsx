@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Box, Typography, Paper, Table, TableBody,
-    TableCell, TableContainer, TableHead, TableRow,
-    IconButton, Chip, Avatar, Tooltip
+    Box, Typography, IconButton, Chip, Avatar, Tooltip, Grid,
+    useTheme, Button, Divider
 } from '@mui/material';
-import { Delete, CheckCircle, Cancel, Person } from '@mui/icons-material';
+import {
+    Delete, CheckCircle, Cancel, Person,
+    FormatQuote, School
+} from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
 import { testimonialsService } from '../../services/testimonialsService';
 import ShinyHeader from '../../components/ShinyHeader';
 import { useLanguage } from '../../context/LanguageContext';
@@ -12,16 +15,19 @@ import toast from 'react-hot-toast';
 
 export default function ManageTestimonials() {
     const { language } = useLanguage();
+    const theme = useTheme();
     const isAr = language === 'ar';
     const [testimonials, setTestimonials] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const loadData = async () => {
+        setLoading(true);
         const data = await testimonialsService.getAllTestimonials();
         setTestimonials(data);
+        setLoading(false);
     };
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadData();
     }, []);
 
@@ -44,70 +50,151 @@ export default function ManageTestimonials() {
     };
 
     return (
-        <Box>
-            <ShinyHeader text={isAr ? 'إدارة التوصيات' : 'Manage Testimonials'} variant="h4" gutterBottom />
+        <Box sx={{ p: { xs: 1, md: 3 } }}>
+            <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                <ShinyHeader text={isAr ? 'آراء واقتباسات الطلاب' : 'Student Testimonials'} variant="h3" gutterBottom={false} />
+            </Box>
 
-            <TableContainer component={Paper} sx={{ mt: 4, borderRadius: 3 }}>
-                <Table>
-                    <TableHead sx={{ bgcolor: 'action.hover' }}>
-                        <TableRow>
-                            <TableCell sx={{ fontWeight: 'bold' }}>{isAr ? 'الطالب' : 'Student'}</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>{isAr ? 'التعليق' : 'Comment'}</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>{isAr ? 'الحالة' : 'Status'}</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold' }}>{isAr ? 'إجراءات' : 'Actions'}</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {testimonials.map((t) => (
-                            <TableRow key={t.id} hover>
-                                <TableCell>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                        <Avatar sx={{ bgcolor: 'primary.main' }}>
-                                            <Person />
-                                        </Avatar>
-                                        <Box>
-                                            <Typography variant="subtitle2">{t.name}</Typography>
-                                            <Typography variant="caption" color="text.secondary">{t.major}</Typography>
+            {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
+                    <Typography variant="h5" color="text.muted" className="animate-pulse">
+                        {isAr ? 'جاري استدعاء الآراء...' : 'Fetching testimonials...'}
+                    </Typography>
+                </Box>
+            ) : (
+                <Grid container spacing={4}>
+                    <AnimatePresence>
+                        {testimonials.map((t, index) => (
+                            <Grid item xs={12} sm={6} lg={4} key={t.id}>
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                                >
+                                    <Box className="glass-card" sx={{
+                                        p: 4,
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        position: 'relative',
+                                        borderRadius: '24px',
+                                        border: '1px solid var(--glass-border)',
+                                        background: 'var(--bg-card)',
+                                        backdropFilter: 'var(--glass-blur)',
+                                        transition: 'var(--transition-smooth)',
+                                        '&:hover': {
+                                            transform: 'translateY(-10px)',
+                                            borderColor: 'var(--primary)',
+                                            boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+                                        }
+                                    }}>
+                                        {/* Status Badge */}
+                                        <Box sx={{ position: 'absolute', top: 20, left: 20 }}>
+                                            <Chip
+                                                label={isAr ? (t.status === 'approved' ? 'منشور' : 'معلق') : t.status}
+                                                color={t.status === 'approved' ? 'success' : 'warning'}
+                                                size="small"
+                                                sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}
+                                            />
+                                        </Box>
+
+                                        {/* Quote Icon */}
+                                        <FormatQuote sx={{
+                                            position: 'absolute',
+                                            top: 40,
+                                            right: 20,
+                                            fontSize: '3rem',
+                                            opacity: 0.1,
+                                            color: 'var(--primary)'
+                                        }} />
+
+                                        {/* Content */}
+                                        <Box sx={{ flexGrow: 1, mt: 2 }}>
+                                            <Typography variant="body1" sx={{
+                                                fontStyle: 'italic',
+                                                lineHeight: 1.8,
+                                                fontSize: '1.1rem',
+                                                mb: 4,
+                                                color: 'var(--text-main)',
+                                                position: 'relative',
+                                                zIndex: 1
+                                            }}>
+                                                "{t.text}"
+                                            </Typography>
+                                        </Box>
+
+                                        <Divider sx={{ mb: 3, opacity: 0.1 }} />
+
+                                        {/* Author Info */}
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                                            <Avatar
+                                                sx={{
+                                                    width: 56,
+                                                    height: 56,
+                                                    background: `linear-gradient(45deg, var(--primary), #FFD700)`,
+                                                    boxShadow: '0 0 15px rgba(211, 47, 47, 0.3)'
+                                                }}
+                                            >
+                                                {t.name[0].toUpperCase()}
+                                            </Avatar>
+                                            <Box>
+                                                <Typography variant="h6" sx={{ fontWeight: 900, color: '#FFF', lineHeight: 1.2 }}>
+                                                    {t.name}
+                                                </Typography>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                                                    <School sx={{ fontSize: '0.9rem', color: 'var(--primary)' }} />
+                                                    <Typography variant="caption" sx={{ color: 'var(--primary)', fontWeight: 'bold' }}>
+                                                        {t.major || (isAr ? 'تخصص غير محدد' : 'General Major')}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Actions */}
+                                        <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
+                                            {t.status === 'pending' ? (
+                                                <Button
+                                                    fullWidth
+                                                    variant="contained"
+                                                    color="success"
+                                                    startIcon={<CheckCircle />}
+                                                    onClick={() => handleStatusUpdate(t.id, 'approved')}
+                                                    sx={{ borderRadius: '12px' }}
+                                                >
+                                                    {isAr ? 'نشر الآن' : 'Publish'}
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    fullWidth
+                                                    variant="outlined"
+                                                    color="warning"
+                                                    startIcon={<Cancel />}
+                                                    onClick={() => handleStatusUpdate(t.id, 'pending')}
+                                                    sx={{ borderRadius: '12px' }}
+                                                >
+                                                    {isAr ? 'إخفاء' : 'Hide'}
+                                                </Button>
+                                            )}
+                                            <IconButton
+                                                color="error"
+                                                onClick={() => handleDelete(t.id)}
+                                                sx={{
+                                                    bgcolor: 'rgba(255, 23, 68, 0.1)',
+                                                    borderRadius: '12px',
+                                                    '&:hover': { bgcolor: 'rgba(255, 23, 68, 0.2)' }
+                                                }}
+                                            >
+                                                <Delete />
+                                            </IconButton>
                                         </Box>
                                     </Box>
-                                </TableCell>
-                                <TableCell sx={{ maxWidth: 300 }}>
-                                    <Typography variant="body2" noWrap sx={{ fontStyle: 'italic' }}>
-                                        "{t.text}"
-                                    </Typography>
-                                </TableCell>
-                                <TableCell>
-                                    <Chip
-                                        size="small"
-                                        label={isAr ? (t.status === 'approved' ? 'مقبول' : 'قيد الانتظار') : t.status}
-                                        color={t.status === 'approved' ? 'success' : 'warning'}
-                                    />
-                                </TableCell>
-                                <TableCell align="center">
-                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                                        {t.status === 'pending' ? (
-                                            <Tooltip title={isAr ? 'قبول' : 'Approve'}>
-                                                <IconButton color="success" onClick={() => handleStatusUpdate(t.id, 'approved')}>
-                                                    <CheckCircle />
-                                                </IconButton>
-                                            </Tooltip>
-                                        ) : (
-                                            <Tooltip title={isAr ? 'تعليق' : 'Suspend'}>
-                                                <IconButton color="warning" onClick={() => handleStatusUpdate(t.id, 'pending')}>
-                                                    <Cancel />
-                                                </IconButton>
-                                            </Tooltip>
-                                        )}
-                                        <IconButton color="error" onClick={() => handleDelete(t.id)}>
-                                            <Delete />
-                                        </IconButton>
-                                    </Box>
-                                </TableCell>
-                            </TableRow>
+                                </motion.div>
+                            </Grid>
                         ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                    </AnimatePresence>
+                </Grid>
+            )}
         </Box>
     );
 }
+
