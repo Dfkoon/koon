@@ -9,13 +9,15 @@ import {
 } from '@mui/icons-material';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    BarChart, Bar, Cell
+    BarChart, Bar, Cell, PieChart, Pie, AreaChart, Area, Legend
 } from 'recharts';
 import { analyticsService } from '../../services/analyticsService';
 import ShinyHeader from '../../components/ShinyHeader';
 import { useLanguage } from '../../context/LanguageContext';
 
 const COLORS = ['#1a237e', '#0d47a1', '#1565c0', '#1976d2', '#1e88e5', '#2196f3'];
+const DEVICE_COLORS = { mobile: '#D32F2F', desktop: '#1976d2', tablet: '#7b1fa2' };
+const TIME_COLORS = { morning: '#FFD700', afternoon: '#FF9800', evening: '#9C27B0', night: '#1a237e' };
 
 const PATH_MAPPING = {
     '/': { ar: 'الرئيسية', en: 'Home' },
@@ -56,6 +58,10 @@ export default function AdminAnalytics() {
         const dateMap = {};
         const pathMap = {};
         const durationMap = {};
+        const deviceMap = {};
+        const browserMap = {};
+        const timeMap = {};
+        const sessionVisits = {};
 
         rawData.forEach(item => {
             const dateStr = item.date || new Date(item.timestamp?.seconds * 1000).toISOString().split('T')[0];
@@ -64,6 +70,24 @@ export default function AdminAnalytics() {
             if (!durationMap[item.path]) durationMap[item.path] = { total: 0, count: 0 };
             durationMap[item.path].total += (item.duration || 0);
             durationMap[item.path].count += 1;
+
+            // Device tracking
+            const device = item.deviceType || 'desktop';
+            deviceMap[device] = (deviceMap[device] || 0) + 1;
+
+            // Browser tracking
+            const browser = item.browser || 'Unknown';
+            browserMap[browser] = (browserMap[browser] || 0) + 1;
+
+            // Time period tracking
+            const timePeriod = item.timePeriod || 'unknown';
+            timeMap[timePeriod] = (timeMap[timePeriod] || 0) + 1;
+
+            // Session tracking for bounce rate
+            const sessionId = item.sessionId;
+            if (sessionId) {
+                sessionVisits[sessionId] = (sessionVisits[sessionId] || 0) + 1;
+            }
         });
 
         const dailyData = Object.keys(dateMap).sort().map(date => ({
@@ -72,17 +96,14 @@ export default function AdminAnalytics() {
         })).slice(-daysFilter);
 
         const pathData = Object.keys(pathMap).map(path => {
-            // Normalize path to ensure it matches mapping keys (add trailing slash if needed for exact match, or just use includes)
             const cleanPath = path.replace('/KOON.BAU.JO', '');
             let name = cleanPath;
 
-            // Try explicit match
             const mapping = PATH_MAPPING[cleanPath] || PATH_MAPPING[cleanPath + '/'];
 
             if (mapping) {
                 name = isAr ? mapping.ar : mapping.en;
             } else {
-                // Fallback for sub-routes
                 if (cleanPath.includes('admin')) name = isAr ? 'لوحة التحكم' : 'Admin Panel';
                 else if (cleanPath.includes('grading')) name = isAr ? 'حساب المعدل' : 'GPA';
                 else if (cleanPath.includes('exams')) name = isAr ? 'الامتحانات' : 'Exams';
@@ -95,13 +116,56 @@ export default function AdminAnalytics() {
             };
         }).sort((a, b) => b.visits - a.visits).slice(0, 10);
 
+        // Device distribution
+        const deviceData = Object.keys(deviceMap).map(device => ({
+            name: isAr ?
+                (device === 'mobile' ? 'موبايل' : device === 'desktop' ? 'كمبيوتر' : 'تابلت') :
+                (device.charAt(0).toUpperCase() + device.slice(1)),
+            value: deviceMap[device],
+            color: DEVICE_COLORS[device] || '#999'
+        }));
+
+        // Browser distribution
+        const browserData = Object.keys(browserMap).map(browser => ({
+            name: browser,
+            value: browserMap[browser]
+        })).sort((a, b) => b.value - a.value).slice(0, 6);
+
+        // Time distribution
+        const timeLabels = {
+            morning: isAr ? 'صباحاً (6-12)' : 'Morning (6-12)',
+            afternoon: isAr ? 'ظهراً (12-6)' : 'Afternoon (12-6)',
+            evening: isAr ? 'مساءً (6-10)' : 'Evening (6-10)',
+            night: isAr ? 'ليلاً (10-6)' : 'Night (10-6)'
+        };
+        const timeData = Object.keys(timeMap).filter(t => t !== 'unknown').map(time => ({
+            name: timeLabels[time] || time,
+            value: timeMap[time],
+            fill: TIME_COLORS[time] || '#999'
+        }));
+
+        // Bounce rate calculation (sessions with only 1 page view)
+        const bouncedSessions = Object.values(sessionVisits).filter(count => count === 1).length;
+        const totalSessions = Object.keys(sessionVisits).length;
+        const bounceRate = totalSessions > 0 ? Math.round((bouncedSessions / totalSessions) * 100) : 0;
+
         const totalVisits = rawData.length;
         const totalDuration = rawData.reduce((acc, curr) => acc + (curr.duration || 0), 0);
         const avgDuration = totalVisits > 0 ? Math.round(totalDuration / totalVisits) : 0;
         const uniqueVisitors = new Set(rawData.map(i => i.visitorId || i.sessionId)).size;
-        const totalSessions = new Set(rawData.map(i => i.sessionId)).size;
 
-        return { dailyData, pathData, totalVisits, avgDuration, uniqueVisitors, totalSessions };
+        return {
+            dailyData,
+            pathData,
+            deviceData,
+            browserData,
+            timeData,
+            totalVisits,
+            avgDuration,
+            uniqueVisitors,
+            totalSessions,
+            bounceRate
+        };
     }, [rawData, daysFilter, isAr]);
 
     if (isLoading) {
@@ -132,7 +196,7 @@ export default function AdminAnalytics() {
             </Box>
 
             <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={3}>
                     <Card sx={{ bgcolor: '#e8eaf6', borderLeft: '5px solid #1a237e' }}>
                         <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Visibility color="primary" fontSize="large" />
@@ -172,6 +236,17 @@ export default function AdminAnalytics() {
                             <Box>
                                 <Typography variant="caption" color="text.secondary">{isAr ? 'متوسط البقاء (ثانية)' : 'Avg Stay (sec)'}</Typography>
                                 <Typography variant="h5" fontWeight="bold">{stats?.avgDuration || 0}s</Typography>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                    <Card sx={{ bgcolor: '#ffebee', borderLeft: '5px solid #D32F2F' }}>
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <ShowChart sx={{ color: '#D32F2F' }} fontSize="large" />
+                            <Box>
+                                <Typography variant="caption" color="text.secondary">{isAr ? 'معدل الارتداد' : 'Bounce Rate'}</Typography>
+                                <Typography variant="h5" fontWeight="bold">{stats?.bounceRate || 0}%</Typography>
                             </Box>
                         </CardContent>
                     </Card>
@@ -270,6 +345,89 @@ export default function AdminAnalytics() {
                                     />
                                     <Tooltip cursor={{ fill: '#f5f5f5' }} />
                                     <Bar dataKey="avgDuration" fill="#ef6c00" radius={isAr ? [4, 0, 0, 4] : [0, 4, 4, 0]} name={isAr ? 'الثواني' : 'Seconds'} label={{ position: isAr ? 'left' : 'right', fill: '#000', fontSize: 12 }} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </Paper>
+                    </Grid>
+
+                    {/* Device Distribution - Pie Chart */}
+                    <Grid item xs={12} md={6}>
+                        <Paper sx={{ p: 3, height: '500px', display: 'flex', flexDirection: 'column' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                                <Public color="primary" />
+                                <Typography variant="h6" fontWeight="bold">{isAr ? 'توزيع الأجهزة' : 'Device Distribution'}</Typography>
+                            </Box>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={stats?.deviceData}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                        outerRadius={120}
+                                        fill="#8884d8"
+                                        dataKey="value"
+                                    >
+                                        {stats?.deviceData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </Paper>
+                    </Grid>
+
+                    {/* Browser Distribution - Pie Chart */}
+                    <Grid item xs={12} md={6}>
+                        <Paper sx={{ p: 3, height: '500px', display: 'flex', flexDirection: 'column' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                                <BarChartIcon color="primary" />
+                                <Typography variant="h6" fontWeight="bold">{isAr ? 'توزيع المتصفحات' : 'Browser Distribution'}</Typography>
+                            </Box>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={stats?.browserData}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                        outerRadius={120}
+                                        fill="#8884d8"
+                                        dataKey="value"
+                                    >
+                                        {stats?.browserData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </Paper>
+                    </Grid>
+
+                    {/* Time Period Distribution - Area Chart */}
+                    <Grid item xs={12}>
+                        <Paper sx={{ p: 3, height: '500px', display: 'flex', flexDirection: 'column' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                                <AccessTime color="primary" />
+                                <Typography variant="h6" fontWeight="bold">{isAr ? 'توزيع الزيارات حسب الوقت' : 'Visits by Time Period'}</Typography>
+                            </Box>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={stats?.timeData} layout="horizontal">
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                                    <XAxis dataKey="name" fontSize={12} />
+                                    <YAxis fontSize={12} axisLine={false} tickLine={false} orientation={isAr ? "right" : "left"} />
+                                    <Tooltip cursor={{ fill: '#f5f5f5' }} />
+                                    <Bar dataKey="value" radius={[8, 8, 0, 0]} name={isAr ? 'الزيارات' : 'Visits'}>
+                                        {stats?.timeData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         </Paper>
