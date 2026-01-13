@@ -1,44 +1,89 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import AdminLayout from './pages/admin/AdminLayout';
-import Dashboard from './pages/admin/Dashboard';
-import AdminSuggestions from './pages/admin/AdminSuggestions';
-import AdminReports from './pages/admin/AdminReports';
-import AdminAnalytics from './pages/admin/AdminAnalytics';
-import ManageTestimonials from './pages/admin/ManageTestimonials';
-import ManageRequests from './pages/admin/ManageRequests';
-import ManageSubscribers from './pages/admin/ManageSubscribers';
-import ManageDonations from './pages/admin/ManageDonations';
-import Login from './pages/admin/Login';
-import AdminConnect from './pages/admin/AdminConnect';
-import { AuthProvider } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext';
-import GlobalAnimatedBackground from './components/GlobalAnimatedBackground';
+console.log("App.jsx executing...");
+import React, { Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import Sidebar from './components/layout/Sidebar';
+import AnimatedBackground from './components/layout/AnimatedBackground';
+import { Box, CircularProgress, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Lazy Load Pages
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const Suggestions = React.lazy(() => import('./pages/Suggestions'));
+const Testimonials = React.lazy(() => import('./pages/Testimonials'));
+const MaterialExchange = React.lazy(() => import('./pages/MaterialExchange'));
+const QuestionReports = React.lazy(() => import('./pages/QuestionReports'));
+import Login from './pages/Login';
+
+// Dark Theme Setup
+const darkTheme = createTheme({
+    palette: {
+        mode: 'dark',
+        primary: { main: '#d32f2f' },
+        background: { default: '#0a0a0a', paper: '#1a1a1a' },
+        text: { primary: '#ffffff', secondary: 'rgba(255,255,255,0.7)' }
+    },
+    typography: {
+        fontFamily: '"Cairo", "Outfit", sans-serif',
+    }
+});
+
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+    const { currentUser } = useAuth();
+    const location = useLocation();
+
+    if (!currentUser) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    return children;
+}
+
+// Layout wrapper for sidebar visibility logic
+const AppLayout = ({ children }) => {
+    const { currentUser } = useAuth();
+    return (
+        <Box sx={{ display: 'flex', minHeight: '100vh', direction: 'rtl' }}>
+            {currentUser && <Sidebar />}
+            <Box component="main" sx={{ flexGrow: 1, p: 3, zIndex: 1, position: 'relative' }}>
+                {children}
+            </Box>
+        </Box>
+    );
+};
 
 function App() {
     return (
-        <ThemeProvider>
-            <AuthProvider>
-                <GlobalAnimatedBackground />
-                <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/admin-connect" element={<AdminConnect />} />
+        <AuthProvider>
+            <ThemeProvider theme={darkTheme}>
+                <CssBaseline />
+                <BrowserRouter basename={import.meta.env.BASE_URL}>
+                    <AnimatedBackground />
 
-                    <Route path="/admin" element={<AdminLayout />}>
-                        <Route index element={<Navigate to="/admin/dashboard" replace />} />
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="qna" element={<AdminSuggestions />} />
-                        <Route path="reports" element={<AdminReports />} />
-                        <Route path="analytics" element={<AdminAnalytics />} />
-                        <Route path="testimonials" element={<ManageTestimonials />} />
-                        <Route path="requests" element={<ManageRequests />} />
-                        <Route path="subscribers" element={<ManageSubscribers />} />
-                        <Route path="donations" element={<ManageDonations />} />
-                    </Route>
-                    <Route path="*" element={<Navigate to="/login" replace />} />
-                </Routes>
-            </AuthProvider>
-        </ThemeProvider>
+                    <AppLayout>
+                        <Suspense fallback={
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                                <CircularProgress color="primary" />
+                                <Box component="span" sx={{ color: 'white' }}>جاري تحميل الواجهة...</Box>
+                            </Box>
+                        }>
+                            <Routes>
+                                <Route path="/login" element={<Login />} />
+
+                                {/* Protected Routes */}
+                                <Route path="/" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />
+                                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                                <Route path="/suggestions" element={<ProtectedRoute><Suggestions /></ProtectedRoute>} />
+                                <Route path="/testimonials" element={<ProtectedRoute><Testimonials /></ProtectedRoute>} />
+                                <Route path="/materials" element={<ProtectedRoute><MaterialExchange /></ProtectedRoute>} />
+                                <Route path="/questions" element={<ProtectedRoute><QuestionReports /></ProtectedRoute>} />
+                            </Routes>
+                        </Suspense>
+                    </AppLayout>
+
+                </BrowserRouter>
+            </ThemeProvider>
+        </AuthProvider>
     );
 }
 

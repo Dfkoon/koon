@@ -1,150 +1,80 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { auth, db, initializationError } from "../lib/firebase";
-import {
-    onAuthStateChanged,
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    signOut
-} from "firebase/auth";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Box, CircularProgress } from '@mui/material';
+import { auth } from '../lib/firebase';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 
 const AuthContext = createContext();
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function useAuth() {
-    return useContext(AuthContext);
-}
+export const useAuth = () => useContext(AuthContext);
 
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(initializationError ? initializationError.message : null);
 
     useEffect(() => {
-        if (initializationError) {
-            setError("Firebase Initialization Error: " + initializationError.message);
-            setLoading(false);
-            return;
-        }
+        let mounted = true;
 
-        const localAdmin = localStorage.getItem('koon_admin_session');
-        if (localAdmin === 'true') {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setCurrentUser({
-                uid: 'admin-local',
-                email: 'admin@bau.koon',
-                displayName: 'Admin (Local)',
-                role: 'admin'
-            });
-            setLoading(false);
-            return;
-        }
-
-        if (!auth) {
-            console.warn("Auth not initialized, bypassing login state check");
-            setLoading(false);
-            return;
-        }
-
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                const isAdmin = user.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL?.toLowerCase();
-                let profileData = {};
-                try {
-                    const docRef = doc(db, "users", user.uid);
-                    const docSnap = await getDoc(docRef);
-                    if (docSnap.exists()) {
-                        profileData = docSnap.data();
-                    }
-                } catch (e) {
-                    console.error("Error fetching user profile", e);
-                }
-
-                const userData = {
-                    uid: user.uid,
-                    email: user.email,
-                    displayName: user.displayName || user.email.split('@')[0],
-                    role: isAdmin ? 'admin' : (profileData.role || 'student'),
-                    ...profileData,
-                    ...user
-                };
-
-                setCurrentUser(userData);
-            } else {
-                setCurrentUser(null);
+        // Safety timeout: stop loading after 3 seconds
+        const timeoutId = setTimeout(() => {
+            if (mounted && loading) {
+                console.warn("Auth check timed out - forcing render");
+                setLoading(false);
             }
-            setLoading(false);
+        }, 3000);
+
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (mounted) {
+                setCurrentUser(user);
+                setLoading(false);
+                clearTimeout(timeoutId);
+            }
+        }, (error) => {
+            console.error("Auth state change error:", error);
+            if (mounted) setLoading(false);
         });
 
-        return unsubscribe;
+        return () => {
+            mounted = false;
+            unsubscribe();
+            clearTimeout(timeoutId);
+        };
     }, []);
 
     const login = (email, password) => {
-        if (email === 'admin' && password === 'admin123') {
-            localStorage.setItem('koon_admin_session', 'true');
-            setCurrentUser({
-                uid: 'admin-local',
-                email: 'admin@bau.koon',
-                displayName: 'Admin (Local)',
-                role: 'admin'
-            });
-            return Promise.resolve();
-        }
         return signInWithEmailAndPassword(auth, email, password);
     };
 
-    const signup = async (email, password, additionalData = {}) => {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        const user = result.user;
-        try {
-            await setDoc(doc(db, "users", user.uid), {
-                email: user.email,
-                role: 'student',
-                createdAt: new Date().toISOString(),
-                completedMaterials: [],
-                ...additionalData
-            });
-        } catch (e) {
-            console.error("Error creating user profile", e);
-        }
-        return result;
+    const register = (email, password) => {
+        return createUserWithEmailAndPassword(auth, email, password);
     };
 
     const logout = () => {
-        localStorage.removeItem('koon_admin_session');
         return signOut(auth);
-    };
-
-    const updateCurrentUserResult = async (updates) => {
-        if (!currentUser || !currentUser.uid) return;
-        setCurrentUser(prev => ({ ...prev, ...updates }));
-        try {
-            const userRef = doc(db, "users", currentUser.uid);
-            await updateDoc(userRef, updates);
-        } catch (e) {
-            console.error("Error updating user profile", e);
-        }
     };
 
     const value = {
         currentUser,
         login,
-        signup,
-        logout,
-        updateCurrentUserResult
+        register,
+        logout
     };
 
     return (
         <AuthContext.Provider value={value}>
-            {error ? (
-                <div style={{ padding: 20, color: 'red', textAlign: 'center', direction: 'ltr' }}>
-                    <h2>Startup Error</h2>
-                    <pre>{error}</pre>
-                    <p>Check console for more details.</p>
-                </div>
-            ) : (
-                !loading && children
-            )}
+            {loading ? (
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100vh',
+                    bgcolor: '#0a0a0a',
+                    gap: 2
+                }}>
+                    <CircularProgress color="primary" />
+                    <Box component="span" sx={{ color: 'white', fontFamily: 'sans-serif' }}>جاري الاتصال...</Box>
+                </Box>
+            ) : children}
         </AuthContext.Provider>
     );
-}
+};

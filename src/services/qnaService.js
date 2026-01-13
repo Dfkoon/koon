@@ -1,99 +1,48 @@
 import { db } from '../lib/firebase';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
-
-const COLLECTION_NAME = 'qna'; // ✅ موحد مع firestore.rules
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 
 export const qnaService = {
-    // Get all suggestions
+    // Fetch from BOTH 'qna' and 'suggestions' collections
     async getAllSuggestions() {
         try {
-            const q = query(collection(db, COLLECTION_NAME));
-            const snapshot = await getDocs(q);
-            const data = snapshot.docs.map(doc => {
-                const d = doc.data();
-                return {
-                    id: doc.id,
-                    ...d,
-                    text: d.text || d.message || d.content || '',
-                    createdAt: d.timestamp?.toDate ? d.timestamp.toDate().toISOString() : (d.createdAt || new Date().toISOString())
-                };
+            // 1. Fetch 'qna'
+            const qnaSnapshot = await getDocs(collection(db, 'qna'));
+            const qnaData = qnaSnapshot.docs.map(doc => ({
+                id: doc.id,
+                source: 'qna',
+                ...doc.data(),
+                // Normalize Content Fields
+                text: doc.data().message || doc.data().text || doc.data().content || doc.data().quote || ''
+            }));
+
+            // 2. Fetch 'suggestions' (Legacy)
+            const suggSnapshot = await getDocs(collection(db, 'suggestions'));
+            const suggData = suggSnapshot.docs.map(doc => ({
+                id: doc.id,
+                source: 'suggestions',
+                ...doc.data(),
+                text: doc.data().message || doc.data().text || doc.data().content || doc.data().quote || ''
+            }));
+
+            // Merge and Sort
+            const combined = [...qnaData, ...suggData].sort((a, b) => {
+                const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+                const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+                return dateB - dateA;
             });
-            return data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            return combined;
         } catch (error) {
             console.error("Error fetching suggestions:", error);
             return [];
         }
     },
 
-    // Reply to a suggestion
-    async replyToSuggestion(id, replyText) {
-        try {
-            const docRef = doc(db, COLLECTION_NAME, id);
-            await updateDoc(docRef, {
-                reply: replyText,
-                status: 'replied',
-                replyDate: serverTimestamp()
-            });
-            return { success: true };
-        } catch (error) {
-            console.error("Error replying:", error);
-            return { success: false, error };
-        }
+    async deleteSuggestion(id, sourceCollection = 'qna') {
+        await deleteDoc(doc(db, sourceCollection, id));
     },
 
-    // Delete a suggestion
-    async deleteSuggestion(id) {
-        try {
-            await deleteDoc(doc(db, COLLECTION_NAME, id));
-            return { success: true };
-        } catch (error) {
-            console.error("Error deleting:", error);
-            return { success: false, error };
-        }
-    },
-
-    // Update suggestion (e.g. toggle public status)
-    async updateSuggestion(id, data) {
-        try {
-            const docRef = doc(db, COLLECTION_NAME, id);
-            await updateDoc(docRef, data);
-            return { success: true };
-        } catch (error) {
-            console.error("Error updating:", error);
-            return { success: false, error };
-        }
-    },
-
-    // Get all reports
-    async getAllReports() {
-        try {
-            const q = query(collection(db, 'question_reports'));
-            const snapshot = await getDocs(q);
-            const data = snapshot.docs.map(doc => {
-                const d = doc.data();
-                return {
-                    id: doc.id,
-                    ...d,
-                    createdAt: d.timestamp?.toDate ? d.timestamp.toDate().toISOString() : (d.createdAt || new Date().toISOString())
-                };
-            });
-            return data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        } catch (error) {
-            console.error("Error fetching reports:", error);
-            return [];
-        }
-    },
-
-    // Delete a report
-    async deleteReport(id) {
-        try {
-            await deleteDoc(doc(db, 'question_reports', id));
-            return { success: true };
-        } catch (error) {
-            console.error("Error deleting report:", error);
-            return { success: false, error };
-        }
+    async togglePublicStatus(id, newStatus, sourceCollection = 'qna') {
+        await updateDoc(doc(db, sourceCollection, id), { isPublic: newStatus });
     }
 };
-
-export default qnaService;

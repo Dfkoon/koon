@@ -2,80 +2,56 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ✅ دالة محسنة للتحقق من المسؤولين - قائمة بريد محددة
+    // Admin Helper Function
     function isAdmin() {
       return request.auth != null && 
-             request.auth.token.email in [
-               'admin@koon.bau.jo',
-               'hussienaldayyat@gmail.com'
-               // أضف بريد المسؤولين الآخرين هنا
-             ];
-    }
-    
-    // ✅ دالة للتحقق من صحة الرسائل
-    function isValidMessage(data) {
-      return data.message is string &&
-             data.message.size() >= 10 &&
-             data.message.size() <= 1000;
-    }
-    
-    // ✅ دالة للتحقق من البريد الإلكتروني
-    function isValidEmail(email) {
-      return email is string && 
-             email.matches('.*@.*\\..*');
+             (request.auth.token.email == 'hussienaldayyat@gmail.com' || 
+              request.auth.token.email == 'admin@koon.com');
     }
 
-    // QNA/Suggestions (موحد الاسم)
-    match /qna/{doc} {
+    // General Helper Functions
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // QnA / Suggestions Collection
+    match /qna/{docId} {
       allow read: if resource.data.isPublic == true || isAdmin();
-      allow create: if isValidMessage(request.resource.data) &&
-                       request.resource.data.type in ['suggestion', 'complaint', 'question'];
+      allow create: if true; // Allow anyone to post
       allow update, delete: if isAdmin();
-    }
-
-    // Question Reports
-    match /question_reports/{report} {
-      allow read, update, delete: if isAdmin();
-      allow create: if isValidMessage(request.resource.data);
-    }
-
-    // Page Views (Analytics) - للقراءة فقط من المسؤولين
-    match /page_views/{view} {
-      allow read: if isAdmin();
-      allow create: if true; // السماح للجميع بتسجيل الزيارات
-      allow update, delete: if false; // البيانات الإحصائية لا تُعدل
-    }
-
-    // Material Donations - مع validation
-    match /materialDonations/{doc} {
-      allow read: if isAdmin();
-      allow create: if request.resource.data.itemName is string &&
-                       request.resource.data.itemName.size() > 0 &&
-                       request.resource.data.itemName.size() <= 200;
-      allow update, delete: if isAdmin();
-    }
-
-    // Subscribers - مع validation للبريد
-    match /subscribers/{doc} {
-      allow read, delete: if isAdmin();
-      allow create: if isValidEmail(request.resource.data.email);
-    }
-
-    // Testimonials - مع validation
-    match /testimonials/{doc} {
-      allow read: if resource.data.approved == true || isAdmin();
-      allow create: if isValidMessage(request.resource.data);
-      allow update, delete: if isAdmin();
-    }
-
-    // Requests - للمسؤولين فقط
-    match /requests/{doc} {
-      allow read, write: if isAdmin();
     }
     
-    // Default deny - رفض الوصول لأي شيء آخر
-    match /{document=**} {
-      allow read, write: if false;
+    // Legacy Suggestions Support
+    match /suggestions/{docId} {
+      allow read: if resource.data.isPublic == true || isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Testimonials
+    match /testimonials/{docId} {
+      allow read: if resource.data.status == 'approved' || isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Material Exchange
+    match /materialDonations/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Question Reports (New)
+    match /question_reports/{docId} {
+      allow read: if isAdmin();
+      allow create: if true; // Allow students to report
+      allow update, delete: if isAdmin();
+    }
+
+    // Users / Admins (Future Proofing)
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId || isAdmin();
     }
   }
 }
