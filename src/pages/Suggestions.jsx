@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Chip, IconButton, Tooltip, CircularProgress, Fab } from '@mui/material';
+import { Box, Typography, Chip, IconButton, Tooltip, CircularProgress, Fab, Paper } from '@mui/material';
 import { Delete, Visibility, VisibilityOff, Refresh, Person, AccessTime, Reply, Message } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { qnaService } from '../services/qnaService';
@@ -9,6 +9,19 @@ export default function Suggestions() {
     const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState(null);
+
+    // Category mapping from the form
+    const categoryMap = {
+        'complaint': { label: 'شكوى', color: '#d32f2f', emoji: '⚠️' },
+        'suggestion': { label: 'اقتراح تحسين', color: '#1976d2', emoji: '💡' },
+        'technical': { label: 'مشكلة تقنية', color: '#f57c00', emoji: '🔧' },
+        'thanks': { label: 'شكري', color: '#388e3c', emoji: '❤️' },
+        'other': { label: 'أخرى', color: '#757575', emoji: '📝' }
+    };
+
+    const getCategoryInfo = (type) => {
+        return categoryMap[type] || categoryMap['other'];
+    };
 
     const loadData = async () => {
         setIsLoading(true);
@@ -85,10 +98,16 @@ export default function Suggestions() {
                                             {msg.text}
                                         </Typography>
                                         <Box mt={1} display="flex" gap={1}>
-                                            <Chip label={msg.type || 'عام'} size="small" sx={{
-                                                height: 20, fontSize: '0.7rem',
-                                                bgcolor: msg.type === 'complaint' ? 'error.dark' : 'primary.dark'
-                                            }} />
+                                            <Chip
+                                                label={`${getCategoryInfo(msg.type).emoji} ${getCategoryInfo(msg.type).label}`}
+                                                size="small"
+                                                sx={{
+                                                    height: 20,
+                                                    fontSize: '0.7rem',
+                                                    bgcolor: getCategoryInfo(msg.type).color,
+                                                    color: 'white'
+                                                }}
+                                            />
                                             {msg.isPublic && <Chip label="منشور" size="small" color="success" sx={{ height: 20, fontSize: '0.7rem' }} />}
                                         </Box>
                                     </Box>
@@ -160,15 +179,30 @@ export default function Suggestions() {
                             </Box>
                         </Box>
 
+                        {/* Category Badge */}
+                        <Box mb={3}>
+                            <Chip
+                                label={`${getCategoryInfo(selectedMessage.type).emoji} ${getCategoryInfo(selectedMessage.type).label}`}
+                                sx={{
+                                    bgcolor: getCategoryInfo(selectedMessage.type).color,
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.9rem',
+                                    px: 2,
+                                    py: 2.5
+                                }}
+                            />
+                        </Box>
+
                         {/* Content */}
                         <Paper elevation={0} sx={{
                             p: 3,
-                            bgcolor: 'rgba(0,0,0,0.3)',
+                            bgcolor: 'rgba(255,255,255,0.03)',
                             borderRadius: '20px',
-                            border: '1px solid rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
                             minHeight: '200px'
                         }}>
-                            <Typography variant="h6" sx={{ lineHeight: 1.8 }}>
+                            <Typography variant="h6" sx={{ lineHeight: 1.8, color: 'white' }}>
                                 "{selectedMessage.text}"
                             </Typography>
                         </Paper>

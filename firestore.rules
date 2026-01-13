@@ -5,8 +5,8 @@ service cloud.firestore {
     // Admin Helper Function
     function isAdmin() {
       return request.auth != null && 
-             (request.auth.token.email == 'hussienaldayyat@gmail.com' || 
-              request.auth.token.email == 'admin@koon.com');
+             (request.auth.token.email.lower() == 'hussienaldayyat@gmail.com' || 
+              request.auth.token.email.lower() == 'admin@koon.com');
     }
 
     // General Helper Functions
@@ -39,14 +39,39 @@ service cloud.firestore {
     match /materialDonations/{docId} {
       allow read: if true;
       allow create: if true;
-      allow update, delete: if isAdmin();
+      allow update, delete: if isAuth();
     }
 
     // Question Reports (New)
     match /question_reports/{docId} {
-      allow read: if isAdmin();
+      allow read: if isAuth();
       allow create: if true; // Allow students to report
-      allow update, delete: if isAdmin();
+      allow update, delete: if isAuth();
+    }
+
+    // Nashmi Chat (New)
+    match /nashmi_chat/{docId} {
+      allow read: if isAuth();
+      allow create: if true; // Allow bot to save logs
+      allow update, delete: if isAuth();
+    }
+
+    // Nashmi Knowledge Base (New)
+    match /nashmi_knowledge/{docId} {
+      allow read: if true; // Allow bot or site to read verified knowledge
+      allow write: if isAuth();
+    }
+
+    // Site Broadcasts (New)
+    match /broadcasts/{docId} {
+      allow read: if true; // Publicly readable for students
+      allow write: if isAuth();
+    }
+
+    // System Settings (Phases, etc.)
+    match /settings/{docId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAuth();
     }
 
     // Users / Admins (Future Proofing)

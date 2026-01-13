@@ -12,6 +12,8 @@ const Suggestions = React.lazy(() => import('./pages/Suggestions'));
 const Testimonials = React.lazy(() => import('./pages/Testimonials'));
 const MaterialExchange = React.lazy(() => import('./pages/MaterialExchange'));
 const QuestionReports = React.lazy(() => import('./pages/QuestionReports'));
+const NashmiChat = React.lazy(() => import('./pages/NashmiChat'));
+const Broadcasts = React.lazy(() => import('./pages/Broadcasts'));
 import Login from './pages/Login';
 
 // Dark Theme Setup
@@ -38,6 +40,15 @@ const ProtectedRoute = ({ children }) => {
 
     return children;
 }
+
+// Redirect if already logged in
+const PublicRoute = ({ children }) => {
+    const { currentUser } = useAuth();
+    if (currentUser) {
+        return <Navigate to="/dashboard" replace />;
+    }
+    return children;
+};
 
 // Layout wrapper for sidebar visibility logic
 const AppLayout = ({ children }) => {
@@ -68,7 +79,7 @@ function App() {
                             </Box>
                         }>
                             <Routes>
-                                <Route path="/login" element={<Login />} />
+                                <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
 
                                 {/* Protected Routes */}
                                 <Route path="/" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />
@@ -77,6 +88,8 @@ function App() {
                                 <Route path="/testimonials" element={<ProtectedRoute><Testimonials /></ProtectedRoute>} />
                                 <Route path="/materials" element={<ProtectedRoute><MaterialExchange /></ProtectedRoute>} />
                                 <Route path="/questions" element={<ProtectedRoute><QuestionReports /></ProtectedRoute>} />
+                                <Route path="/nashmi" element={<ProtectedRoute><NashmiChat /></ProtectedRoute>} />
+                                <Route path="/broadcasts" element={<ProtectedRoute><Broadcasts /></ProtectedRoute>} />
                             </Routes>
                         </Suspense>
                     </AppLayout>

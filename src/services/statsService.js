@@ -21,11 +21,16 @@ export const statsService = {
             const reportsSnap = await getDocs(collection(db, 'question_reports'));
             const questionReportsCount = reportsSnap.size;
 
+            // Get Nashmi Chat Logs
+            const nashmiSnap = await getDocs(collection(db, 'nashmi_chat'));
+            const nashmiCount = nashmiSnap.size;
+
             return {
                 complaints: totalComplaints,
                 testimonials: approvedTestimonials,
                 materials: totalMaterials,
                 reports: questionReportsCount,
+                nashmi: nashmiCount,
                 visitors: "1,200+" // Temporary stationary
             };
         } catch (error) {

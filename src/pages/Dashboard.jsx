@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Grid, Typography, CircularProgress } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { People, Message, Star, Visibility, BugReport } from '@mui/icons-material';
+import { People, Message, Star, Visibility, BugReport, Chat } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { statsService } from '../services/statsService';
 
@@ -82,8 +82,11 @@ export default function Dashboard() {
                 <Grid item xs={12} sm={6} md={2.4}>
                     <StatCard title="تبادل المواد" value={stats?.materials || '0'} icon={<People />} color="41, 182, 246" delay={4} />
                 </Grid>
-                <Grid item xs={12} sm={6} md={2.4}>
+                <Grid item xs={12} sm={6} md={4} lg={2}>
                     <StatCard title="بلاغات الأسئلة" value={stats?.reports || '0'} icon={<BugReport />} color="155, 89, 182" delay={5} />
+                </Grid>
+                <Grid item xs={12} sm={6} md={4} lg={2}>
+                    <StatCard title="نشمي شات" value={stats?.nashmi || '0'} icon={<Chat />} color="156, 39, 176" delay={6} />
                 </Grid>
             </Grid>
 

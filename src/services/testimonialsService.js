@@ -1,5 +1,5 @@
 import { db } from '../lib/firebase';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'testimonials';
 
@@ -20,10 +20,17 @@ export const testimonialsService = {
 
     async updateStatus(id, newStatus) {
         const testimonialRef = doc(db, COLLECTION_NAME, id);
-        await updateDoc(testimonialRef, {
+        const updateData = {
             status: newStatus,
             approved: newStatus === 'approved' // Critical for security rules
-        });
+        };
+
+        // Website uses 'approvedAt' for ordering, so we must set it
+        if (newStatus === 'approved') {
+            updateData.approvedAt = serverTimestamp();
+        }
+
+        await updateDoc(testimonialRef, updateData);
     },
 
     async deleteTestimonial(id) {

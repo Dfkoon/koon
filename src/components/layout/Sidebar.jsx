@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Box, Typography, IconButton, Tooltip, Avatar } from '@mui/material';
 import {
-    Dashboard, Mail, Star, FolderShared, BugReport,
-    Logout, ChevronRight, ChevronLeft
+    Dashboard, Mail, Star, FolderShared, BugReport, Chat,
+    Campaign, Logout, ChevronRight, ChevronLeft
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const Sidebar = () => {
     const [collapsed, setCollapsed] = useState(false);
@@ -17,11 +19,19 @@ const Sidebar = () => {
         { path: '/testimonials', label: 'إدارة الآراء', icon: <Star /> },
         { path: '/materials', label: 'تبادل المواد', icon: <FolderShared /> },
         { path: '/questions', label: 'مراجعة الأسئلة', icon: <BugReport /> },
+        { path: '/nashmi', label: 'نشمي شات', icon: <Chat /> },
+        { path: '/broadcasts', label: 'الإعلانات العاجلة', icon: <Campaign /> },
     ];
 
-    const handleLogout = () => {
-        // Implement logout logic here
-        navigate('/login');
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/login');
+            toast.success('تم تسجيل الخروج');
+        } catch (err) {
+            console.error("Logout error:", err);
+            toast.error('فشل تسجيل الخروج');
+        }
     };
 
     return (
