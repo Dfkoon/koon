@@ -11,6 +11,7 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Suggestions = React.lazy(() => import('./pages/Suggestions'));
 const Testimonials = React.lazy(() => import('./pages/Testimonials'));
 const MaterialExchange = React.lazy(() => import('./pages/MaterialExchange'));
+const Contributions = React.lazy(() => import('./pages/Contributions'));
 const QuestionReports = React.lazy(() => import('./pages/QuestionReports'));
 const NashmiChat = React.lazy(() => import('./pages/NashmiChat'));
 const Broadcasts = React.lazy(() => import('./pages/Broadcasts'));
@@ -87,6 +88,7 @@ function App() {
                                 <Route path="/suggestions" element={<ProtectedRoute><Suggestions /></ProtectedRoute>} />
                                 <Route path="/testimonials" element={<ProtectedRoute><Testimonials /></ProtectedRoute>} />
                                 <Route path="/materials" element={<ProtectedRoute><MaterialExchange /></ProtectedRoute>} />
+                                <Route path="/contributions" element={<ProtectedRoute><Contributions /></ProtectedRoute>} />
                                 <Route path="/questions" element={<ProtectedRoute><QuestionReports /></ProtectedRoute>} />
                                 <Route path="/nashmi" element={<ProtectedRoute><NashmiChat /></ProtectedRoute>} />
                                 <Route path="/broadcasts" element={<ProtectedRoute><Broadcasts /></ProtectedRoute>} />
