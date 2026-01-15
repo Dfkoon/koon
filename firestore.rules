@@ -21,6 +21,13 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
     
+    // Student Contributions (Files/Links)
+    match /quizContributions/{docId} {
+        allow read: if isAdmin();
+        allow create: if true;
+        allow update, delete: if isAdmin();
+    }
+    
     // Legacy Suggestions Support
     match /suggestions/{docId} {
       allow read: if resource.data.isPublic == true || isAdmin();
