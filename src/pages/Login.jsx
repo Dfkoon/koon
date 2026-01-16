@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { Box, Typography, Button, TextField, InputAdornment, IconButton, Alert, Link } from '@mui/material';
-import { Visibility, VisibilityOff, Lock, Email, Fingerprint } from '@mui/icons-material';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import Lock from '@mui/icons-material/Lock';
+import Email from '@mui/icons-material/Email';
+import Fingerprint from '@mui/icons-material/Fingerprint';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';

@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+             request.auth.token.email in ['admin@koon.bau.jo', 'hussienaldayyat@gmail.com'];
+    }
+    
+    // Helper function to validate file size (max 10MB)
+    function isValidFileSize() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+    
+    // Helper function to validate file type (images and PDFs only)
+    function isValidFileType() {
+      return request.resource.contentType.matches('image/.*') ||
+             request.resource.contentType == 'application/pdf';
+    }
+    
+    // Quiz Contributions - Allow anyone to upload, only admins to delete
+    match /quizContributions/{fileName} {
+      allow read: if isAdmin();
+      allow create: if isValidFileSize() && isValidFileType();
+      allow delete: if isAdmin();
+    }
+    
+    // Material Exchange Photos - Allow anyone to upload
+    match /materialDonations/{fileName} {
+      allow read: if true; // Public read for material exchange
+      allow create: if isValidFileSize() && isValidFileType();
+      allow delete: if isAdmin();
+    }
+    
+    // Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

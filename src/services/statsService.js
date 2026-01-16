@@ -25,12 +25,17 @@ export const statsService = {
             const nashmiSnap = await getDocs(collection(db, 'nashmi_chat'));
             const nashmiCount = nashmiSnap.size;
 
+            // Get Student Contributions
+            const contributionsSnap = await getDocs(collection(db, 'quizContributions'));
+            const contributionsCount = contributionsSnap.size;
+
             return {
                 complaints: totalComplaints,
                 testimonials: approvedTestimonials,
                 materials: totalMaterials,
                 reports: questionReportsCount,
                 nashmi: nashmiCount,
+                contributions: contributionsCount,
                 visitors: "1,200+" // Temporary stationary
             };
         } catch (error) {

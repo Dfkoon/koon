@@ -5,11 +5,18 @@ import {
     CircularProgress, Fab, Button, ButtonGroup, useTheme,
     Dialog, DialogTitle, DialogContent, DialogActions, Avatar, Card, CardContent, Divider
 } from '@mui/material';
-import {
-    Delete, Refresh, InsertDriveFile, CheckCircle,
-    SwapHoriz, VolunteerActivism, PriorityHigh, Info,
-    ContactPhone, Person, AssignmentReturn, VerifiedUser
-} from '@mui/icons-material';
+import Delete from '@mui/icons-material/Delete';
+import Refresh from '@mui/icons-material/Refresh';
+import InsertDriveFile from '@mui/icons-material/InsertDriveFile';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import SwapHoriz from '@mui/icons-material/SwapHoriz';
+import VolunteerActivism from '@mui/icons-material/VolunteerActivism';
+import PriorityHigh from '@mui/icons-material/PriorityHigh';
+import Info from '@mui/icons-material/Info';
+import ContactPhone from '@mui/icons-material/ContactPhone';
+import Person from '@mui/icons-material/Person';
+import AssignmentReturn from '@mui/icons-material/AssignmentReturn';
+import VerifiedUser from '@mui/icons-material/VerifiedUser';
 import { materialsService } from '../services/materialsService';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';

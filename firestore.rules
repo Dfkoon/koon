@@ -5,85 +5,116 @@ service cloud.firestore {
     // Admin Helper Function
     function isAdmin() {
       return request.auth != null && 
-             (request.auth.token.email.lower() == 'hussienaldayyat@gmail.com' || 
-              request.auth.token.email.lower() == 'admin@koon.com');
+             request.auth.token.email in ['admin@koon.bau.jo', 'hussienaldayyat@gmail.com'];
+    }
+    
+    // Validation Helpers
+    function isValidMessage(data) {
+      let content = data.keys().hasAny(['message']) ? data.message :
+                    data.keys().hasAny(['text']) ? data.text :
+                    data.keys().hasAny(['content']) ? data.content :
+                    data.keys().hasAny(['quote']) ? data.quote : '';
+      
+      return content is string && content.size() >= 5 && content.size() <= 2000;
+    }
+    
+    function isValidEmail(email) {
+      return email is string && email.matches('.*@.*\\..*');
     }
 
-    // General Helper Functions
-    function isAuth() {
-      return request.auth != null;
-    }
-
-    // QnA / Suggestions Collection
-    match /qna/{docId} {
+    // QnA / Suggestions (Existing)
+    match /qna/{doc} {
       allow read: if resource.data.isPublic == true || isAdmin();
-      allow create: if true; // Allow anyone to post
+      allow create: if isValidMessage(request.resource.data) && (request.resource.data.type is string);
       allow update, delete: if isAdmin();
     }
     
-    // Student Contributions (Files/Links)
-    match /quizContributions/{docId} {
-        allow read: if isAdmin();
-        allow create: if true;
-        allow update, delete: if isAdmin();
-    }
-    
-    // Legacy Suggestions Support
-    match /suggestions/{docId} {
+    match /suggestions/{doc} {
       allow read: if resource.data.isPublic == true || isAdmin();
-      allow create: if true;
+      allow create: if isValidMessage(request.resource.data) && (request.resource.data.type is string);
       allow update, delete: if isAdmin();
     }
 
-    // Testimonials
-    match /testimonials/{docId} {
-      allow read: if resource.data.status == 'approved' || isAdmin();
+    // Question Reports (Existing)
+    match /question_reports/{report} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isValidMessage(request.resource.data);
+    }
+
+    // Page Views (Existing)
+    match /page_views/{view} {
+      allow read: if isAdmin();
       allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // Material Donations (Existing)
+    match /materialDonations/{doc} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.itemName is string && request.resource.data.itemName.size() > 0;
       allow update, delete: if isAdmin();
     }
 
-    // Material Exchange
-    match /materialDonations/{docId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAuth();
+    // Subscribers (Existing)
+    match /subscribers/{doc} {
+      allow read, delete: if isAdmin();
+      allow create: if isValidEmail(request.resource.data.email);
     }
 
-    // Question Reports (New)
-    match /question_reports/{docId} {
-      allow read: if isAuth();
-      allow create: if true; // Allow students to report
-      allow update, delete: if isAuth();
+    // Testimonials (Existing)
+    match /testimonials/{doc} {
+      allow read: if resource.data.approved == true || isAdmin();
+      allow create: if isValidMessage(request.resource.data);
+      allow update, delete: if isAdmin();
     }
 
-    // Nashmi Chat (New)
-    match /nashmi_chat/{docId} {
-      allow read: if isAuth();
-      allow create: if true; // Allow bot to save logs
-      allow update, delete: if isAuth();
+    // Requests (Existing)
+    match /requests/{doc} {
+      allow read, write: if isAdmin();
     }
 
-    // Nashmi Knowledge Base (New)
-    match /nashmi_knowledge/{docId} {
-      allow read: if true; // Allow bot or site to read verified knowledge
-      allow write: if isAuth();
+    // ========== NEW COLLECTIONS ==========
+
+    // Student Contributions (Quiz Files/Links) - NEW
+    match /quizContributions/{doc} {
+      allow read: if isAdmin();
+      allow create: if true; // Allow students to submit
+      allow update, delete: if isAdmin();
     }
 
-    // Site Broadcasts (New)
-    match /broadcasts/{docId} {
+    // Nashmi Chat Logs - NEW
+    match /nashmi_chat/{doc} {
+      allow read: if isAdmin();
+      allow create: if true; // Allow anyone (students) to save chat logs
+      allow update, delete: if isAdmin();
+    }
+
+    // Nashmi Knowledge Base - NEW
+    match /nashmi_knowledge/{doc} {
+      allow read: if true; // Allow bot to read verified knowledge
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Site Broadcasts - NEW
+    match /broadcasts/{doc} {
       allow read: if true; // Publicly readable for students
-      allow write: if isAuth();
+      allow create, update, delete: if isAdmin();
     }
 
-    // System Settings (Phases, etc.)
-    match /settings/{docId} {
+    // System Settings (Phases, etc.) - NEW
+    match /settings/{doc} {
       allow read: if true; // Publicly readable
-      allow write: if isAuth();
+      allow create, update, delete: if isAdmin();
     }
 
-    // Users / Admins (Future Proofing)
+    // Users / Admins - NEW
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId || isAdmin();
+    }
+
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

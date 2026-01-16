@@ -1,16 +1,24 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Box, Typography, IconButton, Tooltip, Avatar } from '@mui/material';
-import {
-    Dashboard, Mail, Star, FolderShared, BugReport, Chat,
-    Campaign, Logout, ChevronRight, ChevronLeft, Backup
-} from '@mui/icons-material';
+import Dashboard from '@mui/icons-material/Dashboard';
+import Mail from '@mui/icons-material/Mail';
+import Star from '@mui/icons-material/Star';
+import FolderShared from '@mui/icons-material/FolderShared';
+import BugReport from '@mui/icons-material/BugReport';
+import Chat from '@mui/icons-material/Chat';
+import Campaign from '@mui/icons-material/Campaign';
+import Logout from '@mui/icons-material/Logout';
+import ChevronRight from '@mui/icons-material/ChevronRight';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
+import Backup from '@mui/icons-material/Backup';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const Sidebar = () => {
     const [collapsed, setCollapsed] = useState(false);
+    const { logout } = useAuth();
     const navigate = useNavigate();
 
     const menuItems = [

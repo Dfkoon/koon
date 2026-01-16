@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Grid, IconButton, Chip, CircularProgress, Paper, Tooltip } from '@mui/material';
-import { CheckCircle, Delete, BugReport, Refresh, Assignment, Person, AccessTime } from '@mui/icons-material';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import Delete from '@mui/icons-material/Delete';
+import BugReport from '@mui/icons-material/BugReport';
+import Refresh from '@mui/icons-material/Refresh';
+import Assignment from '@mui/icons-material/Assignment';
+import Person from '@mui/icons-material/Person';
+import AccessTime from '@mui/icons-material/AccessTime';
 import { motion, AnimatePresence } from 'framer-motion';
 import { questionReportsService } from '../services/questionReportsService';
 import toast from 'react-hot-toast';
@@ -17,6 +23,17 @@ export default function QuestionReports() {
     };
 
     useEffect(() => { loadData(); }, []);
+
+    const formatDate = (date) => {
+        if (!date) return 'بدون تاريخ';
+        try {
+            if (date.toDate) return date.toDate().toLocaleString('ar-EG');
+            const d = new Date(date);
+            return isNaN(d.getTime()) ? 'تاريخ غير صالح' : d.toLocaleString('ar-EG');
+        } catch (e) {
+            return 'خطأ في التاريخ';
+        }
+    };
 
     const handleStatus = async (id, newStatus) => {
         await questionReportsService.updateStatus(id, newStatus);
@@ -88,7 +105,7 @@ export default function QuestionReports() {
                                             <Box display="flex" alignItems="center" gap={1}>
                                                 <AccessTime fontSize="small" color="disabled" />
                                                 <Typography variant="caption" color="text.secondary">
-                                                    التاريخ: {report.createdAt?.toDate ? report.createdAt.toDate().toLocaleString() : new Date(report.createdAt).toLocaleString()}
+                                                    التاريخ: {formatDate(report.createdAt)}
                                                 </Typography>
                                             </Box>
                                         </Box>

@@ -3,7 +3,11 @@ import {
     Box, Typography, Paper, Grid, TextField, Button, MenuItem,
     Switch, FormControlLabel, IconButton, Card, CardContent, Divider, Chip, CircularProgress
 } from '@mui/material';
-import { Campaign, Delete, Send, Refresh, History } from '@mui/icons-material';
+import Campaign from '@mui/icons-material/Campaign';
+import Delete from '@mui/icons-material/Delete';
+import Send from '@mui/icons-material/Send';
+import Refresh from '@mui/icons-material/Refresh';
+import History from '@mui/icons-material/History';
 import { motion, AnimatePresence } from 'framer-motion';
 import { broadcastService } from '../services/broadcastService';
 import toast from 'react-hot-toast';

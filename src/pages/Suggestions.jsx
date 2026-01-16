@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Chip, IconButton, Tooltip, CircularProgress, Fab, Paper } from '@mui/material';
-import { Delete, Visibility, VisibilityOff, Refresh, Person, AccessTime, Reply, Message } from '@mui/icons-material';
+import Delete from '@mui/icons-material/Delete';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import Refresh from '@mui/icons-material/Refresh';
+import Person from '@mui/icons-material/Person';
+import AccessTime from '@mui/icons-material/AccessTime';
+import Reply from '@mui/icons-material/Reply';
+import Message from '@mui/icons-material/Message';
 import { motion, AnimatePresence } from 'framer-motion';
 import { qnaService } from '../services/qnaService';
 import toast from 'react-hot-toast';
@@ -21,6 +28,19 @@ export default function Suggestions() {
 
     const getCategoryInfo = (type) => {
         return categoryMap[type] || categoryMap['other'];
+    };
+
+    const formatDate = (date) => {
+        if (!date) return 'بدون تاريخ';
+        try {
+            // Handle Firestore Timestamp
+            if (date.toDate) return date.toDate().toLocaleString('ar-EG');
+            // Handle Date object or valid date string/number
+            const d = new Date(date);
+            return isNaN(d.getTime()) ? 'تاريخ غير صالح' : d.toLocaleString('ar-EG');
+        } catch (e) {
+            return 'خطأ في التاريخ';
+        }
     };
 
     const loadData = async () => {
@@ -91,7 +111,7 @@ export default function Suggestions() {
                                                 {msg.name || 'مجهول'}
                                             </Typography>
                                             <Typography variant="caption" color="text.secondary">
-                                                {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleDateString() : new Date(msg.createdAt).toLocaleDateString()}
+                                                {formatDate(msg.createdAt)}
                                             </Typography>
                                         </Box>
                                         <Typography variant="body2" color="text.secondary" noWrap>
@@ -146,7 +166,7 @@ export default function Suggestions() {
                                     <Box display="flex" alignItems="center" gap={1}>
                                         <AccessTime fontSize="small" sx={{ color: 'text.secondary', fontSize: 16 }} />
                                         <Typography variant="body2" color="text.secondary">
-                                            {new Date(selectedMessage.createdAt).toLocaleString()}
+                                            {formatDate(selectedMessage.createdAt)}
                                         </Typography>
                                     </Box>
                                 </Box>

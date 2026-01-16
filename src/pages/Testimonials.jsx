@@ -3,7 +3,12 @@ import {
     Box, Typography, Grid, IconButton, Chip, CircularProgress, Fab, Tooltip,
     Dialog, DialogTitle, DialogContent, DialogActions, Button, Zoom
 } from '@mui/material';
-import { CheckCircle, Cancel, Delete, FormatQuote, Refresh, Close } from '@mui/icons-material';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import Cancel from '@mui/icons-material/Cancel';
+import Delete from '@mui/icons-material/Delete';
+import FormatQuote from '@mui/icons-material/FormatQuote';
+import Refresh from '@mui/icons-material/Refresh';
+import Close from '@mui/icons-material/Close';
 import { motion, AnimatePresence } from 'framer-motion';
 import { testimonialsService } from '../services/testimonialsService';
 import toast from 'react-hot-toast';

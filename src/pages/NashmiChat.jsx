@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, IconButton, Chip, Tooltip, CircularProgress, Fab,
-    Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField
+    Box, Typography, Chip, IconButton, Tooltip, CircularProgress, Fab, Paper,
+    TableContainer, Table, TableHead, TableRow, TableCell, TableBody,
+    Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
+    FormControlLabel, Switch
 } from '@mui/material';
-import { Delete, CheckCircle, Refresh, Chat, Person, AccessTime, School } from '@mui/icons-material';
+import Delete from '@mui/icons-material/Delete';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import Refresh from '@mui/icons-material/Refresh';
+import Chat from '@mui/icons-material/Chat';
+import Person from '@mui/icons-material/Person';
+import AccessTime from '@mui/icons-material/AccessTime';
+import School from '@mui/icons-material/School';
 import { motion, AnimatePresence } from 'framer-motion';
 import { nashmiService } from '../services/nashmiService';
 import toast from 'react-hot-toast';
@@ -15,6 +22,7 @@ export default function NashmiChat() {
     const [selectedLog, setSelectedLog] = useState(null);
     const [trainingAnswer, setTrainingAnswer] = useState('');
     const [openDialog, setOpenDialog] = useState(false);
+    const [filterNewOnly, setFilterNewOnly] = useState(false);
 
     const loadData = async () => {
         setIsLoading(true);
@@ -24,6 +32,17 @@ export default function NashmiChat() {
     };
 
     useEffect(() => { loadData(); }, []);
+
+    const formatDate = (date) => {
+        if (!date) return 'بدون تاريخ';
+        try {
+            if (date.toDate) return date.toDate().toLocaleString('ar-EG');
+            const d = new Date(date);
+            return isNaN(d.getTime()) ? 'تاريخ غير صالح' : d.toLocaleString('ar-EG');
+        } catch (e) {
+            return 'خطأ في التاريخ';
+        }
+    };
 
     const handleDelete = async (id) => {
         if (window.confirm('هل أنت متأكد من حذف هذا السجل؟')) {
@@ -62,9 +81,15 @@ export default function NashmiChat() {
         <Box>
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="h4" fontWeight="bold">سجلات نشمي شات</Typography>
-                <Fab color="primary" size="small" onClick={loadData}>
-                    <Refresh />
-                </Fab>
+                <Box display="flex" alignItems="center" gap={2}>
+                    <FormControlLabel
+                        control={<Switch checked={filterNewOnly} onChange={(e) => setFilterNewOnly(e.target.checked)} color="primary" />}
+                        label="غير المراجع فقط"
+                    />
+                    <Fab color="primary" size="small" onClick={loadData}>
+                        <Refresh />
+                    </Fab>
+                </Box>
             </Box>
 
             {isLoading ? (
@@ -84,7 +109,7 @@ export default function NashmiChat() {
                             </TableHead>
                             <TableBody>
                                 <AnimatePresence>
-                                    {logs.map((log) => (
+                                    {logs.filter(log => !filterNewOnly || log.status !== 'reviewed').map((log) => (
                                         <TableRow
                                             key={log.id}
                                             component={motion.tr}
@@ -108,7 +133,7 @@ export default function NashmiChat() {
                                             <TableCell sx={{ color: 'rgba(255,255,255,0.6)' }}>
                                                 <Box display="flex" alignItems="center" gap={1}>
                                                     <AccessTime fontSize="small" />
-                                                    {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}
+                                                    {formatDate(log.timestamp || log.createdAt)}
                                                 </Box>
                                             </TableCell>
                                             <TableCell>

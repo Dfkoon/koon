@@ -9,9 +9,10 @@ const firebaseConfig = {
     projectId: "koon-609da",
     storageBucket: "koon-609da.firebasestorage.app",
     messagingSenderId: "999499144055",
-    appId: "1:999499144055:web:de58d0ab0b1dcc11b05f72",
-    measurementId: "G-5G25S6VXNR"
+    appId: "1:999499144055:web:de58d0ab0b1dcc11b05f72"
 };
+
+console.log("Firebase Config (New):", firebaseConfig);
 
 let app, auth, db, storage;
 

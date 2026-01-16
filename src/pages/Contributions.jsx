@@ -4,7 +4,13 @@ import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button, Zoom,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 } from '@mui/material';
-import { CheckCircle, Cancel, Delete, Refresh, Visibility, Link as LinkIcon, Close } from '@mui/icons-material';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import Cancel from '@mui/icons-material/Cancel';
+import Delete from '@mui/icons-material/Delete';
+import Refresh from '@mui/icons-material/Refresh';
+import Visibility from '@mui/icons-material/Visibility';
+import LinkIcon from '@mui/icons-material/Link';
+import Close from '@mui/icons-material/Close';
 import { motion, AnimatePresence } from 'framer-motion';
 import { contributionsService } from '../services/contributionsService';
 import toast from 'react-hot-toast';

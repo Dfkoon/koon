@@ -14,19 +14,10 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         let mounted = true;
 
-        // Safety timeout: stop loading after 3 seconds
-        const timeoutId = setTimeout(() => {
-            if (mounted && loading) {
-                console.warn("Auth check timed out - forcing render");
-                setLoading(false);
-            }
-        }, 3000);
-
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (mounted) {
                 setCurrentUser(user);
                 setLoading(false);
-                clearTimeout(timeoutId);
             }
         }, (error) => {
             console.error("Auth state change error:", error);
@@ -36,10 +27,8 @@ export const AuthProvider = ({ children }) => {
         return () => {
             mounted = false;
             unsubscribe();
-            clearTimeout(timeoutId);
         };
     }, []);
-
     const login = (email, password) => {
         return signInWithEmailAndPassword(auth, email, password);
     };

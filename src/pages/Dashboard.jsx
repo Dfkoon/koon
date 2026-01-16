@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Grid, Typography, CircularProgress } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { People, Message, Star, Visibility, BugReport, Chat } from '@mui/icons-material';
+import People from '@mui/icons-material/People';
+import Message from '@mui/icons-material/Message';
+import Star from '@mui/icons-material/Star';
+import Visibility from '@mui/icons-material/Visibility';
+import BugReport from '@mui/icons-material/BugReport';
+import Chat from '@mui/icons-material/Chat';
+import Backup from '@mui/icons-material/Backup';
 import { motion } from 'framer-motion';
 import { statsService } from '../services/statsService';
 
@@ -70,23 +76,26 @@ export default function Dashboard() {
 
             {/* Stats Grid */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} sm={6} md={2.4}>
+                <Grid item xs={12} sm={6} md={2}>
                     <StatCard title="الزوار (تقريبياً)" value={stats?.visitors || '0'} icon={<Visibility />} color="211, 47, 47" delay={1} />
                 </Grid>
-                <Grid item xs={12} sm={6} md={2.4}>
+                <Grid item xs={12} sm={6} md={2}>
                     <StatCard title="الشكاوى" value={stats?.complaints || '0'} icon={<Message />} color="241, 196, 15" delay={2} />
                 </Grid>
-                <Grid item xs={12} sm={6} md={2.4}>
+                <Grid item xs={12} sm={6} md={2}>
                     <StatCard title="الآراء المعتمدة" value={stats?.testimonials || '0'} icon={<Star />} color="0, 230, 118" delay={3} />
                 </Grid>
-                <Grid item xs={12} sm={6} md={2.4}>
+                <Grid item xs={12} sm={6} md={2}>
                     <StatCard title="تبادل المواد" value={stats?.materials || '0'} icon={<People />} color="41, 182, 246" delay={4} />
                 </Grid>
-                <Grid item xs={12} sm={6} md={4} lg={2}>
+                <Grid item xs={12} sm={6} md={2}>
                     <StatCard title="بلاغات الأسئلة" value={stats?.reports || '0'} icon={<BugReport />} color="155, 89, 182" delay={5} />
                 </Grid>
-                <Grid item xs={12} sm={6} md={4} lg={2}>
+                <Grid item xs={12} sm={6} md={2}>
                     <StatCard title="نشمي شات" value={stats?.nashmi || '0'} icon={<Chat />} color="156, 39, 176" delay={6} />
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                    <StatCard title="مساهمات الطلاب" value={stats?.contributions || '0'} icon={<Backup />} color="33, 150, 243" delay={7} />
                 </Grid>
             </Grid>
 
