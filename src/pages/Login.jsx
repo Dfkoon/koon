@@ -159,7 +159,6 @@ export default function Login() {
                         {loading ? 'جاري التحقق...' : (isRegistering ? 'إنشاء الحساب' : 'دخول آمن')}
                     </Button>
 
-                    {/* 
                     <Box mt={2}>
                         <Typography
                             variant="body2"
@@ -176,8 +175,7 @@ export default function Login() {
                         >
                             {isRegistering ? 'لديك حساب بالفعل؟ تسجيل الدخول' : 'ليس لديك حساب؟ إنشاء حساب جديد'}
                         </Typography>
-                    </Box> 
-                    */}
+                    </Box>
 
                 </Box>
             </motion.div>
