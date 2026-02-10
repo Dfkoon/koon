@@ -51,7 +51,9 @@ service cloud.firestore {
     // Material Donations (Existing)
     match /materialDonations/{doc} {
       allow read: if isAdmin();
-      allow create: if request.resource.data.itemName is string && request.resource.data.itemName.size() > 0;
+      allow create: if request.resource.data.materials is list 
+                      && request.resource.data.materials.size() > 0
+                      && request.resource.data.studentName is string;
       allow update, delete: if isAdmin();
     }
 
@@ -105,6 +107,14 @@ service cloud.firestore {
     match /settings/{doc} {
       allow read: if true; // Publicly readable
       allow create, update, delete: if isAdmin();
+    }
+
+    // Website Suggestions - NEW
+    // Assuming the collection name is 'site_suggestions', allow create for everyone (students)
+    match /site_suggestions/{doc} {
+      allow read: if isAdmin();
+      allow create: if true; 
+      allow update, delete: if isAdmin();
     }
 
     // Users / Admins - NEW

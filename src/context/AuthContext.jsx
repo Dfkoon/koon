@@ -5,7 +5,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndP
 
 const AuthContext = createContext();
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext); // Hook to access auth state
 
 export const AuthProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
         let mounted = true;
 
         const unsubscribe = onAuthStateChanged(auth, (user) => {
+            console.log("Auth State Changed. User:", user ? user.email : "Logged Out");
             if (mounted) {
                 setCurrentUser(user);
                 setLoading(false);

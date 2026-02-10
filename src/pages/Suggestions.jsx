@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Chip, IconButton, Tooltip, CircularProgress, Fab, Paper } from '@mui/material';
+import { Box, Typography, Chip, IconButton, Tooltip, CircularProgress, Fab, Paper, Alert } from '@mui/material';
 import Delete from '@mui/icons-material/Delete';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -10,12 +10,14 @@ import Reply from '@mui/icons-material/Reply';
 import Message from '@mui/icons-material/Message';
 import { motion, AnimatePresence } from 'framer-motion';
 import { qnaService } from '../services/qnaService';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function Suggestions() {
     const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedId, setSelectedId] = useState(null);
+    const { currentUser } = useAuth();
 
     // Category mapping from the form
     const categoryMap = {
@@ -45,7 +47,7 @@ export default function Suggestions() {
 
     const loadData = async () => {
         setIsLoading(true);
-        const data = await qnaService.getAllSuggestions();
+        const data = await qnaService.getAllSuggestions(Object.keys(categoryMap));
         setMessages(data);
         setIsLoading(false);
     };
@@ -72,179 +74,222 @@ export default function Suggestions() {
     const selectedMessage = messages.find(m => m.id === selectedId);
 
     return (
-        <Box sx={{ height: 'calc(100vh - 100px)', display: 'flex', gap: 3 }}>
-            {/* Inbox List */}
-            <Box className="glass-panel" sx={{
-                width: { xs: '100%', md: '350px' },
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden'
-            }}>
-                <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)' }}>
-                    <Typography variant="h6" fontWeight="bold">البريد الوارد</Typography>
-                    <IconButton size="small" onClick={loadData}><Refresh /></IconButton>
+        <Box sx={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Authentication Warning */}
+            {currentUser && !['admin@koon.bau.jo', 'hussienaldayyat@gmail.com'].includes(currentUser.email) && (
+                <Alert severity="warning" sx={{ direction: 'rtl' }}>
+                    ⚠️ أنت مسجل دخول بحساب: <strong>{currentUser.email}</strong>
+                    <br />
+                    لعرض جميع الرسائل من الموقع الرسمي، يجب تسجيل الدخول بأحد الحسابات المصرح لها:
+                    <br />
+                    • admin@koon.bau.jo
+                    <br />
+                    • hussienaldayyat@gmail.com
+                </Alert>
+            )}
+
+            <Box sx={{ display: 'flex', gap: 3, flex: 1 }}>
+                {/* Inbox List */}
+                <Box className="glass-panel" sx={{
+                    width: { xs: '100%', md: '350px' },
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden'
+                }}>
+                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)' }}>
+                        <Typography variant="h6" fontWeight="bold">البريد الوارد</Typography>
+                        <IconButton size="small" onClick={loadData}><Refresh /></IconButton>
+                    </Box>
+
+                    <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+                        {isLoading ? (
+                            <Box display="flex" justifyContent="center" mt={4}><CircularProgress size={30} /></Box>
+                        ) : (
+                            <AnimatePresence>
+                                {messages.map((msg, index) => (
+                                    <motion.div
+                                        key={msg.id}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: index * 0.05 }}
+                                        onClick={() => setSelectedId(msg.id)}
+                                    >
+                                        <Box sx={{
+                                            p: 2, mb: 1.5,
+                                            borderRadius: '16px',
+                                            background: selectedId === msg.id ? 'var(--primary-glow)' : 'var(--glass-surface)',
+                                            border: selectedId === msg.id ? '1px solid var(--primary)' : '1px solid var(--glass-border)',
+                                            cursor: 'pointer',
+                                            '&:hover': { background: 'var(--bg-card-hover)' }
+                                        }}>
+                                            <Box display="flex" justifyContent="space-between" mb={1}>
+                                                <Typography variant="subtitle2" fontWeight="bold">
+                                                    {msg.name || 'مجهول'}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {formatDate(msg.createdAt)}
+                                                </Typography>
+                                            </Box>
+                                            <Typography variant="body2" color="text.secondary" noWrap>
+                                                {msg.text}
+                                            </Typography>
+                                            <Box mt={1} display="flex" gap={1}>
+                                                <Chip
+                                                    label={`${getCategoryInfo(msg.type).emoji} ${getCategoryInfo(msg.type).label}`}
+                                                    size="small"
+                                                    sx={{
+                                                        height: 20,
+                                                        fontSize: '0.7rem',
+                                                        bgcolor: getCategoryInfo(msg.type).color,
+                                                        color: 'white'
+                                                    }}
+                                                />
+                                                {msg.isPublic && <Chip label="منشور" size="small" color="success" sx={{ height: 20, fontSize: '0.7rem' }} />}
+                                            </Box>
+                                        </Box>
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                        )}
+                    </Box>
                 </Box>
 
-                <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
-                    {isLoading ? (
-                        <Box display="flex" justifyContent="center" mt={4}><CircularProgress size={30} /></Box>
-                    ) : (
-                        <AnimatePresence>
-                            {messages.map((msg, index) => (
-                                <motion.div
-                                    key={msg.id}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                    onClick={() => setSelectedId(msg.id)}
-                                >
+                {/* Message Detail View */}
+                <Box className="glass-panel" sx={{
+                    flex: 1,
+                    p: 4,
+                    display: { xs: selectedId ? 'block' : 'none', md: 'block' },
+                    position: 'relative'
+                }}>
+                    {selectedMessage ? (
+                        <motion.div
+                            key={selectedMessage.id}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                        >
+                            {/* Header */}
+                            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={4}>
+                                <Box display="flex" alignItems="center" gap={2}>
                                     <Box sx={{
-                                        p: 2, mb: 1.5,
-                                        borderRadius: '16px',
-                                        background: selectedId === msg.id ? 'rgba(211, 47, 47, 0.15)' : 'rgba(255,255,255,0.03)',
-                                        border: selectedId === msg.id ? '1px solid var(--primary)' : '1px solid transparent',
-                                        cursor: 'pointer',
-                                        '&:hover': { background: 'rgba(255,255,255,0.05)' }
+                                        width: 50, height: 50, borderRadius: '50%',
+                                        bgcolor: 'var(--glass-surface)', display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center'
                                     }}>
-                                        <Box display="flex" justifyContent="space-between" mb={1}>
-                                            <Typography variant="subtitle2" fontWeight="bold">
-                                                {msg.name || 'مجهول'}
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                {formatDate(msg.createdAt)}
-                                            </Typography>
-                                        </Box>
-                                        <Typography variant="body2" color="text.secondary" noWrap>
-                                            {msg.text}
+                                        <Person fontSize="large" color="primary" />
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="h5" fontWeight="bold">
+                                            {selectedMessage.name || 'فاعل خير'}
                                         </Typography>
-                                        <Box mt={1} display="flex" gap={1}>
-                                            <Chip
-                                                label={`${getCategoryInfo(msg.type).emoji} ${getCategoryInfo(msg.type).label}`}
-                                                size="small"
-                                                sx={{
-                                                    height: 20,
-                                                    fontSize: '0.7rem',
-                                                    bgcolor: getCategoryInfo(msg.type).color,
-                                                    color: 'white'
-                                                }}
-                                            />
-                                            {msg.isPublic && <Chip label="منشور" size="small" color="success" sx={{ height: 20, fontSize: '0.7rem' }} />}
+
+                                        <Box display="flex" flexDirection="column" gap={0.5}>
+                                            {/* Date */}
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                <AccessTime fontSize="small" sx={{ color: 'text.secondary', fontSize: 16 }} />
+                                                <Typography variant="body2" color="text.secondary">
+                                                    {formatDate(selectedMessage.createdAt)}
+                                                </Typography>
+                                            </Box>
+
+                                            {/* Contact Info (If available) */}
+                                            {(selectedMessage.email || selectedMessage.phone) && (
+                                                <Box display="flex" gap={1} mt={0.5}>
+                                                    {selectedMessage.email && (
+                                                        <Chip
+                                                            label={selectedMessage.email}
+                                                            size="small"
+                                                            variant="outlined"
+                                                            sx={{ height: 20, fontSize: '0.75rem' }}
+                                                        />
+                                                    )}
+                                                    {selectedMessage.phone && (
+                                                        <Chip
+                                                            label={selectedMessage.phone}
+                                                            size="small"
+                                                            variant="outlined"
+                                                            sx={{ height: 20, fontSize: '0.75rem' }}
+                                                        />
+                                                    )}
+                                                </Box>
+                                            )}
                                         </Box>
                                     </Box>
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
+                                </Box>
+
+                                <Box display="flex" gap={1}>
+                                    <Tooltip title={selectedMessage.isPublic ? "إخفاء" : "نشر"}>
+                                        <IconButton
+                                            onClick={(e) => handleTogglePublic(e, selectedMessage.id, selectedMessage.isPublic, selectedMessage.source)}
+                                            color={selectedMessage.isPublic ? "success" : "default"}
+                                        >
+                                            {selectedMessage.isPublic ? <Visibility /> : <VisibilityOff />}
+                                        </IconButton>
+                                    </Tooltip>
+
+                                    <Tooltip title="رد (WhatsApp)">
+                                        <IconButton color="primary" onClick={() => window.open(`https://wa.me/?text=رد على رسالتك: ${selectedMessage.text}`, '_blank')}>
+                                            <Reply />
+                                        </IconButton>
+                                    </Tooltip>
+
+                                    <Tooltip title="حذف">
+                                        <IconButton
+                                            color="error"
+                                            onClick={(e) => handleDelete(e, selectedMessage.id, selectedMessage.source)}
+                                        >
+                                            <Delete />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Box>
+                            </Box>
+
+                            {/* Category Badge */}
+                            <Box mb={3}>
+                                <Chip
+                                    label={`${getCategoryInfo(selectedMessage.type).emoji} ${getCategoryInfo(selectedMessage.type).label}`}
+                                    sx={{
+                                        bgcolor: getCategoryInfo(selectedMessage.type).color,
+                                        color: 'white',
+                                        fontWeight: 'bold',
+                                        fontSize: '0.9rem',
+                                        px: 2,
+                                        py: 2.5
+                                    }}
+                                />
+                            </Box>
+
+                            {/* Content */}
+                            <Paper elevation={0} sx={{
+                                p: 3,
+                                bgcolor: 'var(--input-bg)',
+                                borderRadius: '20px',
+                                border: '1px solid var(--glass-border)',
+                                minHeight: '200px'
+                            }}>
+                                <Typography variant="h6" sx={{ lineHeight: 1.8, color: 'var(--text-primary)' }}>
+                                    "{selectedMessage.text}"
+                                </Typography>
+                            </Paper>
+
+                            {/* Meta Info */}
+                            <Box mt={3} display="flex" gap={2} flexWrap="wrap">
+                                {selectedMessage.email && (
+                                    <Chip label={`Email: ${selectedMessage.email}`} variant="outlined" />
+                                )}
+                                {selectedMessage.phone && (
+                                    <Chip label={`Phone: ${selectedMessage.phone}`} variant="outlined" />
+                                )}
+                                <Chip label={`Source: ${selectedMessage.source}`} variant="outlined" color="primary" />
+                            </Box>
+
+                        </motion.div>
+                    ) : (
+                        <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" height="100%" color="text.secondary">
+                            <Message sx={{ fontSize: 80, opacity: 0.2, mb: 2 }} />
+                            <Typography variant="h6">اختر رسالة لعرض التفاصيل</Typography>
+                        </Box>
                     )}
                 </Box>
-            </Box>
-
-            {/* Message Detail View */}
-            <Box className="glass-panel" sx={{
-                flex: 1,
-                p: 4,
-                display: { xs: selectedId ? 'block' : 'none', md: 'block' },
-                position: 'relative'
-            }}>
-                {selectedMessage ? (
-                    <motion.div
-                        key={selectedMessage.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                    >
-                        {/* Header */}
-                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={4}>
-                            <Box display="flex" alignItems="center" gap={2}>
-                                <Box sx={{
-                                    width: 50, height: 50, borderRadius: '50%',
-                                    bgcolor: 'rgba(255,255,255,0.1)', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center'
-                                }}>
-                                    <Person fontSize="large" color="primary" />
-                                </Box>
-                                <Box>
-                                    <Typography variant="h5" fontWeight="bold">{selectedMessage.name || 'فاعل خير'}</Typography>
-                                    <Box display="flex" alignItems="center" gap={1}>
-                                        <AccessTime fontSize="small" sx={{ color: 'text.secondary', fontSize: 16 }} />
-                                        <Typography variant="body2" color="text.secondary">
-                                            {formatDate(selectedMessage.createdAt)}
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            </Box>
-
-                            <Box display="flex" gap={1}>
-                                <Tooltip title={selectedMessage.isPublic ? "إخفاء" : "نشر"}>
-                                    <IconButton
-                                        onClick={(e) => handleTogglePublic(e, selectedMessage.id, selectedMessage.isPublic, selectedMessage.source)}
-                                        color={selectedMessage.isPublic ? "success" : "default"}
-                                    >
-                                        {selectedMessage.isPublic ? <Visibility /> : <VisibilityOff />}
-                                    </IconButton>
-                                </Tooltip>
-
-                                <Tooltip title="رد (WhatsApp)">
-                                    <IconButton color="primary" onClick={() => window.open(`https://wa.me/?text=رد على رسالتك: ${selectedMessage.text}`, '_blank')}>
-                                        <Reply />
-                                    </IconButton>
-                                </Tooltip>
-
-                                <Tooltip title="حذف">
-                                    <IconButton
-                                        color="error"
-                                        onClick={(e) => handleDelete(e, selectedMessage.id, selectedMessage.source)}
-                                    >
-                                        <Delete />
-                                    </IconButton>
-                                </Tooltip>
-                            </Box>
-                        </Box>
-
-                        {/* Category Badge */}
-                        <Box mb={3}>
-                            <Chip
-                                label={`${getCategoryInfo(selectedMessage.type).emoji} ${getCategoryInfo(selectedMessage.type).label}`}
-                                sx={{
-                                    bgcolor: getCategoryInfo(selectedMessage.type).color,
-                                    color: 'white',
-                                    fontWeight: 'bold',
-                                    fontSize: '0.9rem',
-                                    px: 2,
-                                    py: 2.5
-                                }}
-                            />
-                        </Box>
-
-                        {/* Content */}
-                        <Paper elevation={0} sx={{
-                            p: 3,
-                            bgcolor: 'rgba(255,255,255,0.03)',
-                            borderRadius: '20px',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            minHeight: '200px'
-                        }}>
-                            <Typography variant="h6" sx={{ lineHeight: 1.8, color: 'white' }}>
-                                "{selectedMessage.text}"
-                            </Typography>
-                        </Paper>
-
-                        {/* Meta Info */}
-                        <Box mt={3} display="flex" gap={2} flexWrap="wrap">
-                            {selectedMessage.email && (
-                                <Chip label={`Email: ${selectedMessage.email}`} variant="outlined" />
-                            )}
-                            {selectedMessage.phone && (
-                                <Chip label={`Phone: ${selectedMessage.phone}`} variant="outlined" />
-                            )}
-                            <Chip label={`Source: ${selectedMessage.source}`} variant="outlined" color="primary" />
-                        </Box>
-
-                    </motion.div>
-                ) : (
-                    <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" height="100%" color="text.secondary">
-                        <Message sx={{ fontSize: 80, opacity: 0.2, mb: 2 }} />
-                        <Typography variant="h6">اختر رسالة لعرض التفاصيل</Typography>
-                    </Box>
-                )}
             </Box>
         </Box>
     );

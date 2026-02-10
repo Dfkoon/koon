@@ -78,8 +78,8 @@ export default function Login() {
                         flexDirection: 'column',
                         gap: 3,
                         alignItems: 'center',
-                        border: '1px solid rgba(211, 47, 47, 0.3)',
-                        boxShadow: '0 0 40px rgba(211, 47, 47, 0.1)'
+                        border: '1px solid var(--glass-border)',
+                        boxShadow: '0 0 40px rgba(0, 0, 0, 0.1)'
                     }}
                 >
                     <Box sx={{
@@ -111,7 +111,7 @@ export default function Login() {
                         }}
                         sx={{
                             '& .MuiOutlinedInput-root': {
-                                '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
+                                '& fieldset': { borderColor: 'var(--input-border)' },
                                 '&:hover fieldset': { borderColor: 'var(--primary)' },
                             }
                         }}
@@ -136,7 +136,7 @@ export default function Login() {
                         }}
                         sx={{
                             '& .MuiOutlinedInput-root': {
-                                '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
+                                '& fieldset': { borderColor: 'var(--input-border)' },
                                 '&:hover fieldset': { borderColor: 'var(--primary)' },
                             }
                         }}

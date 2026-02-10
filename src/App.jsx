@@ -1,63 +1,149 @@
-console.log("App.jsx executing...");
 import React, { Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Sidebar from './components/layout/Sidebar';
-import AnimatedBackground from './components/layout/AnimatedBackground';
-import { Box, CircularProgress, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from '@mui/material';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import AnimatedBackground from './components/layout/AnimatedBackground';
+import Sidebar from './components/layout/Sidebar';
 
-// Lazy Load Pages
-const Dashboard = React.lazy(() => import('./pages/Dashboard'));
-const Suggestions = React.lazy(() => import('./pages/Suggestions'));
-const Testimonials = React.lazy(() => import('./pages/Testimonials'));
-const MaterialExchange = React.lazy(() => import('./pages/MaterialExchange'));
-const Contributions = React.lazy(() => import('./pages/Contributions'));
-const QuestionReports = React.lazy(() => import('./pages/QuestionReports'));
-const NashmiChat = React.lazy(() => import('./pages/NashmiChat'));
-const Broadcasts = React.lazy(() => import('./pages/Broadcasts'));
+// Pages Import
 import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Suggestions from './pages/Suggestions';
+import Testimonials from './pages/Testimonials';
+import MaterialExchange from './pages/MaterialExchange';
+import Contributions from './pages/Contributions';
+import QuestionReports from './pages/QuestionReports';
+import NashmiChat from './pages/NashmiChat';
+import Broadcasts from './pages/Broadcasts';
+import WebsiteSuggestions from './pages/WebsiteSuggestions';
 
-// Dark Theme Setup
+// Theme Definition
 const darkTheme = createTheme({
+    direction: 'rtl',
     palette: {
         mode: 'dark',
-        primary: { main: '#d32f2f' },
-        background: { default: '#0a0a0a', paper: '#1a1a1a' },
-        text: { primary: '#ffffff', secondary: 'rgba(255,255,255,0.7)' }
+        primary: {
+            main: '#d32f2f',
+        },
+        secondary: {
+            main: '#f50057',
+        },
+        background: {
+            default: '#0a0a0a',
+            paper: 'rgba(255, 255, 255, 0.05)',
+        },
+        text: {
+            primary: '#fff',
+            secondary: 'rgba(255, 255, 255, 0.7)',
+        },
     },
     typography: {
-        fontFamily: '"Cairo", "Outfit", sans-serif',
-    }
+        fontFamily: "'Cairo', 'Tajawal', sans-serif",
+    },
+    components: {
+        MuiCssBaseline: {
+            styleOverrides: {
+                body: {
+                    scrollbarColor: "var(--primary) var(--bg-deep)",
+                    "&::-webkit-scrollbar, & *::-webkit-scrollbar": {
+                        backgroundColor: "var(--bg-deep)",
+                        width: "8px",
+                    },
+                    "&::-webkit-scrollbar-thumb, & *::-webkit-scrollbar-thumb": {
+                        borderRadius: 8,
+                        backgroundColor: "var(--primary)",
+                        minHeight: 24,
+                    },
+                },
+            },
+        },
+        MuiButton: {
+            styleOverrides: {
+                root: {
+                    borderRadius: 8,
+                    textTransform: 'none',
+                },
+            },
+        },
+    },
+});
+
+// Light Theme Definition
+const lightTheme = createTheme({
+    direction: 'rtl',
+    palette: {
+        mode: 'light',
+        primary: {
+            main: '#d32f2f',
+        },
+        secondary: {
+            main: '#f50057',
+        },
+        background: {
+            default: '#f5f7fa',
+            paper: '#ffffff',
+        },
+        text: {
+            primary: '#1a1a1a',
+            secondary: 'rgba(0, 0, 0, 0.7)',
+        },
+    },
+    typography: {
+        fontFamily: "'Cairo', 'Tajawal', sans-serif",
+    },
+    components: {
+        MuiCssBaseline: {
+            styleOverrides: {
+                body: {
+                    scrollbarColor: "var(--primary) var(--bg-deep)",
+                    "&::-webkit-scrollbar, & *::-webkit-scrollbar": {
+                        backgroundColor: "var(--bg-deep)",
+                        width: "8px",
+                    },
+                    "&::-webkit-scrollbar-thumb, & *::-webkit-scrollbar-thumb": {
+                        borderRadius: 8,
+                        backgroundColor: "var(--primary)",
+                        minHeight: 24,
+                    },
+                },
+            },
+        },
+        MuiButton: {
+            styleOverrides: {
+                root: {
+                    borderRadius: 8,
+                    textTransform: 'none',
+                },
+            },
+        },
+    },
 });
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
     const { currentUser } = useAuth();
-    const location = useLocation();
-
-    if (!currentUser) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
-
-    return children;
-}
-
-// Redirect if already logged in
-const PublicRoute = ({ children }) => {
-    const { currentUser } = useAuth();
-    if (currentUser) {
-        return <Navigate to="/dashboard" replace />;
-    }
+    if (!currentUser) return <Navigate to="/login" replace />;
     return children;
 };
 
-// Layout wrapper for sidebar visibility logic
-const AppLayout = ({ children }) => {
+// Public Route Component (for Login)
+const PublicRoute = ({ children }) => {
     const { currentUser } = useAuth();
+    if (currentUser) return <Navigate to="/dashboard" replace />;
+    return children;
+};
+
+// Layout Component
+const AppLayout = ({ children, mode, toggleTheme }) => {
+    const { currentUser } = useAuth();
+    const location = useLocation();
+
+    if (!currentUser) return children;
+
     return (
-        <Box sx={{ display: 'flex', minHeight: '100vh', direction: 'rtl' }}>
-            {currentUser && <Sidebar />}
-            <Box component="main" sx={{ flexGrow: 1, p: 3, zIndex: 1, position: 'relative' }}>
+        <Box sx={{ display: 'flex', minHeight: '100vh', position: 'relative', zIndex: 1 }}>
+            <Sidebar mode={mode} toggleTheme={toggleTheme} />
+            <Box component="main" sx={{ flexGrow: 1, p: 3, width: '100%', ml: { sm: 0 }, overflowX: 'hidden' }}>
                 {children}
             </Box>
         </Box>
@@ -65,24 +151,39 @@ const AppLayout = ({ children }) => {
 };
 
 function App() {
+    const [themeMode, setThemeMode] = React.useState(localStorage.getItem('admin-theme') || 'dark');
+
+    const toggleTheme = () => {
+        const newMode = themeMode === 'dark' ? 'light' : 'dark';
+        setThemeMode(newMode);
+        localStorage.setItem('admin-theme', newMode);
+    };
+
+    React.useEffect(() => {
+        if (themeMode === 'light') {
+            document.documentElement.classList.add('light-mode');
+        } else {
+            document.documentElement.classList.remove('light-mode');
+        }
+    }, [themeMode]);
+
+    console.log("App component rendering...");
     return (
         <AuthProvider>
-            <ThemeProvider theme={darkTheme}>
+            <ThemeProvider theme={themeMode === 'dark' ? darkTheme : lightTheme}>
                 <CssBaseline />
-                <BrowserRouter basename={import.meta.env.BASE_URL}>
+                <HashRouter>
                     <AnimatedBackground />
 
-                    <AppLayout>
+                    <AppLayout mode={themeMode} toggleTheme={toggleTheme}>
                         <Suspense fallback={
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                                 <CircularProgress color="primary" />
-                                <Box component="span" sx={{ color: 'white' }}>جاري تحميل الواجهة...</Box>
+                                <Box component="span" sx={{ color: 'var(--text-primary)' }}>جاري تحميل الواجهة...</Box>
                             </Box>
                         }>
                             <Routes>
                                 <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-
-                                {/* Protected Routes */}
                                 <Route path="/" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />
                                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                                 <Route path="/suggestions" element={<ProtectedRoute><Suggestions /></ProtectedRoute>} />
@@ -92,11 +193,12 @@ function App() {
                                 <Route path="/questions" element={<ProtectedRoute><QuestionReports /></ProtectedRoute>} />
                                 <Route path="/nashmi" element={<ProtectedRoute><NashmiChat /></ProtectedRoute>} />
                                 <Route path="/broadcasts" element={<ProtectedRoute><Broadcasts /></ProtectedRoute>} />
+                                <Route path="/website-suggestions" element={<ProtectedRoute><WebsiteSuggestions /></ProtectedRoute>} />
                             </Routes>
                         </Suspense>
                     </AppLayout>
 
-                </BrowserRouter>
+                </HashRouter>
             </ThemeProvider>
         </AuthProvider>
     );

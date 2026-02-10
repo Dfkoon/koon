@@ -6,3 +6,6 @@ dist/
 .vscode/
 "نسخة من Makanak University/"
 build_log.txt
+firestore_rules_copy.txt
+list_collections_logic.txt
+vite.config.js.timestamp*

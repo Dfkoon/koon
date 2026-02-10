@@ -35,5 +35,14 @@ export const testimonialsService = {
 
     async deleteTestimonial(id) {
         await deleteDoc(doc(db, COLLECTION_NAME, id));
+    },
+
+    async updateTestimonialDetails(id, newText) {
+        // We handle multiple possible text fields to be safe, but standardize on 'quote' for the future
+        await updateDoc(doc(db, COLLECTION_NAME, id), {
+            quote: newText,
+            message: newText, // Keep legacy fields in sync just in case
+            text: newText
+        });
     }
 };

@@ -8,19 +8,11 @@ import Visibility from '@mui/icons-material/Visibility';
 import BugReport from '@mui/icons-material/BugReport';
 import Chat from '@mui/icons-material/Chat';
 import Backup from '@mui/icons-material/Backup';
+import Language from '@mui/icons-material/Language';
 import { motion } from 'framer-motion';
 import { statsService } from '../services/statsService';
 
-// Mock Chart Data
-const chartData = [
-    { name: 'السبت', visits: 400 },
-    { name: 'الأحد', visits: 300 },
-    { name: 'الاثنين', visits: 600 },
-    { name: 'الثلاثاء', visits: 800 },
-    { name: 'الأربعاء', visits: 500 },
-    { name: 'الخميس', visits: 900 },
-    { name: 'الجمعة', visits: 700 },
-];
+// Chart data is now fetched from server
 
 const StatCard = ({ title, value, icon, color, delay }) => (
     <motion.div
@@ -48,12 +40,18 @@ const StatCard = ({ title, value, icon, color, delay }) => (
 
 export default function Dashboard() {
     const [stats, setStats] = useState(null);
+    const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadStats = async () => {
-            const data = await statsService.getGlobalStats();
-            setStats(data);
+            const [globalStats, visitsData] = await Promise.all([
+                statsService.getGlobalStats(),
+                statsService.getWeeklyVisits()
+            ]);
+
+            setStats(globalStats);
+            setChartData(visitsData);
             setLoading(false);
         };
         loadStats();
@@ -97,6 +95,9 @@ export default function Dashboard() {
                 <Grid item xs={12} sm={6} md={2}>
                     <StatCard title="مساهمات الطلاب" value={stats?.contributions || '0'} icon={<Backup />} color="33, 150, 243" delay={7} />
                 </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                    <StatCard title="اقتراحات المواقع" value={stats?.websites || '0'} icon={<Language />} color="255, 152, 0" delay={8} />
+                </Grid>
             </Grid>
 
             {/* Charts Section */}
@@ -107,16 +108,16 @@ export default function Dashboard() {
                             <Typography variant="h6" sx={{ mb: 3 }}>إحصائيات الزوار (أسبوعي)</Typography>
                             <ResponsiveContainer width="100%" height="85%">
                                 <BarChart data={chartData}>
-                                    <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" tick={{ fill: 'rgba(255,255,255,0.7)' }} />
-                                    <YAxis stroke="rgba(255,255,255,0.5)" tick={{ fill: 'rgba(255,255,255,0.7)' }} />
+                                    <XAxis dataKey="name" stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)' }} />
+                                    <YAxis stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)' }} />
                                     <Tooltip
                                         contentStyle={{
-                                            backgroundColor: 'rgba(10,10,10,0.9)',
-                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            backgroundColor: 'var(--bg-card)',
+                                            border: '1px solid var(--glass-border)',
                                             borderRadius: '12px',
-                                            color: '#fff'
+                                            color: 'var(--text-primary)'
                                         }}
-                                        itemStyle={{ color: '#fff' }}
+                                        itemStyle={{ color: 'var(--text-primary)' }}
                                     />
                                     <Bar dataKey="visits" radius={[4, 4, 0, 0]}>
                                         {chartData.map((entry, index) => (

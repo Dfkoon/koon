@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     Box, Typography, Grid, IconButton, Chip, CircularProgress, Fab, Tooltip,
-    Dialog, DialogTitle, DialogContent, DialogActions, Button, Zoom,
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
+    Dialog, DialogTitle, DialogContent, DialogActions, Button, Paper
 } from '@mui/material';
 import CheckCircle from '@mui/icons-material/CheckCircle';
 import Cancel from '@mui/icons-material/Cancel';
@@ -18,7 +17,7 @@ import toast from 'react-hot-toast';
 export default function Contributions() {
     const [items, setItems] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedImage, setSelectedImage] = useState(null);
+    const [previewItem, setPreviewItem] = useState(null);
 
     const loadData = async () => {
         setIsLoading(true);
@@ -51,10 +50,15 @@ export default function Contributions() {
         }
     };
 
-    const formatFileType = (type) => {
-        if (type === 'link') return <Chip label="رابط" color="info" size="small" variant="outlined" />;
-        if (type?.includes('pdf')) return <Chip label="PDF" color="error" size="small" variant="outlined" />;
-        return <Chip label="صورة" color="primary" size="small" variant="outlined" />;
+    const isImage = (item) => item?.fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(item?.fileName || '');
+    const isPDF = (item) => item?.fileType?.includes('pdf') || /\.pdf$/i.test(item?.fileName || '');
+    const isLink = (item) => item?.fileType === 'link' || item?.contributionType === 'external_link' || (!isImage(item) && !isPDF(item));
+
+    const formatFileType = (item) => {
+        if (isPDF(item)) return <Chip label="PDF" color="error" size="small" variant="outlined" />;
+        if (item.fileType === 'link' || item.contributionType === 'external_link') return <Chip label="رابط" color="info" size="small" variant="outlined" />;
+        if (isImage(item)) return <Chip label="صورة" color="primary" size="small" variant="outlined" />;
+        return <Chip label="ملف" color="secondary" size="small" variant="outlined" />;
     };
 
     const getContributionLabel = (type) => {
@@ -81,115 +85,180 @@ export default function Contributions() {
             {isLoading ? (
                 <Box display="flex" justifyContent="center" height="50vh" alignItems="center"><CircularProgress /></Box>
             ) : (
-                <TableContainer component={Paper} className="glass-panel" sx={{ background: 'transparent', boxShadow: 'none' }}>
-                    <Table sx={{ minWidth: 800 }}>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ color: 'text.secondary' }}>المادة / النوع</TableCell>
-                                <TableCell sx={{ color: 'text.secondary' }}>الملف</TableCell>
-                                <TableCell sx={{ color: 'text.secondary' }}>معاينة</TableCell>
-                                <TableCell sx={{ color: 'text.secondary' }}>الحالة</TableCell>
-                                <TableCell sx={{ color: 'text.secondary', textAlign: 'center' }}>إجراءات</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            <AnimatePresence>
-                                {items.map((item, index) => (
-                                    <TableRow
-                                        key={item.id}
-                                        component={motion.tr}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
+                <Grid container spacing={3}>
+                    <AnimatePresence>
+                        {items.map((item) => (
+                            <Grid item xs={12} sm={6} md={4} lg={3} key={item.id} component={motion.div} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+                                <Paper
+                                    sx={{
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        borderRadius: 4,
+                                        bgcolor: 'var(--bg-card)',
+                                        border: '1px solid var(--glass-border)',
+                                        transition: '0.3s',
+                                        '&:hover': { transform: 'translateY(-5px)', bgcolor: 'var(--bg-card-hover)', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }
+                                    }}
+                                >
+                                    {/* Preview Section */}
+                                    <Box
                                         sx={{
-                                            '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.05)' },
-                                            transition: '0.2s'
+                                            height: 180,
+                                            bgcolor: 'var(--input-bg)',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            cursor: 'pointer',
+                                            position: 'relative',
+                                            overflow: 'hidden'
                                         }}
+                                        onClick={() => setPreviewItem(item)}
                                     >
-                                        <TableCell>
-                                            <Typography fontWeight="bold">{item.studentName || 'عام'}</Typography>
-                                            <Typography variant="caption" color="primary">{getContributionLabel(item.contributionType)}</Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                {formatFileType(item.fileType)}
-                                                <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {item.fileName}
-                                                </Typography>
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell>
-                                            {item.fileType?.startsWith('image/') ? (
-                                                <Box
-                                                    component="img"
-                                                    src={item.fileUrl}
-                                                    sx={{
-                                                        width: 50,
-                                                        height: 50,
-                                                        borderRadius: 1,
-                                                        objectFit: 'cover',
-                                                        cursor: 'pointer',
-                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                        '&:hover': { transform: 'scale(1.1)' },
-                                                        transition: '0.2s'
-                                                    }}
-                                                    onClick={() => setSelectedImage(item.fileUrl)}
-                                                />
-                                            ) : (
-                                                <IconButton size="small" onClick={() => window.open(item.fileUrl, '_blank')}>
-                                                    {item.fileType === 'link' ? <LinkIcon /> : <Visibility />}
-                                                </IconButton>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
+                                        {isImage(item) ? (
+                                            <img src={item.fileUrl} alt={item.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : isPDF(item) ? (
+                                            <Typography variant="h1" sx={{ opacity: 0.5 }}>📄</Typography>
+                                        ) : (
+                                            <Typography variant="h1" sx={{ opacity: 0.5 }}>🔗</Typography>
+                                        )}
+
+                                        {/* Overlay Icon */}
+                                        <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.4)', opacity: 0, '&:hover': { opacity: 1 }, transition: '0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                                            <Visibility sx={{ color: '#fff', fontSize: 40 }} />
+                                            <Typography sx={{ color: '#fff', fontWeight: 'bold' }}>عرض التفاصيل</Typography>
+                                        </Box>
+
+                                        {/* Status Badge */}
+                                        <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
                                             <Chip
                                                 label={item.status === 'approved' ? 'مقبول' : item.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
                                                 color={item.status === 'approved' ? 'success' : item.status === 'rejected' ? 'error' : 'warning'}
                                                 size="small"
+                                                sx={{ backdropFilter: 'blur(4px)', fontWeight: 'bold' }}
                                             />
-                                        </TableCell>
-                                        <TableCell sx={{ textAlign: 'center' }}>
-                                            <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                                                {item.status === 'pending' && (
-                                                    <Tooltip title="موافقة">
-                                                        <IconButton color="success" size="small" onClick={() => handleStatus(item.id, 'approved')}>
+                                        </Box>
+                                    </Box>
+
+                                    {/* Content Section */}
+                                    <Box p={2}>
+                                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={1}>
+                                            <Box>
+                                                <Typography variant="h6" fontWeight="bold" noWrap sx={{ maxWidth: 150 }}>{item.studentName || 'فاعل خير'}</Typography>
+                                                <Typography variant="caption" color="primary">{getContributionLabel(item.contributionType)}</Typography>
+                                            </Box>
+                                            {formatFileType(item)}
+                                        </Box>
+
+                                        <Typography variant="body2" color="text.secondary" noWrap sx={{ mb: 2, display: 'block' }}>
+                                            {item.fileName}
+                                        </Typography>
+
+                                        {/* Actions */}
+                                        <Box display="flex" justifyContent="space-between" pt={2} borderTop="1px solid var(--glass-border)">
+                                            <Box>
+                                                {item.status !== 'approved' && (
+                                                    <Tooltip title="قبول">
+                                                        <IconButton color="success" onClick={() => handleStatus(item.id, 'approved')}>
                                                             <CheckCircle />
                                                         </IconButton>
                                                     </Tooltip>
                                                 )}
                                                 {item.status !== 'rejected' && (
                                                     <Tooltip title="رفض">
-                                                        <IconButton color="warning" size="small" onClick={() => handleStatus(item.id, 'rejected')}>
+                                                        <IconButton color="warning" onClick={() => handleStatus(item.id, 'rejected')}>
                                                             <Cancel />
                                                         </IconButton>
                                                     </Tooltip>
                                                 )}
-                                                <Tooltip title="حذف نهائي">
-                                                    <IconButton color="error" size="small" onClick={() => handleDelete(item.id, item.storagePath)}>
-                                                        <Delete />
-                                                    </IconButton>
-                                                </Tooltip>
                                             </Box>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </AnimatePresence>
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                                            <Tooltip title="حذف نهائي">
+                                                <IconButton color="error" onClick={() => handleDelete(item.id, item.storagePath)}>
+                                                    <Delete />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
+                                    </Box>
+                                </Paper>
+                            </Grid>
+                        ))}
+                    </AnimatePresence>
+                </Grid>
             )}
 
-            {/* Image Preview Dialog */}
-            <Dialog open={!!selectedImage} onClose={() => setSelectedImage(null)} maxWidth="lg">
-                <Box sx={{ position: 'relative', p: 1, bgcolor: '#000' }}>
-                    <IconButton
-                        onClick={() => setSelectedImage(null)}
-                        sx={{ position: 'absolute', right: 8, top: 8, color: '#fff', bgcolor: 'rgba(0,0,0,0.5)', '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' } }}
-                    >
+            {/* Unified Preview Dialog */}
+            <Dialog
+                open={!!previewItem}
+                onClose={() => setPreviewItem(null)}
+                maxWidth="lg"
+                fullWidth={previewItem && (isPDF(previewItem) || isLink(previewItem))}
+                PaperProps={{
+                    sx: {
+                        bgcolor: 'var(--bg-deep)',
+                        borderRadius: 3,
+                        overflow: 'hidden'
+                    }
+                }}
+            >
+                <DialogTitle sx={{ borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                        <Typography variant="h6" fontWeight="bold">معاينة: {previewItem?.studentName || 'فاعل خير'}</Typography>
+                        <Typography variant="caption" color="text.secondary">{previewItem?.fileName}</Typography>
+                    </Box>
+                    <IconButton onClick={() => setPreviewItem(null)} sx={{ color: 'var(--text-primary)' }}>
                         <Close />
                     </IconButton>
-                    <img src={selectedImage} alt="Large preview" style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block' }} />
-                </Box>
+                </DialogTitle>
+
+                <DialogContent sx={{ p: isImage(previewItem) ? 0 : 2, minHeight: '60vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    {previewItem && (
+                        <>
+                            {isImage(previewItem) ? (
+                                <img
+                                    src={previewItem.fileUrl}
+                                    alt="preview"
+                                    style={{ maxWidth: '100%', maxHeight: '80vh', display: 'block' }}
+                                />
+                            ) : isPDF(previewItem) ? (
+                                <iframe
+                                    src={previewItem.fileUrl}
+                                    title="PDF Preview"
+                                    width="100%"
+                                    height="600px"
+                                    style={{ border: 'none', borderRadius: '8px', background: '#fff' }}
+                                />
+                            ) : (
+                                <Box textAlign="center" p={5}>
+                                    <LinkIcon sx={{ fontSize: 80, color: 'primary.main', mb: 2 }} />
+                                    <Typography variant="h5" gutterBottom>رابط خارجي</Typography>
+                                    <Typography color="text.secondary" mb={4}>هذه المساهمة عبارة عن رابط لموقع أو ملف خارجي</Typography>
+                                    <Button
+                                        variant="contained"
+                                        size="large"
+                                        href={previewItem.fileUrl}
+                                        target="_blank"
+                                        startIcon={<Visibility />}
+                                    >
+                                        فتح الرابط في نافذة جديدة
+                                    </Button>
+                                </Box>
+                            )}
+                        </>
+                    )}
+                </DialogContent>
+
+                <DialogActions sx={{ borderTop: '1px solid var(--glass-border)', p: 2 }}>
+                    <Button onClick={() => setPreviewItem(null)} color="inherit">إغلاق</Button>
+                    {previewItem && (
+                        <Button
+                            variant="outlined"
+                            startIcon={<LinkIcon />}
+                            href={previewItem.fileUrl}
+                            target="_blank"
+                        >
+                            فتح في المتصفح
+                        </Button>
+                    )}
+                </DialogActions>
             </Dialog>
         </Box>
     );

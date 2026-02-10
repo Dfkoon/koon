@@ -91,7 +91,7 @@ export default function QuestionReports() {
                                             />
                                         </Box>
 
-                                        <Typography variant="body1" sx={{ mb: 2, bgcolor: 'rgba(0,0,0,0.2)', p: 2, borderRadius: 2 }}>
+                                        <Typography variant="body1" sx={{ mb: 2, bgcolor: 'var(--input-bg)', p: 2, borderRadius: 2, color: 'var(--text-primary)' }}>
                                             {report.comment || report.text || 'لا يوجد تعليق'}
                                         </Typography>
 
@@ -110,7 +110,7 @@ export default function QuestionReports() {
                                             </Box>
                                         </Box>
 
-                                        <Box display="flex" justifyContent="flex-end" gap={1} pt={2} borderTop="1px solid rgba(255,255,255,0.05)">
+                                        <Box display="flex" justifyContent="flex-end" gap={1} pt={2} borderTop="1px solid var(--glass-border)">
                                             {report.status !== 'resolved' && (
                                                 <Tooltip title="تم الحل">
                                                     <IconButton color="success" onClick={() => handleStatus(report.id, 'resolved')}>
