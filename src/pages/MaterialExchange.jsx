@@ -559,7 +559,30 @@ const MaterialExchange = () => {
 
                                         {/* Material Info */}
                                         <td className="materials-cell">
-                                            <span className="material-badge reserved-badge">{item.materialItem.name}</span>
+                                            {editingItem && editingItem.id === item.id && editingItem.index === item.originalIndex && editingItem.field === 'materialName' ? (
+                                                <div className="edit-material-wrapper">
+                                                    <input
+                                                        type="text"
+                                                        value={editingItem.value}
+                                                        onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                                                        className="edit-material-input"
+                                                        autoFocus
+                                                    />
+                                                    <button onClick={handleUpdateItem} className="btn-save-edit">✓</button>
+                                                    <button onClick={() => setEditingItem(null)} className="btn-cancel-edit">✕</button>
+                                                </div>
+                                            ) : (
+                                                <span className="material-badge reserved-badge editable-badge">
+                                                    {item.materialItem.name}
+                                                    <button
+                                                        className="edit-material-btn"
+                                                        onClick={() => setEditingItem({ id: item.id, index: item.originalIndex, field: 'materialName', value: item.materialItem.name })}
+                                                        title={isAr ? 'تعديل الاسم' : 'Edit name'}
+                                                    >
+                                                        ✎
+                                                    </button>
+                                                </span>
+                                            )}
                                         </td>
 
                                         {/* Donor Info */}
