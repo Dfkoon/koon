@@ -87,7 +87,17 @@ const MaterialExchange = () => {
     // Flatten donations into individual material items
     const getFlattenedMaterials = () => {
         return donations.flatMap(donation => {
-            const materials = donation.materials || (donation.itemName ? [donation.itemName] : []);
+            let materials = donation.materials;
+
+            // Legacy support and safety check
+            if (!Array.isArray(materials)) {
+                if (donation.itemName) {
+                    materials = [donation.itemName];
+                } else {
+                    materials = [];
+                }
+            }
+
             return materials.map((m, idx) => {
                 // Normalize material object
                 const materialObj = typeof m === 'object' && m !== null ? m : { name: m, status: donation.status };
