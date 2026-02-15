@@ -12,6 +12,8 @@ const MaterialExchange = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // all, pending, approved, reserved
     const [editingItem, setEditingItem] = useState(null); // { id, index, field, value }
+    const [manualReserveItem, setManualReserveItem] = useState(null); // { id, index, materialName }
+    const [manualTakerData, setManualTakerData] = useState({ name: '', phone: '' });
 
     const fetchDonations = async () => {
         setLoading(true);
@@ -104,9 +106,15 @@ const MaterialExchange = () => {
                 // Ensure status exists (legacy fallback)
                 if (!materialObj.status) materialObj.status = donation.status;
 
+                // Taker info prioritization: item level -> parent level (for legacy/bulk)
+                const takerInfo = materialObj.takerInfo || donation.takerInfo || null;
+
                 return {
                     ...donation,
-                    materialItem: materialObj,
+                    materialItem: {
+                        ...materialObj,
+                        takerInfo: takerInfo // Ensure it's explicitly available for rendering
+                    },
                     originalIndex: idx,
                     uniqueKey: `${donation.id}-${idx}`
                 };
@@ -151,6 +159,48 @@ const MaterialExchange = () => {
         } catch (error) {
             console.error('Error updating status:', error);
             toast.error(isAr ? 'فشل في تحديث الحالة' : 'Failed to update status');
+        }
+    };
+
+    const handleManualReserve = async () => {
+        if (!manualReserveItem || !manualTakerData.name || !manualTakerData.phone) {
+            toast.error(isAr ? 'يرجى إكمال البيانات' : 'Please complete the details');
+            return;
+        }
+
+        try {
+            const donation = donations.find(d => d.id === manualReserveItem.id);
+            if (!donation) return;
+
+            const currentMaterials = donation.materials || (donation.itemName ? [donation.itemName] : []);
+            const updatedMaterials = [...currentMaterials];
+
+            let itemToUpdate = updatedMaterials[manualReserveItem.index];
+            if (typeof itemToUpdate !== 'object' || itemToUpdate === null) {
+                itemToUpdate = { name: itemToUpdate };
+            }
+
+            updatedMaterials[manualReserveItem.index] = {
+                ...itemToUpdate,
+                status: 'reserved',
+                takerInfo: {
+                    name: manualTakerData.name,
+                    phone: manualTakerData.phone,
+                    reservedAt: new Date(),
+                    manual: true
+                }
+            };
+
+            const donationRef = doc(db, 'materialDonations', manualReserveItem.id);
+            await updateDoc(donationRef, { materials: updatedMaterials });
+
+            toast.success(isAr ? 'تم الحجز يدوياً بنجاح' : 'Manually reserved successfully');
+            setManualReserveItem(null);
+            setManualTakerData({ name: '', phone: '' });
+            fetchDonations();
+        } catch (error) {
+            console.error('Error manual reserving:', error);
+            toast.error(isAr ? 'فشل الحجز اليدوي' : 'Manual reservation failed');
         }
     };
 
@@ -208,8 +258,8 @@ const MaterialExchange = () => {
 
     const formatDate = (timestamp) => {
         if (!timestamp) return '';
-        const date = timestamp.toDate();
-        return date.toLocaleDateString(isAr ? 'ar-EG' : 'en-GB') + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString(isAr ? 'ar-EG' : 'en-GB') + ' ' + date.toLocaleTimeString(isAr ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     };
 
     const getWhatsappLink = (phone) => {
@@ -357,7 +407,10 @@ const MaterialExchange = () => {
                                             </div>
                                         ) : (
                                             <div className="editable-text-wrapper">
-                                                <span>{item.studentName}</span>
+                                                <div className="student-info">
+                                                    <span className="name">{item.studentName}</span>
+                                                    {item.studentId && <span className="student-id">({item.studentId})</span>}
+                                                </div>
                                                 <button
                                                     className="inline-edit-btn"
                                                     onClick={() => setEditingItem({ id: item.id, field: 'studentName', value: item.studentName })}
@@ -463,16 +516,38 @@ const MaterialExchange = () => {
                                         )}
                                     </td>
                                     <td className="taker-cell">
-                                        {item.materialItem.status === 'reserved' && item.takerInfo ? (
+                                        {item.materialItem.status === 'reserved' && (item.materialItem.takerInfo || item.takerInfo) ? (
                                             <div className="taker-info">
-                                                <span className="taker-name">{item.takerInfo.name}</span>
-                                                <span className="taker-phone" dir="ltr">{item.takerInfo.phone}</span>
+                                                <div className="taker-name-row">
+                                                    <span className="party-label" style={{ fontSize: '0.65rem', marginBottom: '2px' }}>{isAr ? 'المستلم' : 'Receiver'}</span>
+                                                    <span className="taker-name">{(item.materialItem.takerInfo || item.takerInfo).name}</span>
+                                                    {(item.materialItem.takerInfo || item.takerInfo).studentId && (
+                                                        <span className="taker-id">({(item.materialItem.takerInfo || item.takerInfo).studentId})</span>
+                                                    )}
+                                                </div>
+                                                <a
+                                                    href={getWhatsappLink((item.materialItem.takerInfo || item.takerInfo).phone)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="taker-phone whatsapp-link"
+                                                    dir="ltr"
+                                                >
+                                                    {(item.materialItem.takerInfo || item.takerInfo).phone}
+                                                </a>
                                             </div>
                                         ) : (
                                             <span className="no-data">-</span>
                                         )}
                                     </td>
-                                    <td className="date-cell">{formatDate(item.createdAt)}</td>
+                                    <td className="date-cell">
+                                        {formatDate(
+                                            item.materialItem?.takerInfo?.bookedAt ||
+                                            item.materialItem?.takerInfo?.reservedAt ||
+                                            item.materialItem?.reservedAt ||
+                                            item.reservedAt ||
+                                            item.createdAt
+                                        )}
+                                    </td>
                                     <td className="status-cell">
                                         <span className={`status-badge ${item.materialItem.status}`}>
                                             {item.materialItem.status === 'approved' ? (isAr ? 'موافق' : 'Approved') :
@@ -489,6 +564,15 @@ const MaterialExchange = () => {
                                                     title={isAr ? 'موافقة' : 'Approve'}
                                                 >
                                                     ✓
+                                                </button>
+                                            )}
+                                            {item.materialItem.status === 'approved' && (
+                                                <button
+                                                    className="btn-reserve-manual"
+                                                    onClick={() => setManualReserveItem({ id: item.id, index: item.originalIndex, materialName: item.materialItem.name })}
+                                                    title={isAr ? 'حجز يدوي' : 'Manual Reserve'}
+                                                >
+                                                    🔒
                                                 </button>
                                             )}
                                             {item.materialItem.status === 'approved' && (
@@ -553,96 +637,135 @@ const MaterialExchange = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                flattenedMaterials.filter(d => ['reserved', 'completed'].includes(d.materialItem.status)).map((item, index) => (
-                                    <tr key={item.uniqueKey} className={`booking-row ${item.materialItem.status}`}>
-                                        <td className="index-cell">{index + 1}</td>
+                                flattenedMaterials
+                                    .filter(d => ['reserved', 'completed'].includes(d.materialItem.status))
+                                    .sort((a, b) => {
+                                        const getBookingDate = (item) => {
+                                            return item.materialItem?.takerInfo?.bookedAt ||
+                                                item.materialItem?.takerInfo?.reservedAt ||
+                                                item.materialItem?.reservedAt ||
+                                                item.reservedAt ||
+                                                item.updatedAt ||
+                                                item.createdAt;
+                                        };
+                                        const dateA = getBookingDate(a);
+                                        const dateB = getBookingDate(b);
+                                        const timeA = dateA?.toDate ? dateA.toDate().getTime() : new Date(dateA).getTime();
+                                        const timeB = dateB?.toDate ? dateB.toDate().getTime() : new Date(dateB).getTime();
+                                        return timeB - timeA;
+                                    })
+                                    .map((item, index) => (
+                                        <tr key={item.uniqueKey} className={`booking-row ${item.materialItem.status}`}>
+                                            <td className="index-cell">{index + 1}</td>
 
-                                        {/* Material Info */}
-                                        <td className="materials-cell">
-                                            {editingItem && editingItem.id === item.id && editingItem.index === item.originalIndex && editingItem.field === 'materialName' ? (
-                                                <div className="edit-material-wrapper">
-                                                    <input
-                                                        type="text"
-                                                        value={editingItem.value}
-                                                        onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
-                                                        className="edit-material-input"
-                                                        autoFocus
-                                                    />
-                                                    <button onClick={handleUpdateItem} className="btn-save-edit">✓</button>
-                                                    <button onClick={() => setEditingItem(null)} className="btn-cancel-edit">✕</button>
-                                                </div>
-                                            ) : (
-                                                <span className="material-badge reserved-badge editable-badge">
-                                                    {item.materialItem.name}
-                                                    <button
-                                                        className="edit-material-btn"
-                                                        onClick={() => setEditingItem({ id: item.id, index: item.originalIndex, field: 'materialName', value: item.materialItem.name })}
-                                                        title={isAr ? 'تعديل الاسم' : 'Edit name'}
-                                                    >
-                                                        ✎
-                                                    </button>
-                                                </span>
-                                            )}
-                                        </td>
+                                            {/* Material Info */}
+                                            <td className="materials-cell">
+                                                {editingItem && editingItem.id === item.id && editingItem.index === item.originalIndex && editingItem.field === 'materialName' ? (
+                                                    <div className="edit-material-wrapper">
+                                                        <input
+                                                            type="text"
+                                                            value={editingItem.value}
+                                                            onChange={(e) => setEditingItem({ ...editingItem, value: e.target.value })}
+                                                            className="edit-material-input"
+                                                            autoFocus
+                                                        />
+                                                        <button onClick={handleUpdateItem} className="btn-save-edit">✓</button>
+                                                        <button onClick={() => setEditingItem(null)} className="btn-cancel-edit">✕</button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="material-badge reserved-badge editable-badge">
+                                                        {item.materialItem.name}
+                                                        <button
+                                                            className="edit-material-btn"
+                                                            onClick={() => setEditingItem({ id: item.id, index: item.originalIndex, field: 'materialName', value: item.materialItem.name })}
+                                                            title={isAr ? 'تعديل الاسم' : 'Edit name'}
+                                                        >
+                                                            ✎
+                                                        </button>
+                                                    </span>
+                                                )}
+                                            </td>
 
-                                        {/* Donor Info */}
-                                        <td className="party-cell donor">
-                                            <div className="party-info">
-                                                <span className="party-label">{isAr ? 'المتبرع' : 'Donor'}</span>
-                                                <span className="party-name">{item.studentName}</span>
-                                                <a href={getWhatsappLink(item.phoneNumber)} target="_blank" rel="noopener noreferrer" className="party-phone whatsapp-link" dir="ltr">
-                                                    {item.phoneNumber}
-                                                </a>
-                                            </div>
-                                        </td>
-
-                                        {/* Borrower Info */}
-                                        <td className="party-cell borrower">
-                                            {item.takerInfo ? (
+                                            {/* Donor Info */}
+                                            <td className="party-cell donor">
                                                 <div className="party-info">
-                                                    <span className="party-label">{isAr ? 'المستلم' : 'Receiver'}</span>
-                                                    <span className="party-name">{item.takerInfo.name}</span>
-                                                    <a href={getWhatsappLink(item.takerInfo.phone)} target="_blank" rel="noopener noreferrer" className="party-phone whatsapp-link" dir="ltr">
-                                                        {item.takerInfo.phone}
+                                                    <span className="party-label">{isAr ? 'المتبرع' : 'Donor'}</span>
+                                                    <span className="party-name">{item.studentName}</span>
+                                                    {item.studentId && <small className="party-id">{item.studentId}</small>}
+                                                    <a href={getWhatsappLink(item.phoneNumber)} target="_blank" rel="noopener noreferrer" className="party-phone whatsapp-link" dir="ltr">
+                                                        {item.phoneNumber}
                                                     </a>
                                                 </div>
-                                            ) : <span className="no-data">-</span>}
-                                        </td>
+                                            </td>
 
-                                        <td className="date-cell">
-                                            {formatDate(item.reservedAt || item.updatedAt || item.createdAt)}
-                                        </td>
+                                            {/* Borrower Info */}
+                                            <td className="party-cell borrower">
+                                                {(item.materialItem.takerInfo || item.takerInfo) ? (
+                                                    <div className="party-info">
+                                                        <span className="party-label">{isAr ? 'المستلم' : 'Receiver'}</span>
+                                                        <span className="party-name">{(item.materialItem.takerInfo || item.takerInfo).name}</span>
+                                                        {(item.materialItem.takerInfo || item.takerInfo).studentId && (
+                                                            <small className="party-id">{(item.materialItem.takerInfo || item.takerInfo).studentId}</small>
+                                                        )}
+                                                        <a href={getWhatsappLink((item.materialItem.takerInfo || item.takerInfo).phone)} target="_blank" rel="noopener noreferrer" className="party-phone whatsapp-link" dir="ltr">
+                                                            {(item.materialItem.takerInfo || item.takerInfo).phone}
+                                                        </a>
+                                                    </div>
+                                                ) : <span className="no-data">-</span>}
+                                            </td>
 
-                                        <td className="actions-cell">
-                                            {item.materialItem.status === 'completed' ? (
-                                                <span className="status-badge completed">{isAr ? 'تم التسليم' : 'Completed'}</span>
-                                            ) : (
-                                                <div className="action-buttons">
-                                                    <button
-                                                        className="btn-approve"
-                                                        onClick={() => {
-                                                            if (window.confirm(isAr ? 'هل تم تسليم المادة بنجاح؟ سيتم نقلها للأرشيف.' : 'Confirm handover?')) {
-                                                                handleStatusUpdate(item.id, item.originalIndex, 'completed');
-                                                            }
-                                                        }}
-                                                        title={isAr ? 'تم التسليم' : 'Handover Complete'}
-                                                        style={{ width: 'auto', padding: '0 10px', gap: '5px' }}
-                                                    >
-                                                        ✓ {isAr ? 'تم التسليم' : 'Done'}
-                                                    </button>
+                                            <td className="date-cell">
+                                                {formatDate(
+                                                    item.materialItem?.takerInfo?.bookedAt ||
+                                                    item.materialItem?.takerInfo?.reservedAt ||
+                                                    item.materialItem?.reservedAt ||
+                                                    item.reservedAt ||
+                                                    item.updatedAt ||
+                                                    item.createdAt
+                                                )}
+                                            </td>
 
-                                                    <button
-                                                        className="btn-cancel"
-                                                        onClick={() => handleStatusUpdate(item.id, item.originalIndex, 'approved')}
-                                                        title={isAr ? 'إلغاء الحجز' : 'Cancel'}
-                                                    >
-                                                        🚫
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
+                                            <td className="actions-cell">
+                                                {item.materialItem.status === 'completed' ? (
+                                                    <span className="status-badge completed">{isAr ? 'تم التسليم' : 'Completed'}</span>
+                                                ) : (
+                                                    <div className="action-buttons">
+                                                        <button
+                                                            className="btn-approve"
+                                                            onClick={() => {
+                                                                if (window.confirm(isAr ? 'هل تم تسليم المادة بنجاح؟ سيتم نقلها للأرشيف.' : 'Confirm handover?')) {
+                                                                    handleStatusUpdate(item.id, item.originalIndex, 'completed');
+                                                                }
+                                                            }}
+                                                            title={isAr ? 'تم التسليم' : 'Handover Complete'}
+                                                            style={{ width: 'auto', padding: '0 10px', gap: '5px' }}
+                                                        >
+                                                            ✓ {isAr ? 'تم التسليم' : 'Done'}
+                                                        </button>
+
+                                                        <button
+                                                            className="btn-cancel"
+                                                            onClick={() => handleStatusUpdate(item.id, item.originalIndex, 'approved')}
+                                                            title={isAr ? 'إلغاء الحجز' : 'Cancel'}
+                                                        >
+                                                            🚫
+                                                        </button>
+                                                        <button
+                                                            className="btn-delete"
+                                                            onClick={() => {
+                                                                if (window.confirm(isAr ? 'هل أنت متأكد من حذف هذا الحجز؟' : 'Are you sure you want to delete this booking?')) {
+                                                                    handleStatusUpdate(item.id, item.originalIndex, 'approved');
+                                                                }
+                                                            }}
+                                                            title={isAr ? 'حذف الحجز' : 'Delete Booking'}
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
                             )}
                         </tbody>
                     </table>
@@ -670,6 +793,56 @@ const MaterialExchange = () => {
                                 onClick={confirmDeleteAction}
                             >
                                 {isAr ? 'حذف' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual Reserve Modal */}
+            {manualReserveItem && (
+                <div className="confirmation-modal-overlay">
+                    <div className="confirmation-modal">
+                        <h3>{isAr ? 'حجز مادة يدوياً' : 'Manual Material Reserve'}</h3>
+                        <p style={{ marginBottom: '1rem' }}>
+                            {isAr ? 'حجز مادة: ' : 'Reserving item: '} <strong>{manualReserveItem.materialName}</strong>
+                        </p>
+
+                        <div className="booking-form" style={{ background: 'transparent', padding: 0 }}>
+                            <div className="form-group" style={{ marginBottom: '1rem' }}>
+                                <input
+                                    type="text"
+                                    placeholder={isAr ? 'اسم الطالب المستلم' : 'Receiver Name'}
+                                    className="form-input"
+                                    value={manualTakerData.name}
+                                    onChange={(e) => setManualTakerData({ ...manualTakerData, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                                <input
+                                    type="tel"
+                                    placeholder={isAr ? 'رقم الهاتف' : 'Phone Number'}
+                                    className="form-input"
+                                    value={manualTakerData.phone}
+                                    onChange={(e) => setManualTakerData({ ...manualTakerData, phone: e.target.value })}
+                                    dir="ltr"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="modal-actions">
+                            <button
+                                className="btn-cancel-modal"
+                                onClick={() => setManualReserveItem(null)}
+                            >
+                                {isAr ? 'إلغاء' : 'Cancel'}
+                            </button>
+                            <button
+                                className="btn-confirm-modal"
+                                onClick={handleManualReserve}
+                                style={{ background: '#3498db' }}
+                            >
+                                {isAr ? 'تأكيد الحجز' : 'Confirm Reserve'}
                             </button>
                         </div>
                     </div>

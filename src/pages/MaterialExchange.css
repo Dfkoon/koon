@@ -265,9 +265,10 @@
 }
 
 .date-cell {
-    color: var(--text-muted, rgba(255, 255, 255, 0.7));
+    color: var(--text-primary);
     font-size: 0.85rem;
-    min-width: 130px;
+    min-width: 160px;
+    font-family: 'Courier New', monospace;
 }
 
 .status-cell {
@@ -335,6 +336,16 @@
 
 .btn-pending:hover {
     background: #e67e22;
+    transform: scale(1.1);
+}
+
+.btn-reserve-manual {
+    background: #3498db;
+    color: white;
+}
+
+.btn-reserve-manual:hover {
+    background: #2980b9;
     transform: scale(1.1);
 }
 
@@ -543,8 +554,9 @@
 }
 
 .taker-name {
-    font-weight: 600;
-    font-size: 0.9rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary);
 }
 
 .taker-phone {
@@ -555,6 +567,24 @@
 
 .no-data {
     color: var(--text-disabled);
+}
+
+.student-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.student-id,
+.taker-id {
+    font-size: 0.75rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.5));
+    font-family: 'Courier New', monospace;
+}
+
+.taker-name-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
 }
 
 .btn-cancel {
@@ -599,6 +629,13 @@
 .party-name {
     font-weight: 600;
     font-size: 0.95rem;
+}
+
+.party-id {
+    font-size: 0.8rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.5));
+    font-family: 'Courier New', monospace;
+    margin-bottom: 0.2rem;
 }
 
 .party-phone {
