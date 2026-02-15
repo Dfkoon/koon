@@ -738,9 +738,9 @@ const MaterialExchange = () => {
                                                                 }
                                                             }}
                                                             title={isAr ? 'تم التسليم' : 'Handover Complete'}
-                                                            style={{ width: 'auto', padding: '0 10px', gap: '5px' }}
+                                                            style={{ width: 'auto', minWidth: '100px', padding: '0 10px', gap: '5px' }}
                                                         >
-                                                            ✓ {isAr ? 'تم التسليم' : 'Done'}
+                                                            ✓ {isAr ? 'تـم' : 'Done'}
                                                         </button>
 
                                                         <button

@@ -297,6 +297,11 @@
 
 .actions-cell {
     text-align: center;
+    min-width: 120px;
+}
+
+.bookings-table .actions-cell {
+    min-width: 200px;
 }
 
 .action-buttons {
