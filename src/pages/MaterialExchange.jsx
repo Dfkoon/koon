@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import Refresh from '@mui/icons-material/Refresh';
 import './MaterialExchange.css';
@@ -42,37 +42,42 @@ const MaterialExchange = () => {
         const { id, index, field, value } = editingItem;
 
         try {
-            const donation = donations.find(d => d.id === id);
-            if (!donation) return;
-
             const donationRef = doc(db, 'materialDonations', id);
-            let updateData = {};
 
-            if (['materialName', 'description', 'notes'].includes(field)) {
-                const currentMaterials = donation.materials || (donation.itemName ? [donation.itemName] : []);
-                const updatedMaterials = [...currentMaterials];
+            await runTransaction(db, async (transaction) => {
+                const donationDoc = await transaction.get(donationRef);
+                if (!donationDoc.exists()) return;
 
-                // Ensure we have an object to update
-                let itemToUpdate = updatedMaterials[index];
-                if (typeof itemToUpdate !== 'object' || itemToUpdate === null) {
-                    itemToUpdate = { name: itemToUpdate, status: donation.status || 'pending' };
+                const donation = donationDoc.data();
+                let updateData = {};
+
+                if (['materialName', 'description', 'notes'].includes(field)) {
+                    const currentMaterials = donation.materials || (donation.itemName ? [donation.itemName] : []);
+                    const updatedMaterials = [...currentMaterials];
+
+                    // Ensure we have an object to update
+                    let itemToUpdate = updatedMaterials[index];
+                    if (typeof itemToUpdate !== 'object' || itemToUpdate === null) {
+                        itemToUpdate = { name: itemToUpdate, status: donation.status || 'pending' };
+                    } else {
+                        itemToUpdate = { ...itemToUpdate }; // Clone it
+                    }
+
+                    // Update the specific field
+                    if (field === 'materialName') itemToUpdate.name = value;
+                    if (field === 'description') itemToUpdate.description = value;
+                    if (field === 'notes') itemToUpdate.notes = value;
+
+                    updatedMaterials[index] = itemToUpdate;
+                    updateData.materials = updatedMaterials;
                 } else {
-                    itemToUpdate = { ...itemToUpdate }; // Clone it
+                    // For studentName, phoneNumber, email
+                    updateData[field] = value;
                 }
 
-                // Update the specific field
-                if (field === 'materialName') itemToUpdate.name = value;
-                if (field === 'description') itemToUpdate.description = value;
-                if (field === 'notes') itemToUpdate.notes = value;
+                transaction.update(donationRef, updateData);
+            });
 
-                updatedMaterials[index] = itemToUpdate;
-                updateData.materials = updatedMaterials;
-            } else {
-                // For studentName, phoneNumber, email
-                updateData[field] = value;
-            }
-
-            await updateDoc(donationRef, updateData);
             toast.success(isAr ? 'تم تحديث البيانات بنجاح' : 'Updated successfully');
             setEditingItem(null);
             fetchDonations();
@@ -102,18 +107,27 @@ const MaterialExchange = () => {
 
             return materials.map((m, idx) => {
                 // Normalize material object
-                const materialObj = typeof m === 'object' && m !== null ? m : { name: m, status: donation.status };
-                // Ensure status exists (legacy fallback)
-                if (!materialObj.status) materialObj.status = donation.status;
+                const isArrayItem = Array.isArray(donation.materials);
+                const materialObj = typeof m === 'object' && m !== null ? m : {
+                    name: m,
+                    // Only fallback to donation.status if it's NOT a multi-item array (legacy support)
+                    status: isArrayItem ? 'pending' : donation.status
+                };
 
-                // Taker info prioritization: item level -> parent level (for legacy/bulk)
-                const takerInfo = materialObj.takerInfo || donation.takerInfo || null;
+                // Ensure status exists
+                if (!materialObj.status) {
+                    materialObj.status = isArrayItem ? 'pending' : (donation.status || 'pending');
+                }
+
+                // Taker info prioritization: item level ONLY for array items
+                // We do NOT fallback to donation.takerInfo if it's an array item to prevent cross-contamination
+                const takerInfo = materialObj.takerInfo || (isArrayItem ? null : donation.takerInfo) || null;
 
                 return {
                     ...donation,
                     materialItem: {
                         ...materialObj,
-                        takerInfo: takerInfo // Ensure it's explicitly available for rendering
+                        takerInfo: takerInfo
                     },
                     originalIndex: idx,
                     uniqueKey: `${donation.id}-${idx}`
@@ -131,30 +145,45 @@ const MaterialExchange = () => {
 
     const handleStatusUpdate = async (donationId, materialIndex, newStatus) => {
         try {
-            const donation = donations.find(d => d.id === donationId);
-            if (!donation) return;
-
-            const currentMaterials = donation.materials || (donation.itemName ? [donation.itemName] : []);
-            const updatedMaterials = [...currentMaterials];
-
-            // Normalize and update specific item
-            let itemToUpdate = updatedMaterials[materialIndex];
-            if (typeof itemToUpdate !== 'object' || itemToUpdate === null) {
-                itemToUpdate = { name: itemToUpdate, status: newStatus };
-            } else {
-                itemToUpdate = { ...itemToUpdate, status: newStatus };
-            }
-            updatedMaterials[materialIndex] = itemToUpdate;
-
             const donationRef = doc(db, 'materialDonations', donationId);
 
-            // Allow parent status update if needed, but primarily we update the array
-            // We can also update the parent status to 'partial' or 'updated' if we want, but for now let's keep it simple.
-            // If all items are approved, maybe set parent to approved?
-            // For now, just update the materials array.
+            await runTransaction(db, async (transaction) => {
+                const donationDoc = await transaction.get(donationRef);
+                if (!donationDoc.exists()) return;
 
-            await updateDoc(donationRef, { materials: updatedMaterials });
-            toast.success(isAr ? `تم تحديث الحالة إلى ${newStatus === 'approved' ? 'موافق' : newStatus === 'pending' ? 'قيد الانتظار' : newStatus}` : `Status updated`);
+                const donation = donationDoc.data();
+                const currentMaterials = donation.materials || (donation.itemName ? [donation.itemName] : []);
+                const updatedMaterials = [...currentMaterials];
+
+                // Normalize and update specific item
+                let itemToUpdate = updatedMaterials[materialIndex];
+                if (typeof itemToUpdate !== 'object' || itemToUpdate === null) {
+                    itemToUpdate = { name: itemToUpdate, status: newStatus };
+                } else {
+                    itemToUpdate = { ...itemToUpdate, status: newStatus };
+                }
+
+                // If canceling a reservation (going back to approved/pending), clear takerInfo
+                if (newStatus === 'approved' || newStatus === 'pending') {
+                    delete itemToUpdate.takerInfo;
+                }
+
+                updatedMaterials[materialIndex] = itemToUpdate;
+
+                // Check if ALL materials are now reserved
+                const allReserved = updatedMaterials.every(m => {
+                    const status = typeof m === 'object' ? m.status : (donation.status || 'pending');
+                    return status === 'reserved' || status === 'completed';
+                });
+                const newDocStatus = allReserved ? 'reserved' : 'approved';
+
+                transaction.update(donationRef, {
+                    materials: updatedMaterials,
+                    status: newDocStatus
+                });
+            });
+
+            toast.success(isAr ? `تم تحديث الحالة إلى ${newStatus === 'approved' ? 'موافق' : newStatus === 'pending' ? 'قيد الانتظار' : newStatus === 'completed' ? 'تم التسليم' : newStatus}` : `Status updated`);
             fetchDonations();
         } catch (error) {
             console.error('Error updating status:', error);
@@ -169,30 +198,44 @@ const MaterialExchange = () => {
         }
 
         try {
-            const donation = donations.find(d => d.id === manualReserveItem.id);
-            if (!donation) return;
-
-            const currentMaterials = donation.materials || (donation.itemName ? [donation.itemName] : []);
-            const updatedMaterials = [...currentMaterials];
-
-            let itemToUpdate = updatedMaterials[manualReserveItem.index];
-            if (typeof itemToUpdate !== 'object' || itemToUpdate === null) {
-                itemToUpdate = { name: itemToUpdate };
-            }
-
-            updatedMaterials[manualReserveItem.index] = {
-                ...itemToUpdate,
-                status: 'reserved',
-                takerInfo: {
-                    name: manualTakerData.name,
-                    phone: manualTakerData.phone,
-                    reservedAt: new Date(),
-                    manual: true
-                }
-            };
-
             const donationRef = doc(db, 'materialDonations', manualReserveItem.id);
-            await updateDoc(donationRef, { materials: updatedMaterials });
+
+            await runTransaction(db, async (transaction) => {
+                const donationDoc = await transaction.get(donationRef);
+                if (!donationDoc.exists()) return;
+
+                const donation = donationDoc.data();
+                const currentMaterials = donation.materials || (donation.itemName ? [donation.itemName] : []);
+                const updatedMaterials = [...currentMaterials];
+
+                let itemToUpdate = updatedMaterials[manualReserveItem.index];
+                if (typeof itemToUpdate !== 'object' || itemToUpdate === null) {
+                    itemToUpdate = { name: itemToUpdate };
+                }
+
+                updatedMaterials[manualReserveItem.index] = {
+                    ...itemToUpdate,
+                    status: 'reserved',
+                    takerInfo: {
+                        name: manualTakerData.name,
+                        phone: manualTakerData.phone,
+                        reservedAt: new Date(),
+                        manual: true
+                    }
+                };
+
+                // Check if ALL materials are now reserved
+                const allReserved = updatedMaterials.every(m => {
+                    const status = typeof m === 'object' ? m.status : (donation.status || 'pending');
+                    return status === 'reserved' || status === 'completed';
+                });
+                const newDocStatus = allReserved ? 'reserved' : 'approved';
+
+                transaction.update(donationRef, {
+                    materials: updatedMaterials,
+                    status: newDocStatus
+                });
+            });
 
             toast.success(isAr ? 'تم الحجز يدوياً بنجاح' : 'Manually reserved successfully');
             setManualReserveItem(null);
@@ -232,21 +275,30 @@ const MaterialExchange = () => {
     const confirmDeleteAction = async () => {
         if (!deleteConfirm) return;
 
-        const { donationId, materials: currentMaterials, itemIndex } = deleteConfirm;
+        const { donationId, materials: initialMaterials, itemIndex } = deleteConfirm;
 
         try {
-            const updatedMaterials = [...currentMaterials];
-            updatedMaterials.splice(itemIndex, 1);
-
             const donationRef = doc(db, 'materialDonations', donationId);
 
-            if (updatedMaterials.length === 0) {
-                await deleteDoc(donationRef);
-                toast.success(isAr ? 'تم حذف الطلب بالكامل لعدم وجود مواد' : 'Request deleted (empty)');
-            } else {
-                await updateDoc(donationRef, { materials: updatedMaterials });
-                toast.success(isAr ? 'تم حذف المادة' : 'Item deleted');
-            }
+            await runTransaction(db, async (transaction) => {
+                const donationDoc = await transaction.get(donationRef);
+                if (!donationDoc.exists()) return;
+
+                const donation = donationDoc.data();
+                const materials = donation.materials || (donation.itemName ? [donation.itemName] : []);
+                const updatedMaterials = [...materials];
+
+                // Remove the specific item
+                updatedMaterials.splice(itemIndex, 1);
+
+                if (updatedMaterials.length === 0) {
+                    transaction.delete(donationRef);
+                } else {
+                    transaction.update(donationRef, { materials: updatedMaterials });
+                }
+            });
+
+            toast.success(isAr ? 'تم حذف المادة بنجاح' : 'Item deleted successfully');
             fetchDonations();
         } catch (error) {
             console.error('Error deleting item:', error);
@@ -516,23 +568,23 @@ const MaterialExchange = () => {
                                         )}
                                     </td>
                                     <td className="taker-cell">
-                                        {item.materialItem.status === 'reserved' && (item.materialItem.takerInfo || item.takerInfo) ? (
+                                        {(item.materialItem.status === 'reserved' || item.materialItem.status === 'completed') && item.materialItem.takerInfo ? (
                                             <div className="taker-info">
                                                 <div className="taker-name-row">
                                                     <span className="party-label" style={{ fontSize: '0.65rem', marginBottom: '2px' }}>{isAr ? 'المستلم' : 'Receiver'}</span>
-                                                    <span className="taker-name">{(item.materialItem.takerInfo || item.takerInfo).name}</span>
-                                                    {(item.materialItem.takerInfo || item.takerInfo).studentId && (
-                                                        <span className="taker-id">({(item.materialItem.takerInfo || item.takerInfo).studentId})</span>
+                                                    <span className="taker-name">{item.materialItem.takerInfo.name}</span>
+                                                    {item.materialItem.takerInfo.studentId && (
+                                                        <span className="taker-id">({item.materialItem.takerInfo.studentId})</span>
                                                     )}
                                                 </div>
                                                 <a
-                                                    href={getWhatsappLink((item.materialItem.takerInfo || item.takerInfo).phone)}
+                                                    href={getWhatsappLink(item.materialItem.takerInfo.phone)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="taker-phone whatsapp-link"
                                                     dir="ltr"
                                                 >
-                                                    {(item.materialItem.takerInfo || item.takerInfo).phone}
+                                                    {item.materialItem.takerInfo.phone}
                                                 </a>
                                             </div>
                                         ) : (
@@ -624,6 +676,7 @@ const MaterialExchange = () => {
                                 <th>{isAr ? 'المادة' : 'Material'}</th>
                                 <th>{isAr ? 'المتبرع (المرسل)' : 'Donor (Sender)'}</th>
                                 <th>{isAr ? 'الحاجز (المستلم)' : 'Borrower (Receiver)'}</th>
+                                <th>{isAr ? 'الملاحظات' : 'Notes'}</th>
                                 <th>{isAr ? 'تاريخ الحجز' : 'Booking Date'}</th>
                                 <th>{isAr ? 'الإجراءات' : 'Actions'}</th>
                             </tr>
@@ -712,6 +765,12 @@ const MaterialExchange = () => {
                                                         </a>
                                                     </div>
                                                 ) : <span className="no-data">-</span>}
+                                            </td>
+
+                                            <td className="notes-cell" style={{ maxWidth: '150px' }}>
+                                                <span className="truncate-text" title={item.notes || '-'}>
+                                                    {item.notes || '-'}
+                                                </span>
                                             </td>
 
                                             <td className="date-cell">
