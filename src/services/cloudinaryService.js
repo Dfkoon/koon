@@ -2,9 +2,8 @@
  * Cloudinary Upload Service
  * Handles file uploads to Cloudinary for student contributions
  */
-
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME?.trim();
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET?.trim();
 
 /**
  * Upload a file to Cloudinary
@@ -13,19 +12,19 @@ const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
  * @returns {Promise<Object>} Upload result with URL and public_id
  */
 export const uploadToCloudinary = async (file, options = {}) => {
+    if (!CLOUD_NAME) throw new Error('Cloudinary Cloud Name is missing in .env');
+    if (!UPLOAD_PRESET) throw new Error('Cloudinary Upload Preset is missing in .env');
+
     try {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', UPLOAD_PRESET);
-        formData.append('folder', options.folder || 'koon-contributions');
 
-        // Add tags for better organization
-        if (options.tags) {
-            formData.append('tags', options.tags.join(','));
-        }
+        if (options.folder) formData.append('folder', options.folder);
+        if (options.tags) formData.append('tags', options.tags.join(','));
 
         const response = await fetch(
-            `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`,
+            `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
             {
                 method: 'POST',
                 body: formData
@@ -33,37 +32,23 @@ export const uploadToCloudinary = async (file, options = {}) => {
         );
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || 'Upload failed');
+            const errorData = await response.json();
+            console.error('Cloudinary API Error:', errorData);
+            throw new Error(errorData.error?.message || 'Upload failed');
         }
 
         const data = await response.json();
-
         return {
             url: data.secure_url,
             publicId: data.public_id,
             format: data.format,
             resourceType: data.resource_type,
-            bytes: data.bytes,
-            width: data.width,
-            height: data.height
+            bytes: data.bytes
         };
     } catch (error) {
-        console.error('Cloudinary upload error:', error);
-        throw new Error(`Failed to upload file: ${error.message}`);
+        console.error('Cloudinary Service Error:', error);
+        throw error;
     }
-};
-
-/**
- * Delete a file from Cloudinary
- * Note: This requires backend implementation with API secret
- * @param {string} publicId - The public ID of the file to delete
- */
-export const deleteFromCloudinary = async (publicId) => {
-    // Note: Deletion requires API secret and should be done on backend
-    // For now, we'll keep the file and just remove the reference from Firestore
-    console.warn('Cloudinary deletion should be implemented on backend with API secret');
-    return true;
 };
 
 /**
@@ -79,11 +64,11 @@ export const validateFile = (file, options = {}) => {
     const errors = [];
 
     if (file.size > maxSize) {
-        errors.push(`File size must be less than ${maxSize / 1024 / 1024}MB`);
+        errors.push(`حجم الملف يجب أن يكون أقل من ${maxSize / 1024 / 1024} ميجابايت`);
     }
 
     if (!allowedTypes.includes(file.type)) {
-        errors.push(`File type must be one of: ${allowedTypes.map(t => t.split('/')[1]).join(', ')}`);
+        errors.push(`نوع الملف يجب أن يكون: صورة أو PDF`);
     }
 
     return {
@@ -94,6 +79,5 @@ export const validateFile = (file, options = {}) => {
 
 export default {
     uploadToCloudinary,
-    deleteFromCloudinary,
     validateFile
 };

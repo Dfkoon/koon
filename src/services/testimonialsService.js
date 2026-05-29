@@ -1,48 +1,159 @@
-import { db } from '../lib/firebase';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, onSnapshot, writeBatch } from 'firebase/firestore';
 
-const COLLECTION_NAME = 'testimonials';
+const TESTIMONIALS_COLLECTION = 'testimonials';
 
-export const testimonialsService = {
-    async getAllTestimonials() {
-        try {
-            const snapshot = await getDocs(collection(db, COLLECTION_NAME));
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                date: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : new Date(doc.data().createdAt || Date.now())
-            })).sort((a, b) => b.date - a.date);
-        } catch (error) {
-            console.error("Error fetching testimonials:", error);
-            return [];
-        }
-    },
-
-    async updateStatus(id, newStatus) {
-        const testimonialRef = doc(db, COLLECTION_NAME, id);
-        const updateData = {
-            status: newStatus,
-            approved: newStatus === 'approved' // Critical for security rules
-        };
-
-        // Website uses 'approvedAt' for ordering, so we must set it
-        if (newStatus === 'approved') {
-            updateData.approvedAt = serverTimestamp();
-        }
-
-        await updateDoc(testimonialRef, updateData);
-    },
-
-    async deleteTestimonial(id) {
-        await deleteDoc(doc(db, COLLECTION_NAME, id));
-    },
-
-    async updateTestimonialDetails(id, newText) {
-        // We handle multiple possible text fields to be safe, but standardize on 'quote' for the future
-        await updateDoc(doc(db, COLLECTION_NAME, id), {
-            quote: newText,
-            message: newText, // Keep legacy fields in sync just in case
-            text: newText
+// Submit a new testimonial (pending approval)
+export const submitTestimonial = async (testimonialData) => {
+    try {
+        const docRef = await addDoc(collection(db, TESTIMONIALS_COLLECTION), {
+            ...testimonialData,
+            status: 'pending',
+            createdAt: serverTimestamp(),
         });
+        return { success: true, id: docRef.id };
+    } catch (error) {
+        console.error('Error submitting testimonial:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Subscribe to approved testimonials (Real-time)
+export const subscribeToApprovedTestimonials = (callback) => {
+    // Note: Removed orderBy('createdAt', 'desc') to avoid composite index requirement.
+    // Sorting will be handled locally in the callback.
+    const q = query(
+        collection(db, TESTIMONIALS_COLLECTION),
+        where('approved', '==', true)
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        const testimonials = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort locally by createdAt desc
+        testimonials.sort((a, b) => {
+            const timeA = a.createdAt?.seconds || 0;
+            const timeB = b.createdAt?.seconds || 0;
+            return timeB - timeA;
+        });
+        callback(testimonials);
+    }, (error) => {
+        console.error('Error in testimonials subscription:', error);
+        callback([]);
+    });
+};
+
+// Subscribe to all testimonials (Admin Real-time)
+export const subscribeToAllTestimonials = (callback) => {
+    const q = query(collection(db, TESTIMONIALS_COLLECTION), orderBy('createdAt', 'desc'));
+
+    return onSnapshot(q, (snapshot) => {
+        const testimonials = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(testimonials);
+    }, (error) => {
+        console.error('Error in admin testimonials subscription:', error);
+        callback([]);
+    });
+};
+
+// Get all approved testimonials (Fallback/One-time)
+export const getApprovedTestimonials = async () => {
+    try {
+        const q = query(
+            collection(db, TESTIMONIALS_COLLECTION),
+            where('approved', '==', true)
+        );
+        const querySnapshot = await getDocs(q);
+        const testimonials = [];
+        querySnapshot.forEach((doc) => {
+            testimonials.push({ id: doc.id, ...doc.data() });
+        });
+        // Sort locally
+        testimonials.sort((a, b) => {
+            const timeA = a.createdAt?.seconds || 0;
+            const timeB = b.createdAt?.seconds || 0;
+            return timeB - timeA;
+        });
+        return testimonials;
+    } catch (error) {
+        console.error('Error fetching approved testimonials:', error);
+        return [];
+    }
+};
+
+// Get all testimonials (for admin panel)
+export const getAllTestimonials = async () => {
+    try {
+        const q = query(collection(db, TESTIMONIALS_COLLECTION), orderBy('createdAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        const testimonials = [];
+        querySnapshot.forEach((doc) => {
+            testimonials.push({ id: doc.id, ...doc.data() });
+        });
+        return testimonials;
+    } catch (error) {
+        console.error('Error fetching all testimonials:', error);
+        return [];
+    }
+};
+
+// Approve a testimonial
+export const approveTestimonial = async (testimonialId, approvedBy = 'Admin') => {
+    try {
+        const testimonialRef = doc(db, TESTIMONIALS_COLLECTION, testimonialId);
+        await updateDoc(testimonialRef, {
+            status: 'approved',
+            approved: true, // Specific field for security rules
+            approvedAt: serverTimestamp(),
+            approvedBy: approvedBy,
+        });
+        return { success: true };
+    } catch (error) {
+        console.error('Error approving testimonial:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Reject a testimonial
+export const rejectTestimonial = async (testimonialId) => {
+    try {
+        const testimonialRef = doc(db, TESTIMONIALS_COLLECTION, testimonialId);
+        await updateDoc(testimonialRef, {
+            status: 'rejected',
+            rejectedAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error('Error rejecting testimonial:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Delete a testimonial
+export const deleteTestimonial = async (testimonialId) => {
+    try {
+        await deleteDoc(doc(db, TESTIMONIALS_COLLECTION, testimonialId));
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting testimonial:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Delete ALL testimonials (DANGER ZONE)
+export const deleteAllTestimonials = async () => {
+    try {
+        const q = query(collection(db, TESTIMONIALS_COLLECTION));
+        const snapshot = await getDocs(q);
+
+        const batch = writeBatch(db);
+        snapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting all testimonials:', error);
+        return { success: false, error: error.message };
     }
 };
