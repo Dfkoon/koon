@@ -1,0 +1,132 @@
+.services-section {
+    padding: 80px 5%;
+}
+
+.services-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.services-track {
+    display: flex;
+    gap: 2rem;
+    width: max-content;
+    padding: 2rem 0;
+    padding-right: 2rem;
+    /* Matches gap to ensure 50% shift is seamless */
+    animation: scroll-loop 25s linear infinite;
+}
+
+.services-track:hover {
+    animation-play-state: paused;
+}
+
+[dir="rtl"] .services-track {
+    padding-right: 0;
+    padding-left: 2rem;
+    /* Matches gap for RTL */
+    animation: scroll-loop-rtl 25s linear infinite;
+}
+
+.service-card {
+    width: 350px;
+    padding: 2.5rem 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.service-icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    background: var(--glass-bg);
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+}
+
+.service-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.service-desc {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    min-height: 4.8em;
+}
+
+.service-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+}
+
+.service-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+.service-btn.active:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.service-btn.pending {
+    background: var(--glass-bg);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    border: 1px dashed var(--glass-border);
+}
+
+@keyframes scroll-loop {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+@keyframes scroll-loop-rtl {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(50%);
+    }
+}
+
+@media (max-width: 768px) {
+    .services-section .section-title {
+        font-size: 2rem;
+    }
+
+    .service-card {
+        width: 300px;
+        padding: 1.5rem;
+    }
+
+    .services-track {
+        animation-duration: 35s;
+    }
+}

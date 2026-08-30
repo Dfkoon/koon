@@ -1,0 +1,3261 @@
+export const quizData = {
+    oop_midterm: {
+        id: 'oop_midterm',
+        title: 'Midterm Past Papers',
+        titleAr: 'أسئلة سنوات ميد',
+        icon: '💻',
+        color: '#2196F3',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'Given the following code:<br><pre><code class="language-java">public class Item {\n    private int num;\n    public double price;\n    public void show()\n    {     }\n}</code></pre>Which of the following statements is correct inside show()?',
+                options: [
+                    { id: 'a', textEn: 'System.out.print(num + " " + price );' },
+                    { id: 'b', textEn: 'System.out.print(num );' },
+                    { id: 'c', textEn: 'System.out.print(price );' },
+                    { id: 'd', textEn: 'All of the above (a, b, and c).' },
+                    { id: 'e', textEn: 'None of the above' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.5
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'How would you access a non-static variable from another class in the same package?<br><pre><code class="language-java">public class A {\n    int x = 10;\n}\npublic class B {\n    void display()\n    { // Access x here }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'System.out.println(A.x);' },
+                    { id: 'b', textEn: 'A a = new A(); System.out.println(a.x);' },
+                    { id: 'c', textEn: 'System.out.println(x);' },
+                    { id: 'd', textEn: 'this.x' },
+                    { id: 'e', textEn: 'A a = new A(); System.out.println(A.x);' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.5
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'According to the following class:<br><pre><code class="language-java">public class Address {\n    private int num;\n    private static String zcode;\n    public static void post(int t)\n    {    }\n}</code></pre>Which statement is correct inside post method?',
+                options: [
+                    { id: 'a', textEn: 'System.out.print(num);' },
+                    { id: 'b', textEn: 'zcode = t;' },
+                    { id: 'c', textEn: 'num = t;' },
+                    { id: 'd', textEn: 'System.out.print(zcode + ":" + num);' },
+                    { id: 'e', textEn: 'System.out.print(zcode);' }
+                ],
+                correctAnswer: 'e',
+                marks: 1.5
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'According to the following class:<br><pre><code class="language-java">public class Container {\n    private int value;\n    public void setValue(int value)\n    {    }\n}</code></pre>Which of the following statements should be written inside the setter method \'setValue\' to copy parameter value into the instance variable?',
+                options: [
+                    { id: 'a', textEn: 'value = value;' },
+                    { id: 'b', textEn: 'this.value = s;' },
+                    { id: 'c', textEn: 'value = s;' },
+                    { id: 'd', textEn: 'this.value = value;' },
+                    { id: 'e', textEn: 'value = this.value;' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.5
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'Given the following class:<br><pre><code class="language-java">public class Motor {\n    private String model;\n    private int price;\n    private double capacity;\n    public Motor(int a) { price=a; capacity=0.0; }\n    public void show() { System.out.print(model + " " + price); }\n}</code></pre>Which statement correctly creates an object of class Motor inside the main method?',
+                options: [
+                    { id: 'a', textEn: 'Motor m = new Motor(3500);' },
+                    { id: 'b', textEn: 'Motor m = new Motor("Toyota",3000);' },
+                    { id: 'c', textEn: 'Motor m = new Motor("Toyota",2500,1.6);' },
+                    { id: 'd', textEn: 'Motor m = new Motor(2.5);' },
+                    { id: 'e', textEn: 'Motor m = new Motor();' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.5
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'Read the following code:<br><pre><code class="language-java">public class Square {\n    private double area;\n    static String color;\n}\npublic class Test{\n    public static void main(String[] args){\n        Square s1 = new Square();\n        Square s2 = new Square();\n        // line here\n    }\n}</code></pre>Which of the following is NOT correct to set color to "black" in main?',
+                options: [
+                    { id: 'a', textEn: 's2.color = "black";' },
+                    { id: 'b', textEn: 's1.color = "black";' },
+                    { id: 'c', textEn: 'Square.color = "black";' },
+                    { id: 'd', textEn: 'color = "black";' },
+                    { id: 'e', textEn: 's1.area = 5.0' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.5
+            },
+            {
+                id: 8,
+                type: 'mcq',
+                questionEn: 'What is the output after executing the following code:<br><pre><code class="language-java">public class Rectangle {\n private int width;\n int height;\n public void setWidth(int width) { this.width = width; }\n public int getHeight() { return height; }\n public void show() { System.out.print(width); }\n}\npublic class Test {\n public static void main(String[] args) {\n  Rectangle r = new Rectangle();\n  r.height = 4;\n  r.setWidth(r.getHeight() + 3);\n  r.show();\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: '4' },
+                    { id: 'b', textEn: '10' },
+                    { id: 'c', textEn: '5' },
+                    { id: 'd', textEn: '7' },
+                    { id: 'e', textEn: '6' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.5
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionEn: 'Given the following classes:<br><pre><code class="language-java">public class Counter {\n private int count;\n public void setCount(int count) { this.count = count; }\n public int getCount() { return count; }\n}\npublic class Test {\n public static void main(String[] args) {\n  Counter c = new Counter();\n  c.setCount(3);\n  // line 2\n }\n}</code></pre>Which of the following statements could be written in line 2 inside the main to increase count by one?',
+                options: [
+                    { id: 'a', textEn: 'c.getCount();' },
+                    { id: 'b', textEn: 'count++;' },
+                    { id: 'c', textEn: 'c.count++;' },
+                    { id: 'd', textEn: 'c.setCount(c.getCount() + 1);' },
+                    { id: 'e', textEn: 'c.getCount(c.setCount() + 1);' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.5
+            },
+            {
+                id: 10,
+                type: 'mcq',
+                questionEn: 'What is the output after executing the following code:<br><pre><code class="language-java">public class Wheel {\n int radius;\n public Wheel(int r) { radius=r; }\n public Wheel() { radius=4; }\n public void show() { System.out.print(radius); }\n}\npublic class Test{\n public static void main(String[] args){\n  Wheel w = new Wheel();\n  w.show();\n  w.radius = 9;\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: '4' },
+                    { id: 'b', textEn: '9' },
+                    { id: 'c', textEn: '0' },
+                    { id: 'd', textEn: '5' },
+                    { id: 'e', textEn: 'null' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.5
+            },
+            {
+                id: 11,
+                type: 'mcq',
+                questionEn: 'According to the following code:<br><pre><code class="language-java">public class Point {\n private int x;\n public int y;\n public void display()\n {    }\n}\npublic class Test {\n public static void main(String[] args){\n  Point p = new Point();\n  p.display();\n }\n}</code></pre>Which is incorrect to write inside display?',
+                options: [
+                    { id: 'a', textEn: 'System.out.print(x);' },
+                    { id: 'b', textEn: 'System.out.print(p.y);' },
+                    { id: 'c', textEn: 'x++;' },
+                    { id: 'd', textEn: 'System.out.print(y);' },
+                    { id: 'e', textEn: 'System.out.print(x + " " + y);' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.5
+            },
+            {
+                id: 12,
+                type: 'mcq',
+                questionEn: 'Trace the below code then find the output:<br><pre><code class="language-java">public class Phone {\n double price;\n static String brand;\n}\npublic class Test{\n public static void main(String[] args){\n  Phone p1 = new Phone();\n  Phone p2 = new Phone();\n  p1.price = 400;\n  p1.brand = "X1";\n  p2.price = 260;\n  Phone.brand = "Z";\n  System.out.print(p1.brand);\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: '260' },
+                    { id: 'b', textEn: 'null' },
+                    { id: 'c', textEn: 'Z' },
+                    { id: 'd', textEn: '400' },
+                    { id: 'e', textEn: 'X1' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.5
+            },
+            {
+                id: 13,
+                type: 'mcq',
+                questionEn: 'Find the output of the below code:<br><pre><code class="language-java">public class Box {\n int width;\n Box(int w) { width = w; }\n}\npublic class MyTest {\n public static void main(String[] args) {\n  Box b = new Box();\n  System.out.println(b.width);\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: '0' },
+                    { id: 'b', textEn: 'null' },
+                    { id: 'c', textEn: 'Error - no matching constructor' },
+                    { id: 'd', textEn: 'false' },
+                    { id: 'e', textEn: 'width = 0' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.5
+            },
+            {
+                id: 14,
+                type: 'mcq',
+                questionEn: 'Given the following code:<br><pre><code class="language-java">public class Mid {\n private void exam() { System.out.print("Done"); }\n public static void main(String[] args) {\n  Mid m = new Mid();\n  // line 3\n }\n}</code></pre>Which statement that could be written in line 3 inside the main to correctly call method \'exam\'?',
+                options: [
+                    { id: 'a', textEn: 'm.exam();' },
+                    { id: 'b', textEn: 'System.out.print(m.exam());' },
+                    { id: 'c', textEn: 'exam();' },
+                    { id: 'd', textEn: 'm.exam(1);' },
+                    { id: 'e', textEn: 'String s = m.exam();' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.5
+            },
+            {
+                id: 15,
+                type: 'mcq',
+                questionEn: 'Given class \'Student\' with private String \'name\', which of the following is a correct header to set the \'name\'?',
+                options: [
+                    { id: 'a', textEn: 'public void setName(String na)' },
+                    { id: 'b', textEn: 'public void setName(Student na)' },
+                    { id: 'c', textEn: 'public void setName(int na)' },
+                    { id: 'd', textEn: 'public int setName(int na)' },
+                    { id: 'e', textEn: 'public String setName()' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.5
+            },
+            {
+                id: 16,
+                type: 'mcq',
+                questionEn: 'What will this segment of code print?<br><pre><code class="language-java">for (int i=1; i<=5; i++) {\n if (i==3) continue;\n System.out.print(i + " ");\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: '1 2 4 5' },
+                    { id: 'b', textEn: '1 2 3 4 5' },
+                    { id: 'c', textEn: '1 2' },
+                    { id: 'd', textEn: '4 5' },
+                    { id: 'e', textEn: 'Compilation Error' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.5
+            },
+            {
+                id: 17,
+                type: 'mcq',
+                questionEn: 'What is wrong with this code?<br><pre><code class="language-java">public class Student {\n private String name;\n}\npublic class Example {\n public static void main(String[] args) {\n  Student s = new Student();\n  System.out.println(s.name);\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'When creating object \'s\' a name must be given' },
+                    { id: 'b', textEn: 'Cannot access \'name\' from outside class' },
+                    { id: 'c', textEn: 'The variable \'name\' should be defined in main' },
+                    { id: 'd', textEn: 'A constructor must be defined' },
+                    { id: 'e', textEn: 'The instance variable \'name\' should be static' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.5
+            },
+            {
+                id: 18,
+                type: 'mcq',
+                questionEn: 'What is the output of the following code:<br><pre><code class="language-java">public class Product {\n int id;\n public Product() { id = 10; }\n}\npublic class Test {\n public static void main(String[] args) {\n  Product p = new Product();\n  System.out.print(p.id);\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: '0' },
+                    { id: 'b', textEn: '10' },
+                    { id: 'c', textEn: '1' },
+                    { id: 'd', textEn: 'null' },
+                    { id: 'e', textEn: 'Error on code' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.5
+            },
+            {
+                id: 19,
+                type: 'mcq',
+                questionEn: 'Suppose a class \'Employee\' with a private instance variable \'salary\' of type double, choose the correct header to a getter method for the \'salary\'?',
+                options: [
+                    { id: 'a', textEn: 'public void getSalary()' },
+                    { id: 'b', textEn: 'public int getSalary(double s)' },
+                    { id: 'c', textEn: 'public double getSalary()' },
+                    { id: 'd', textEn: 'public String getSalary(double salary)' },
+                    { id: 'e', textEn: 'public void getSalary(double salary)' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.5
+            },
+            {
+                id: 20,
+                type: 'mcq',
+                questionEn: 'What is the default value of an uninitialized boolean instance variable in Java?',
+                options: [
+                    { id: 'a', textEn: 'true' },
+                    { id: 'b', textEn: 'false' },
+                    { id: 'c', textEn: 'null' },
+                    { id: 'd', textEn: '0' },
+                    { id: 'e', textEn: 'undefined' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.5
+            }
+        ]
+    },
+    oop_final: {
+        id: 'oop_final',
+        title: 'Final Past Papers',
+        titleAr: 'أسئلة سنوات فاينل',
+        icon: '💻',
+        color: '#2196F3',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'Read the following code, what is printed?<br><pre><code class="language-java">public static void main(String[] args) {\n try {\n  int[] a = {3, 7, 9};\n  System.out.print(a[2]);\n  System.out.print("M");\n }\n catch (ArrayIndexOutOfBoundsException e)\n  { System.out.print("N"); }\n System.out.print("O");\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: '9MO' },
+                    { id: 'b', textEn: 'MNO' },
+                    { id: 'c', textEn: 'NO' },
+                    { id: 'd', textEn: 'Run-time error' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'Given the following segment of code:<br><pre><code class="language-java">interface Readable { void read(); }\nclass Document implements Readable {\n private void read() {\n  System.out.println("Reading");\n }\n}</code></pre>Which of the following sentences is correct?',
+                options: [
+                    { id: 'a', textEn: 'There is an error because the method \'read\' should be static.' },
+                    { id: 'b', textEn: 'There is an error because interface methods cannot be implemented.' },
+                    { id: 'c', textEn: 'There is an error because the method \'read\' inside class \'Document\' is attempting to assign weaker access privileges.' },
+                    { id: 'd', textEn: 'The code is correct.' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'Assume the Circle class shown in the below diagram is used from another class in a different package (not a subclass). Which action is NOT allowed?<br><b>Circle</b><br>-radius: double<br>+Circle(r:double)<br>+area(): double<br>-validate(): boolean<br>+scale(factor:double): void',
+                options: [
+                    { id: 'a', textEn: 'Call area() using a Circle object.' },
+                    { id: 'b', textEn: 'Call scale(2.0) using a Circle object.' },
+                    { id: 'c', textEn: 'Create a Circle object using Circle(5).' },
+                    { id: 'd', textEn: 'Call validate() using a Circle object.' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'Given:<br><pre><code class="language-java">public class A { protected int x; }\npublic class B extends A {\n public void show() { System.out.print(x); }\n}</code></pre>Which statement is true about access to x from B?',
+                options: [
+                    { id: 'a', textEn: 'B cannot access x because it\'s private.' },
+                    { id: 'b', textEn: 'B can access x because it\'s protected and in a subclass.' },
+                    { id: 'c', textEn: 'B can access x only if in same package.' },
+                    { id: 'd', textEn: 'B can access x only via getter.' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'Given the following segment of code:<br><pre><code class="language-java">abstract class Machine {\n abstract public void start();\n}\nclass Engine extends Machine {\n public void stop(int x) {\n  System.out.print(x * 2);\n }\n}</code></pre>Which of the following sentences is correct?',
+                options: [
+                    { id: 'a', textEn: 'There is an error in the code because you have to override the method \'start\' inside the class \'Engine\'.' },
+                    { id: 'b', textEn: 'There is an error because abstract classes cannot have abstract methods.' },
+                    { id: 'c', textEn: 'There is an error because class \'Engine\' includes a concrete method named \'stop\'.' },
+                    { id: 'd', textEn: 'The code is correct.' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'Which condition is correct inside if-statement to count employees with salary < 500?<br><pre><code class="language-java">public class Employee{\n private double salary;\n public double getSalary(){ return salary; }\n}\npublic class Exam {\n public static void main(String[] args) {\n  Employee[] arr = new Employee[20];\n  int count=0;\n  if (........................)\n  count++;\n }\n}\n</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'arr[i] < 500' },
+                    { id: 'b', textEn: 'emp.getSalary() < 500' },
+                    { id: 'c', textEn: 'getSalary() < 500' },
+                    { id: 'd', textEn: 'arr[i].getSalary() < 500' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionEn: 'Read the following code, What is printed?<br><pre><code class="language-java">class Student {\n private int mark;\n private String subject;\n public Student() { mark=2; subject="PE"; }\n public Student(int m) { mark=m; }\n public int getMark() { return mark; }\n}\npublic class Test {\n public static void main(String[] args) {\n  Student[] grades = new Student[3];\n  grades[0]=new Student();\n  grades[1]=new Student(4);\n  grades[2]=new Student();\n  int sum=0;\n  for(int i=0; i < grades.length ; i++)\n   sum += grades[i].getMark();\n  System.out.print(sum);\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: '2' },
+                    { id: 'b', textEn: '4' },
+                    { id: 'c', textEn: '8' },
+                    { id: 'd', textEn: '10' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 8,
+                type: 'mcq',
+                questionEn: 'Find the output for the following code?<br><pre><code class="language-java">public class Shape {\n public void draw() { System.out.print("x"); }\n}\npublic class Circle extends Shape {\n public void draw() { System.out.print("y"); }\n}\npublic class Test {\n public static void main(String[] args) {\n  Shape [] shapes = new Shape[4];\n  shapes[0] = new Shape();\n  shapes[1] = new Circle();\n  shapes[2] = new Circle();\n  shapes[3] = new Shape();\n  for (int i = 0 ; i < shapes.length ; i++)\n   shapes[i].draw();\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'xxxx' },
+                    { id: 'b', textEn: 'yyyy' },
+                    { id: 'c', textEn: 'yxxy' },
+                    { id: 'd', textEn: 'xyyx' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionEn: 'Which of the following correctly creates an array of 11 Player references?<br>public class Player { ... }',
+                options: [
+                    { id: 'a', textEn: 'Player[ ] fbteam = new ArrayOfObjects[11];' },
+                    { id: 'b', textEn: 'Player[ ] fbteam = new name[11];' },
+                    { id: 'c', textEn: 'Player fbteam = new Player(11);' },
+                    { id: 'd', textEn: 'Player[ ] fbteam = new Player[11];' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 10,
+                type: 'mcq',
+                questionEn: 'Is the following segment of Java code correct?<br><pre><code class="language-java">public abstract class Table {\n public void run()\n { System.out.println("Hello"); }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'the code is correct.' },
+                    { id: 'b', textEn: 'the run method must be abstract' },
+                    { id: 'c', textEn: 'class Table must be an interface' },
+                    { id: 'd', textEn: 'class Table must contain an instance variable' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 11,
+                type: 'mcq',
+                questionEn: 'Read the following code, and find the output?<br><pre><code class="language-java">class Fruit {\n Fruit(String name) { System.out.print("F"); }\n}\nclass Apple extends Fruit {\n Apple() { System.out.print("A"); }\n}\nclass myMain {\n public static void main(String[] args) {\n  Apple obj = new Apple();\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'Error in code' },
+                    { id: 'b', textEn: 'FA' },
+                    { id: 'c', textEn: 'AF' },
+                    { id: 'd', textEn: 'F' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 12,
+                type: 'mcq',
+                questionEn: 'Read the following code, and find the output?<br><pre><code class="language-java">class Vehicle {\n Vehicle() { System.out.print("Start"); }\n}\nclass Car extends Vehicle {\n Car() { System.out.print("Drive"); }\n}\nclass Test {\n public static void main(String[] args) {\n  Car c = new Car();\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'Drive' },
+                    { id: 'b', textEn: 'DriveStart' },
+                    { id: 'c', textEn: 'StartDrive' },
+                    { id: 'd', textEn: 'Start' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 13,
+                type: 'mcq',
+                questionEn: 'Find the output of the below code:<br><pre><code class="language-java">public class Box {\n int width;\n Box(int w) { width = w; }\n}\npublic class MyTest {\n public static void main(String[] args) {\n  Box b = new Box();\n  System.out.println(b.width);\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: '0' },
+                    { id: 'b', textEn: 'null' },
+                    { id: 'c', textEn: 'Error - no matching constructor' },
+                    { id: 'd', textEn: 'false' },
+                    { id: 'e', textEn: 'width = 0' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 14,
+                type: 'mcq',
+                questionEn: 'Read the following code, and find the output?<br><pre><code class="language-java">public class Student { }\npublic class GraduateSt extends Student { }\npublic class Test {\n public static void main(String[] args) {\n  Student s1 = new Student();\n  boolean result = (s1 instanceof GraduateSt);\n  System.out.println(result);\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'True' },
+                    { id: 'b', textEn: 'False' },
+                    { id: 'c', textEn: '0' },
+                    { id: 'd', textEn: 's1' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 15,
+                type: 'mcq',
+                questionEn: 'Read the following segment of code:<br><pre><code class="language-java">public class Building {\n public final void construct() {\n  System.out.println("Constructing building");\n }\n}\npublic class House extends Building { ... }</code></pre>Which of the following method headers is NOT correct to be declared inside class House?',
+                options: [
+                    { id: 'a', textEn: 'public void construct()' },
+                    { id: 'b', textEn: 'public void construct(String type)' },
+                    { id: 'c', textEn: 'public void construct(int rooms, int floors)' },
+                    { id: 'd', textEn: 'public void construct(double area)' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 16,
+                type: 'mcq',
+                questionEn: 'What is the output of the code below?<br><pre><code class="language-java">public static void main(String[] args) {\n double d=1/0;\n try\n { System.out.print(s.charAt(4)); }\n catch (ArithmeticException e)\n { System.out.print("E"); }\n finally\n { System.out.print("F"); }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'aF' },
+                    { id: 'b', textEn: 'EF' },
+                    { id: 'c', textEn: 'F only' },
+                    { id: 'd', textEn: 'Nothing (Runtime Error)' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 17,
+                type: 'mcq',
+                questionEn: 'Read the following code, and find the output?<br><pre><code class="language-java">interface Calculable { void compute(); }\npublic class Math implements Calculable {\n public void compute() {\n  System.out.println(5 * 7);\n }\n}\npublic class Runner {\n public static void main(String[] args) {\n  Calculable c1 = new Math();\n  c1.compute();\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: '0' },
+                    { id: 'b', textEn: 'Error in code' },
+                    { id: 'c', textEn: '35' },
+                    { id: 'd', textEn: '57' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 18,
+                type: 'mcq',
+                questionEn: 'Read the following code, and find the output?<br><pre><code class="language-java">public class Animal {\n void sound() { System.out.print("X"); }\n}\npublic class Dog extends Animal {\n void sound() { System.out.print("Y"); }\n}\npublic class myMain {\n public static void main(String[] args) {\n  Animal a1 = new Dog();\n  Animal a2 = new Animal();\n  a1.sound();\n  a2.sound();\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'XX' },
+                    { id: 'b', textEn: 'YY' },
+                    { id: 'c', textEn: 'YX' },
+                    { id: 'd', textEn: 'XY' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 19,
+                type: 'mcq',
+                questionEn: 'Suppose a class \'Employee\' with a private instance variable \'salary\' of type double, choose the correct header to a getter method for the \'salary\'?',
+                options: [
+                    { id: 'a', textEn: 'public void getSalary()' },
+                    { id: 'b', textEn: 'public int getSalary(double s)' },
+                    { id: 'c', textEn: 'public double getSalary()' },
+                    { id: 'd', textEn: 'public String getSalary(double salary)' },
+                    { id: 'e', textEn: 'public void getSalary(double salary)' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 20,
+                type: 'mcq',
+                questionEn: 'What would be the output of the code?<br><pre><code class="language-java">public static void main(String[] args) {\n try {\n  int [] a = {4, 1, 18};\n  a[5]= a[1] / 0;\n  System.out.print("A");\n }\n catch (ArithmeticException e)\n { System.out.print("B"); }\n catch (Exception e) {\n  System.out.print("C");\n }\n finally {\n  System.out.print("D");\n }\n}</code></pre>',
+                options: [
+                    { id: 'a', textEn: 'ABCD' },
+                    { id: 'b', textEn: 'BD' },
+                    { id: 'c', textEn: 'CD' },
+                    { id: 'd', textEn: 'D' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 21,
+                type: 'mcq',
+                questionEn: 'Suppose that you have the following three classes: X, Y, and Z, and you have the following three interfaces: A, B, and C. Which of following declarations is correct?',
+                options: [
+                    { id: 'a', textEn: 'class X extends Y, Z { }' },
+                    { id: 'b', textEn: 'interface A implements B { }' },
+                    { id: 'c', textEn: 'interface A extends B implements C { }' },
+                    { id: 'd', textEn: 'class X implements A, B { }' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 22,
+                type: 'mcq',
+                questionEn: 'When does the code inside a `catch` block execute in Java?',
+                options: [
+                    { id: 'a', textEn: 'Always, whether an exception occurs or not.' },
+                    { id: 'b', textEn: 'Only when an exception of the specified type occurs.' },
+                    { id: 'c', textEn: 'Before the try block executes.' },
+                    { id: 'd', textEn: 'When the program starts.' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 23,
+                type: 'mcq',
+                questionEn: 'If a method is declared as `final` in Java, what does it mean?',
+                options: [
+                    { id: 'a', textEn: 'It can only return integer values.' },
+                    { id: 'b', textEn: 'It must be declared as static.' },
+                    { id: 'c', textEn: 'It cannot be overridden by subclasses.' },
+                    { id: 'd', textEn: 'It can only be called once.' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 24,
+                type: 'mcq',
+                questionEn: 'What is the default access modifier for a method declared within a Java interface?',
+                options: [
+                    { id: 'a', textEn: 'private' },
+                    { id: 'b', textEn: 'protected' },
+                    { id: 'c', textEn: 'public abstract' },
+                    { id: 'd', textEn: 'default (package-access)' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 25,
+                type: 'mcq',
+                questionEn: 'Which methods must be implemented when a concrete class extends an abstract class?',
+                options: [
+                    { id: 'a', textEn: 'All methods' },
+                    { id: 'b', textEn: 'All abstract methods' },
+                    { id: 'c', textEn: 'Only static methods' },
+                    { id: 'd', textEn: 'Only final methods' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 26,
+                type: 'mcq',
+                questionEn: 'What does the "instanceof" operator return in Java?',
+                options: [
+                    { id: 'a', textEn: 'A boolean value' },
+                    { id: 'b', textEn: 'An integer value' },
+                    { id: 'c', textEn: 'A string value' },
+                    { id: 'd', textEn: 'An object reference' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 27,
+                type: 'mcq',
+                questionEn: 'In Java, a subclass inherits all the members (fields and methods) of its superclass, including private members.',
+                options: [
+                    { id: 'a', textEn: 'True' },
+                    { id: 'b', textEn: 'False' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 28,
+                type: 'mcq',
+                questionEn: 'The `super` keyword can be used to call the superclass constructor from a subclass constructor.',
+                options: [
+                    { id: 'a', textEn: 'True' },
+                    { id: 'b', textEn: 'False' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 29,
+                type: 'mcq',
+                questionEn: 'What access modifier allows a member to be accessible only within the same package but not by subclasses outside the package?',
+                options: [
+                    { id: 'a', textEn: 'private' },
+                    { id: 'b', textEn: 'public' },
+                    { id: 'c', textEn: 'protected' },
+                    { id: 'd', textEn: 'default (package-access)' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 30,
+                type: 'mcq',
+                questionEn: 'Can you create an instance of an interface in Java using the `new` keyword?',
+                options: [
+                    { id: 'a', textEn: 'No, you cannot directly instantiate an interface.' },
+                    { id: 'b', textEn: 'Yes, if it has at least one method.' },
+                    { id: 'c', textEn: 'Yes, but only if all methods have default implementations.' },
+                    { id: 'd', textEn: 'Yes, if you use the `create` keyword.' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            }
+        ]
+    },
+    oop_quizzes: {
+        id: 'oop_quizzes',
+        title: 'Quizzes',
+        titleAr: 'كويزات',
+        icon: '💻',
+        color: '#2196F3',
+        forceEnglish: true,
+        questions: []
+    },
+    comp_skills: {
+        id: 'comp_skills',
+        title: 'Computer Skills',
+        titleAr: 'مهارات حاسوب والتعلم الالكتروني',
+        icon: '💻',
+        color: '#00BCD4',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'Which of the following is considered the heart of a computer?',
+                questionAr: 'أي مما يلي يعتبر قلب جهاز الحاسوب؟',
+                options: [
+                    { id: 'a', textEn: 'Mouse', textAr: 'فأرة' },
+                    { id: 'b', textEn: 'Monitor', textAr: 'شاشة' },
+                    { id: 'c', textEn: 'Processor (CPU)', textAr: 'المعالج' },
+                    { id: 'd', textEn: 'Keyboard', textAr: 'لوحة المفاتيح' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'What is the main function of the operating system?',
+                questionAr: 'ما هي الوظيفة الرئيسية لنظام التشغيل؟',
+                options: [
+                    { id: 'a', textEn: 'Word processing', textAr: 'معالجة النصوص' },
+                    { id: 'b', textEn: 'Manage hardware and software resources', textAr: 'إدارة موارد الأجهزة والبرامج' },
+                    { id: 'c', textEn: 'Create graphics', textAr: 'إنشاء الرسومات' },
+                    { id: 'd', textEn: 'Send emails', textAr: 'إرسال البريد الإلكتروني' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'Which memory is used for temporary storage while the computer is running?',
+                questionAr: 'أي ذاكرة تستخدم للتخزين المؤقت أثناء تشغيل الكمبيوتر؟',
+                options: [
+                    { id: 'a', textEn: 'ROM', textAr: 'ذاكرة القراءة فقط' },
+                    { id: 'b', textEn: 'Hard Disk', textAr: 'القرص الصلب' },
+                    { id: 'c', textEn: 'RAM', textAr: 'ذاكرة الوصول العشوائي' },
+                    { id: 'd', textEn: 'Flash Drive', textAr: 'محرك أقراص فلاش' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'A set of instructions that tells the computer what to do is called:',
+                questionAr: 'مجموعة من التعليمات التي تخبر الكمبيوتر بما يجب فعله تسمى:',
+                options: [
+                    { id: 'a', textEn: 'Hardware', textAr: 'الأجهزة' },
+                    { id: 'b', textEn: 'Software', textAr: 'البرمجيات' },
+                    { id: 'c', textEn: 'Input device', textAr: 'جهاز إدخال' },
+                    { id: 'd', textEn: 'Output device', textAr: 'جهاز إخراج' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'Which of the following is an input device?',
+                questionAr: 'أي مما يلي يعتبر جهاز إدخال؟',
+                options: [
+                    { id: 'a', textEn: 'Printer', textAr: 'طابعة' },
+                    { id: 'b', textEn: 'Speakers', textAr: 'سماعات' },
+                    { id: 'c', textEn: 'Scanner', textAr: 'ماسح ضوئي' },
+                    { id: 'd', textEn: 'Monitor', textAr: 'شاشة' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'What does URL stand for?',
+                questionAr: 'إلام يرمز اختصار URL؟',
+                options: [
+                    { id: 'a', textEn: 'Uniform Resource Locator', textAr: 'محدد موقع الموارد الموحد' },
+                    { id: 'b', textEn: 'Universal Radio Level', textAr: 'مستوى الراديو العالمي' },
+                    { id: 'c', textEn: 'User Response Link', textAr: 'رابط استجابة المستخدم' },
+                    { id: 'd', textEn: 'United Resource Line', textAr: 'خط الموارد المتحدة' }
+                ],
+                correctAnswer: 'a',
+                marks: 2.0
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionEn: 'Which of the following is an example of a web browser?',
+                questionAr: 'أي مما يلي يعتبر مثالاً على متصفح ويب؟',
+                options: [
+                    { id: 'a', textEn: 'Microsoft Word', textAr: 'مايكروسوفت وورد' },
+                    { id: 'b', textEn: 'Google Chrome', textAr: 'جوجل كروم' },
+                    { id: 'c', textEn: 'Adobe Photoshop', textAr: 'أدوبي فوتوشوب' },
+                    { id: 'd', textEn: 'Windows 10', textAr: 'ويندوز 10' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 8,
+                type: 'mcq',
+                questionEn: 'Small text files stored on your computer by websites to remember your preferences are called:',
+                questionAr: 'ملفات نصية صغيرة يتم تخزينها على جهاز الكمبيوتر الخاص بك بواسطة مواقع الويب لتذكر تفضيلاتك تسمى:',
+                options: [
+                    { id: 'a', textEn: 'Links', textAr: 'روابط' },
+                    { id: 'b', textEn: 'Bookmarks', textAr: 'إشارات مرجعية' },
+                    { id: 'c', textEn: 'Cookies', textAr: 'ملفات تعريف الارتباط' },
+                    { id: 'd', textEn: 'Downloads', textAr: 'تنزيلات' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionEn: 'What is the most secure way to protect your computer from unauthorized access?',
+                questionAr: 'ما هي الطريقة الأكثر أماناً لحماية جهاز الكمبيوتر الخاص بك من الوصول غير المصرح به؟',
+                options: [
+                    { id: 'a', textEn: 'Turn off the monitor', textAr: 'إيقاف تشغيل الشاشة' },
+                    { id: 'b', textEn: 'Use a strong password', textAr: 'استخدم كلمة مرور قوية' },
+                    { id: 'c', textEn: 'Delete all emails', textAr: 'حذف جميع رسائل البريد الإلكتروني' },
+                    { id: 'd', textEn: 'Install more RAM', textAr: 'تثبيت المزيد من ذاكرة الوصول العشوائي' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 10,
+                type: 'mcq',
+                questionEn: 'Which protocol is used to send emails?',
+                questionAr: 'أي بروتوكول يستخدم لإرسال رسائل البريد الإلكتروني؟',
+                options: [
+                    { id: 'a', textEn: 'HTTP', textAr: 'HTTP' },
+                    { id: 'b', textEn: 'FTP', textAr: 'FTP' },
+                    { id: 'c', textEn: 'SMTP', textAr: 'SMTP' },
+                    { id: 'd', textEn: 'IP', textAr: 'IP' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 11,
+                type: 'mcq',
+                questionEn: 'The physical parts of a computer are known as:',
+                questionAr: 'الأجزاء المادية للكمبيوتر تسمى:',
+                options: [
+                    { id: 'a', textEn: 'Software', textAr: 'البرمجيات' },
+                    { id: 'b', textEn: 'Data', textAr: 'البيانات' },
+                    { id: 'c', textEn: 'Hardware', textAr: 'الأجهزة' },
+                    { id: 'd', textEn: 'Firmware', textAr: 'البرامج الثابتة' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 12,
+                type: 'mcq',
+                questionEn: 'Converting data into a secret code to prevent unauthorized access is called:',
+                questionAr: 'يُطلق على تحويل البيانات إلى كود سري لمنع الوصول غير المصرح به اسم:',
+                options: [
+                    { id: 'a', textEn: 'Encryption', textAr: 'التشفير' },
+                    { id: 'b', textEn: 'Decryption', textAr: 'فك التشفير' },
+                    { id: 'c', textEn: 'Cracking', textAr: 'الكسر' },
+                    { id: 'd', textEn: 'Ethical Hacking', textAr: 'القرصنة الأخلاقية' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 13,
+                type: 'mcq',
+                questionEn: 'A program that secretly installs itself on computers and collects information about users without their knowledge:',
+                questionAr: 'برنامج يثبت نفسه سراً على أجهزة الكمبيوتر ويجمع معلومات عن المستخدمين دون علمهم:',
+                options: [
+                    { id: 'a', textEn: 'Virus', textAr: 'فيروس' },
+                    { id: 'b', textEn: 'Keystroke logging', textAr: 'تسجيل ضغطات المفاتيح' },
+                    { id: 'c', textEn: 'Spyware', textAr: 'برامج التجسس' },
+                    { id: 'd', textEn: 'Adware', textAr: 'برامج إعلانية' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            }
+        ]
+    },
+    digital_society_1: {
+        id: 'digital_society_1',
+        title: 'Digital Society - Part 1',
+        titleAr: 'مجتمع رقمي - الجزء 1',
+        icon: '🌐',
+        color: '#9C27B0',
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionAr: 'الذاكرة التي تخزن التعليمات والبيانات والتي يتم الوصول لها بشكل فعال من قبل المعالج هي ...؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'ذاكرة القراءة فقط' },
+                    { id: 'b', textAr: 'ذاكرة التخزين الموقتة' },
+                    { id: 'c', textAr: 'الرقاقات الاكترونية' },
+                    { id: 'd', textAr: 'ذاكرة الوصول العشوائي' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionAr: '........... تعتبر من وسائل الادخال والاخراج معنا ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'الماوس' },
+                    { id: 'b', textAr: 'السماعات' },
+                    { id: 'c', textAr: 'لوحة المفاتيح' },
+                    { id: 'd', textAr: 'شاشة اللمس' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionAr: 'إحدى التالي لا تعتبر من أنظمة التشغيل ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'Mac OS' },
+                    { id: 'b', textAr: 'Microsoft Power Pointst' },
+                    { id: 'c', textAr: 'Windows' },
+                    { id: 'd', textAr: 'Linux' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionAr: 'وحدة المعالجات الرسومية هي ........؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'RAM' },
+                    { id: 'b', textAr: 'CPU' },
+                    { id: 'c', textAr: 'GPU' },
+                    { id: 'd', textAr: 'ROM' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionAr: 'تصل المعالج بالعديد من الاجزاء الداخلية لجهاز الحاسوب .........؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'وحدة المعالجة المركزية' },
+                    { id: 'b', textAr: 'الناقلات' },
+                    { id: 'c', textAr: 'ذاكرة الوصول العشوائي' },
+                    { id: 'd', textAr: 'برمجيات النظام' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionAr: 'من وظائف نظام التشغيل ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'طباعة المستندات والتقارير' },
+                    { id: 'b', textAr: 'تصميم العروض التقديمية' },
+                    { id: 'c', textAr: 'إدارة وتخصيص مصادر الحاسوب' },
+                    { id: 'd', textAr: 'تصميم الجداول الاكترونية' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionAr: 'CPU is ........................?',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'Central Performance Unit' },
+                    { id: 'b', textAr: 'Central Programming Unit' },
+                    { id: 'c', textAr: 'Central Processing Unit' },
+                    { id: 'd', textAr: 'Graphical Processing Unit' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            }
+        ]
+    },
+    digital_society_2: {
+        id: 'digital_society_2',
+        title: 'Digital Society - Part 2',
+        titleAr: 'مجتمع رقمي - الجزء 2',
+        icon: '🌐',
+        color: '#9C27B0',
+        questions: [
+            {
+                id: 8,
+                type: 'mcq',
+                questionAr: 'لقد كنا نعيش في نهاية قرن .......... ، في ما يسمى بالمجتمع الصناعي ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'التسعينات' },
+                    { id: 'b', textAr: 'العشرينات' },
+                    { id: 'c', textAr: 'السبعينات' },
+                    { id: 'd', textAr: 'الثمنيات' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionAr: 'مجموعه من مسميات للمجتمع المعلومات الرقمية جميع ما ذكر صحيح ما عاد ..؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'المجتمع ما بعد الصناعي' },
+                    { id: 'b', textAr: 'المجتمع التكنوقراطي' },
+                    { id: 'c', textAr: 'المجتمع البرمج' },
+                    { id: 'd', textAr: 'الحضارة الاكترونية ما بعد الابجدية' },
+                    { id: 'e', textAr: 'الموجة الحديث' }
+                ],
+                correctAnswer: 'e',
+                marks: 2.0
+            },
+            {
+                id: 10,
+                type: 'mcq',
+                questionAr: 'المجتمع الصناعي الحالي هوا انتاج الثروة الصناعية التي ظهرت في قرن ........؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'الثامن عشر' },
+                    { id: 'b', textAr: 'الحادي عشر' },
+                    { id: 'c', textAr: 'التاسع عشر' },
+                    { id: 'd', textAr: 'الرابع عشر' }
+                ],
+                correctAnswer: 'a',
+                marks: 2.0
+            },
+            {
+                id: 11,
+                type: 'tf',
+                questionAr: 'مجتمع الحداثة هوا التعبير الفكري والثقافي عن روح هذا المجتمع والقوى الفاعلة فيه ؟',
+                questionEn: '',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 12,
+                type: 'mcq',
+                questionAr: 'المجتمع الحداثة مجتمع يقوم على ..........؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'الابتكار والمعرفة' },
+                    { id: 'b', textAr: 'الصناعة والفن' },
+                    { id: 'c', textAr: 'الابداع والبراعة' },
+                    { id: 'd', textAr: 'العلم والمعرفة والعقلانية' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 13,
+                type: 'tf',
+                questionAr: 'المجتمع المعلومات هوا مبحثا فكريا شائعا وهاما متفاعلا بذاته ؟',
+                questionEn: '',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 14,
+                type: 'tf',
+                questionAr: 'بظهور مجتمع المعلومات ظهرات عدة مفاهيم مرافقة ومنها المجتمع المعرفة ؟',
+                questionEn: '',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 15,
+                type: 'mcq',
+                questionAr: 'بظهور مجتمع المعلومات ظهرات عدة مفاهيم مرافقة ومنها',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'الاكتروني' },
+                    { id: 'b', textAr: 'المجتمع الرقمي' },
+                    { id: 'c', textAr: 'الاتصالات' },
+                    { id: 'd', textAr: 'جيمع ما ذكر' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 16,
+                type: 'mcq',
+                questionAr: 'من هوا العالم الذي قسم الحضارات الانسانية الى ثلاث مراحل وكما يسميها بالموجات ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'الان تورين' },
+                    { id: 'b', textAr: 'مانويل كاستلز' },
+                    { id: 'c', textAr: 'الفن توفلر' },
+                    { id: 'd', textAr: 'فريدريك وينسلو تايلور' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 17,
+                type: 'tf',
+                questionAr: 'الحضارات الانسانية انقسمت الى ثلاث حضارات حضاره الاولى كانت الثروة الصناعية ؟',
+                questionEn: '',
+                correctAnswer: false,
+                marks: 2.0
+            },
+            {
+                id: 18,
+                type: 'mcq',
+                questionAr: 'المرحلة الثانية من الحضارة الانسانية وقعت بي قرن ..........؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'القرن الاول' },
+                    { id: 'b', textAr: 'قبل قرنين' },
+                    { id: 'c', textAr: 'قبل ثلاثة قرون' },
+                    { id: 'd', textAr: 'قبل ثلاثين قرن' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 19,
+                type: 'tf',
+                questionAr: 'الموجة الثانية من الحضارة الانسانية كانت بداية الثورة الصناعية ؟',
+                questionEn: '',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 20,
+                type: 'tf',
+                questionAr: 'من اهم ما يمز مرحلة العصر الزراعي على انها الاعتماد على الارض والخيرات الطبيعية كمورد اساسي؟',
+                questionEn: '',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 21,
+                type: 'mcq',
+                questionAr: 'الهدف من الثروة الصناعية هوا ........؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'حصول على كفاءة العمل' },
+                    { id: 'b', textAr: 'حصول على كفاءة في مستقبل' },
+                    { id: 'c', textAr: 'الوصول الى كفاءة الآلة' },
+                    { id: 'd', textAr: 'الوصول الى ثروة حديثة' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 22,
+                type: 'mcq',
+                questionAr: 'من هوا اول من طبق المعرفة في دراسة وتحليل هندسة العمل ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'مانويل كاستلز' },
+                    { id: 'b', textAr: 'الفن توفلر' },
+                    { id: 'c', textAr: 'تورين' },
+                    { id: 'd', textAr: 'فريدريك ونسلو' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 23,
+                type: 'mcq',
+                questionAr: 'تعتبر مرحلة العصر المعلومات احدث ما عاشة الإنسان من تطور وكانت بداياته ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'القرن العشرين' },
+                    { id: 'b', textAr: 'النصف الاول من قرن العشرين' },
+                    { id: 'c', textAr: 'النصف الثاني من قرن الشرين' },
+                    { id: 'd', textAr: 'قبل قرن العشرين' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 24,
+                type: 'mcq',
+                questionAr: 'في المرحلة لمن تنشأ فجأة ، بل كانت موجودة طول تاريخ البشرية ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'مرحلة الاولى' },
+                    { id: 'b', textAr: 'مرحلة الثانية' },
+                    { id: 'c', textAr: 'مرحلة الثالثة' },
+                    { id: 'd', textAr: 'مرحلة الرابعة' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 25,
+                type: 'tf',
+                questionAr: 'العمل الذهني من موارد الاساسية لمجتمع المعلوماتي ؟',
+                questionEn: '',
+                correctAnswer: true,
+                marks: 2.0
+            }
+        ]
+    },
+    digital_society_3: {
+        id: 'digital_society_3',
+        title: 'Digital Society - Part 3',
+        titleAr: 'مجتمع رقمي - الجزء 3',
+        icon: '🌐',
+        color: '#9C27B0',
+        questions: [
+            {
+                id: 26,
+                type: 'mcq',
+                questionAr: 'في الثروة الثانية من مراحل تطور التكنولوجيا معلومات التي تميزت باختراع أقدم طريقة للكتابة في العالم وهيا طريقة:',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'العضويه' },
+                    { id: 'b', textAr: 'العصرية' },
+                    { id: 'c', textAr: 'السومرية' },
+                    { id: 'd', textAr: 'الاحديثه' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 27,
+                type: 'mcq',
+                questionAr: 'الثروة الثالث من مراحل تطور التكنولوجيا معلومات كانت بظهور الطباعة في منتصف القرن .....؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'الحادي والعشرين' },
+                    { id: 'b', textAr: 'الحادي عشر' },
+                    { id: 'c', textAr: 'الرابعه عشر' },
+                    { id: 'd', textAr: 'الخامسه عشر' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 28,
+                type: 'tf',
+                questionAr: 'يقال اتفق معظم المؤرخين على أن " يوحنا جوتنبرج " هوا اول من فكر في اختراع الطباعة بالحروف المعدنية المنفصلة ؟',
+                questionEn: '',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 29,
+                type: 'tf',
+                questionAr: 'في عام 1876 اخترع الهاتف لنقل الاصوات إلى مسافات بعيدة المدى ؟',
+                questionEn: '',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 30,
+                type: 'mcq',
+                questionAr: 'في اي ثروة من مراحل تطور التكنولوجيا معلومات تمثلت في استخدام الاقمار الصناعية لنقل المعلومات والبيانات والصور عبر الدول والقارات',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'الثروة الاولى' },
+                    { id: 'b', textAr: 'الثروة الثانية' },
+                    { id: 'c', textAr: 'الثروة الثالثة' },
+                    { id: 'd', textAr: 'الثروة الرابعه' },
+                    { id: 'e', textAr: 'الثروة الخامسه' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 31,
+                type: 'mcq',
+                questionAr: 'يعرف البروتوكول الانترنت بي ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'TOP/IP' },
+                    { id: 'b', textAr: 'TCP/ID' },
+                    { id: 'c', textAr: 'TCP/It' },
+                    { id: 'd', textAr: 'TCP/IP' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 32,
+                type: 'tf',
+                questionAr: 'تبين في نطاق الخصائص الانترنت نطاقه محلي وعالمي ومن محلي Local',
+                questionEn: '',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 33,
+                type: 'tf',
+                questionAr: 'منع احتكار المعلومات من مميزات الانترنت ؟',
+                questionEn: '',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 34,
+                type: 'mcq',
+                questionAr: 'معرف الموارد الموحد هوا ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'TCP' },
+                    { id: 'b', textAr: 'URI' },
+                    { id: 'c', textAr: 'IT' },
+                    { id: 'd', textAr: 'UDP' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 35,
+                type: 'mcq',
+                questionAr: 'مزود خدمة الانترنت او موفر خدمة الاتصال بالانترنت ؟',
+                questionEn: '',
+                options: [
+                    { id: 'a', textAr: 'ISP' },
+                    { id: 'b', textAr: 'TCP' },
+                    { id: 'c', textAr: 'TCP/IP' },
+                    { id: 'd', textAr: 'UDP' }
+                ],
+                correctAnswer: 'a',
+                marks: 2.0
+            }
+        ]
+    },
+    vr_biz_1: {
+        id: 'vr_biz_1',
+        title: 'Business VR - Part 1',
+        titleAr: 'مبادئ الأعمال (VR) - الجزء 1',
+        icon: '💼',
+        color: '#607D8B',
+        forceEnglish: true,
+        questions: [
+            { id: 1, type: 'mcq', questionEn: 'What is the primary function of planning in management?', questionAr: '', options: [{ id: 'a', textEn: 'Organizing resources' }, { id: 'b', textEn: 'Making decisions' }, { id: 'c', textEn: 'Setting objectives' }, { id: 'd', textEn: 'Monitoring performance' }], correctAnswer: 'c', marks: 1 },
+            { id: 2, type: 'mcq', questionEn: 'Which of the following is considered an element of administrative organization?', questionAr: '', options: [{ id: 'a', textEn: 'Strategic planning' }, { id: 'b', textEn: 'Defining roles' }, { id: 'c', textEn: 'Creating budgets' }, { id: 'd', textEn: 'Decision-making' }], correctAnswer: 'b', marks: 1 },
+            { id: 3, type: 'mcq', questionEn: 'What is the main objective of the recruitment process?', questionAr: '', options: [{ id: 'a', textEn: 'Improving social relations' }, { id: 'b', textEn: 'Achieving efficiency and effectiveness' }, { id: 'c', textEn: 'Reducing costs' }, { id: 'd', textEn: 'Developing new plans' }], correctAnswer: 'b', marks: 1 },
+            { id: 4, type: 'mcq', questionEn: 'Which of these tasks is part of administrative control?', questionAr: '', options: [{ id: 'a', textEn: 'Preparing plans' }, { id: 'b', textEn: 'Evaluating performance' }, { id: 'c', textEn: 'Distributing tasks' }, { id: 'd', textEn: 'Training employees' }], correctAnswer: 'b', marks: 1 },
+            { id: 5, type: 'mcq', questionEn: 'What is the first step in the decision-making process?', questionAr: '', options: [{ id: 'a', textEn: 'Gathering information' }, { id: 'b', textEn: 'Developing alternatives' }, { id: 'c', textEn: 'Identifying the problem' }, { id: 'd', textEn: 'Implementing the decision' }], correctAnswer: 'c', marks: 1 },
+            { id: 6, type: 'mcq', questionEn: 'Who is responsible for implementing the overall objectives in an organization?', questionAr: '', options: [{ id: 'a', textEn: 'Top management' }, { id: 'b', textEn: 'Middle management' }, { id: 'c', textEn: 'Lower management' }, { id: 'd', textEn: 'Employees' }], correctAnswer: 'b', marks: 1 },
+            { id: 7, type: 'mcq', questionEn: 'What is the difference between a leader and a manager in terms of leadership?', questionAr: '', options: [{ id: 'a', textEn: 'A leader focuses on productivity, and a manager focuses on relationships' }, { id: 'b', textEn: 'A leader inspires, while a manager focuses on performance' }, { id: 'c', textEn: 'A leader does not make decisions, while a manager does' }, { id: 'd', textEn: 'A leader works alone, while a manager works in a team' }], correctAnswer: 'b', marks: 1 },
+            { id: 8, type: 'mcq', questionEn: 'Which of the following is considered a leadership skill?', questionAr: '', options: [{ id: 'a', textEn: 'Technical skills only' }, { id: 'b', textEn: 'Intellectual skills only' }, { id: 'c', textEn: 'Human skills only' }, { id: 'd', textEn: 'All of the above' }], correctAnswer: 'd', marks: 1 },
+            { id: 9, type: 'mcq', questionEn: 'What is the primary objective of public administration?', questionAr: '', options: [{ id: 'a', textEn: 'Achieving profit' }, { id: 'b', textEn: 'Providing services to the community' }, { id: 'c', textEn: 'Managing business operations' }, { id: 'd', textEn: 'Increasing revenues' }], correctAnswer: 'b', marks: 1 },
+            { id: 10, type: 'mcq', questionEn: 'Which of the following factors affects the decision-making process?', questionAr: '', options: [{ id: 'a', textEn: 'Previous experiences' }, { id: 'b', textEn: 'Available information' }, { id: 'c', textEn: 'External pressures' }, { id: 'd', textEn: 'All of the above' }], correctAnswer: 'd', marks: 1 },
+            { id: 11, type: 'mcq', questionEn: 'What is the purpose of budgeting in management?', questionAr: '', options: [{ id: 'a', textEn: 'To monitor performance' }, { id: 'b', textEn: 'To manage financial resources' }, { id: 'c', textEn: 'To evaluate employee performance' }, { id: 'd', textEn: 'To organize tasks' }], correctAnswer: 'b', marks: 1 },
+            { id: 12, type: 'mcq', questionEn: 'Which level of management is responsible for strategic planning?', questionAr: '', options: [{ id: 'a', textEn: 'Top management' }, { id: 'b', textEn: 'Middle management' }, { id: 'c', textEn: 'Lower management' }, { id: 'd', textEn: 'All levels' }], correctAnswer: 'a', marks: 1 },
+            { id: 13, type: 'mcq', questionEn: 'What is a key characteristic of effective leadership?', questionAr: '', options: [{ id: 'a', textEn: 'Authoritarian approach' }, { id: 'b', textEn: 'Open communication' }, { id: 'c', textEn: 'Strict policies' }, { id: 'd', textEn: 'Isolation from staff' }], correctAnswer: 'b', marks: 1 },
+            { id: 14, type: 'mcq', questionEn: 'What is the main role of middle management?', questionAr: '', options: [{ id: 'a', textEn: 'Setting overall goals' }, { id: 'b', textEn: 'Implementing operational plans' }, { id: 'c', textEn: 'Supervising employees directly' }, { id: 'd', textEn: 'Creating company culture' }], correctAnswer: 'b', marks: 1 }
+        ]
+    },
+    vr_biz_2: {
+        id: 'vr_biz_2',
+        title: 'Business VR - Part 2',
+        titleAr: 'مبادئ الأعمال (VR) - الجزء 2',
+        icon: '💼',
+        color: '#607D8B',
+        forceEnglish: true,
+        questions: [
+            { id: 15, type: 'mcq', questionEn: 'What is an essential skill for a manager?', questionAr: '', options: [{ id: 'a', textEn: 'Technical skills metric' }, { id: 'b', textEn: 'Human skills' }, { id: 'c', textEn: 'Artistic skills' }, { id: 'd', textEn: 'None of the above' }], correctAnswer: 'b', marks: 1 },
+            { id: 16, type: 'mcq', questionEn: 'The process of monitoring and evaluating performance is known as:', questionAr: '', options: [{ id: 'a', textEn: 'Planning' }, { id: 'b', textEn: 'Organizing' }, { id: 'c', textEn: 'Controlling' }, { id: 'd', textEn: 'Staffing' }], correctAnswer: 'c', marks: 1 },
+            { id: 17, type: 'mcq', questionEn: 'What is the primary source of funding for public administration?', questionAr: '', options: [{ id: 'a', textEn: 'Private donations' }, { id: 'b', textEn: 'Taxes' }, { id: 'c', textEn: 'Loans' }, { id: 'd', textEn: 'Investments' }], correctAnswer: 'b', marks: 1 },
+            { id: 18, type: 'mcq', questionEn: 'Which of the following describes a decentralized organization?', questionAr: '', options: [{ id: 'a', textEn: 'All decisions are made at the top level' }, { id: 'b', textEn: 'Decision-making is distributed among various levels' }, { id: 'c', textEn: 'There is no authority hierarchy' }, { id: 'd', textEn: 'None of the above' }], correctAnswer: 'b', marks: 1 },
+            { id: 19, type: 'mcq', questionEn: 'What is the function of human resource management?', questionAr: '', options: [{ id: 'a', textEn: 'To manage financial assets' }, { id: 'b', textEn: 'To oversee employee development' }, { id: 'c', textEn: 'To create marketing strategies' }, { id: 'd', textEn: 'To manage physical resources' }], correctAnswer: 'b', marks: 1 },
+            { id: 20, type: 'mcq', questionEn: 'Which of the following is a characteristic of a good leader?', questionAr: '', options: [{ id: 'a', textEn: 'Inflexibility' }, { id: 'b', textEn: 'Empathy' }, { id: 'c', textEn: 'Lack of vision' }, { id: 'd', textEn: 'Resistance to change' }], correctAnswer: 'b', marks: 1 },
+            { id: 21, type: 'mcq', questionEn: 'What type of planning focuses on long-term goals?', questionAr: '', options: [{ id: 'a', textEn: 'Tactical planning' }, { id: 'b', textEn: 'Operational planning' }, { id: 'c', textEn: 'Strategic planning' }, { id: 'd', textEn: 'Contingency planning' }], correctAnswer: 'c', marks: 1 },
+            { id: 22, type: 'mcq', questionEn: 'Which management function involves assigning tasks to employees?', questionAr: '', options: [{ id: 'a', textEn: 'Planning' }, { id: 'b', textEn: 'Organizing' }, { id: 'c', textEn: 'Leading' }, { id: 'd', textEn: 'Controlling' }], correctAnswer: 'b', marks: 1 },
+            { id: 23, type: 'mcq', questionEn: 'What is the purpose of strategic management?', questionAr: '', options: [{ id: 'a', textEn: 'To ensure day-to-day operations run smoothly' }, { id: 'b', textEn: 'To align resources with the organization’s goals' }, { id: 'c', textEn: 'To evaluate employee performance' }, { id: 'd', textEn: 'To develop marketing plans' }], correctAnswer: 'b', marks: 1 },
+            { id: 24, type: 'mcq', questionEn: 'What is the primary goal of performance appraisal?', questionAr: '', options: [{ id: 'a', textEn: 'To promote employees' }, { id: 'b', textEn: 'To identify training needs' }, { id: 'c', textEn: 'To increase salaries' }, { id: 'd', textEn: 'To create competition among employees' }], correctAnswer: 'b', marks: 1 },
+            { id: 25, type: 'mcq', questionEn: 'Which of the following is NOT a function of management?', questionAr: '', options: [{ id: 'a', textEn: 'Planning' }, { id: 'b', textEn: 'Organizing' }, { id: 'c', textEn: 'Socializing' }, { id: 'd', textEn: 'Controlling' }], correctAnswer: 'c', marks: 1 },
+            { id: 26, type: 'mcq', questionEn: 'What is a common challenge in team management?', questionAr: '', options: [{ id: 'a', textEn: 'High morale' }, { id: 'b', textEn: 'Effective communication' }, { id: 'c', textEn: 'Clear objectives' }, { id: 'd', textEn: 'Shared responsibilities' }], correctAnswer: 'b', marks: 1 },
+            { id: 27, type: 'mcq', questionEn: 'What does effective delegation involve?', questionAr: '', options: [{ id: 'a', textEn: 'Assigning tasks without authority' }, { id: 'b', textEn: 'Sharing responsibility and authority' }, { id: 'c', textEn: 'Micromanaging every task' }, { id: 'd', textEn: 'Avoiding accountability' }], correctAnswer: 'b', marks: 1 },
+            { id: 28, type: 'mcq', questionEn: 'What is the primary purpose of a mission statement?', questionAr: '', options: [{ id: 'a', textEn: 'To outline financial goals' }, { id: 'b', textEn: 'To describe the organization’s purpose' }, { id: 'c', textEn: 'To set employee performance metrics' }, { id: 'd', textEn: 'To define marketing strategies' }], correctAnswer: 'b', marks: 1 }
+        ]
+    },
+    vr_biz_3: {
+        id: 'vr_biz_3',
+        title: 'Business VR - Part 3',
+        titleAr: 'مبادئ الأعمال (VR) - الجزء 3',
+        icon: '💼',
+        color: '#607D8B',
+        forceEnglish: true,
+        questions: [
+            { id: 29, type: 'mcq', questionEn: 'What is the role of an organizational chart?', questionAr: '', options: [{ id: 'a', textEn: 'To evaluate employee performance' }, { id: 'b', textEn: 'To illustrate the structure of an organization' }, { id: 'c', textEn: 'To create marketing plans' }, { id: 'd', textEn: 'To manage financial resources' }], correctAnswer: 'b', marks: 1 },
+            { id: 30, type: 'mcq', questionEn: 'Which of the following is a benefit of teamwork?', questionAr: '', options: [{ id: 'a', textEn: 'Increased competition' }, { id: 'b', textEn: 'Enhanced creativity' }, { id: 'c', textEn: 'Individual accountability' }, { id: 'd', textEn: 'Isolation of team members' }], correctAnswer: 'b', marks: 1 },
+            { id: 31, type: 'mcq', questionEn: 'What is the first step in the strategic management process?', questionAr: '', options: [{ id: 'a', textEn: 'Developing strategies' }, { id: 'b', textEn: 'Identifying the organization\'s mission' }, { id: 'c', textEn: 'Evaluating performance' }, { id: 'd', textEn: 'Allocating resources' }], correctAnswer: 'b', marks: 1 },
+            { id: 32, type: 'mcq', questionEn: 'What does SWOT analysis stand for?', questionAr: '', options: [{ id: 'a', textEn: 'Strengths, Weaknesses, Opportunities, Threats' }, { id: 'b', textEn: 'Strategies, Weaknesses, Objectives, Tactics' }, { id: 'c', textEn: 'Strengths, Wins, Objectives, Targets' }, { id: 'd', textEn: 'None of the above' }], correctAnswer: 'a', marks: 1 },
+            { id: 33, type: 'mcq', questionEn: 'Which style of leadership is characterized by a hands-off approach?', questionAr: '', options: [{ id: 'a', textEn: 'Autocratic' }, { id: 'b', textEn: 'Democratic' }, { id: 'c', textEn: 'Laissez-faire' }, { id: 'd', textEn: 'Transformational' }], correctAnswer: 'c', marks: 1 },
+            { id: 34, type: 'mcq', questionEn: 'What is the role of a facilitator in a team meeting?', questionAr: '', options: [{ id: 'a', textEn: 'To dominate the discussion' }, { id: 'b', textEn: 'To guide the process' }, { id: 'c', textEn: 'To evaluate team performance' }, { id: 'd', textEn: 'To make all decisions' }], correctAnswer: 'b', marks: 1 },
+            { id: 35, type: 'mcq', questionEn: 'What is a key advantage of a flat organizational structure?', questionAr: '', options: [{ id: 'a', textEn: 'Increased bureaucracy' }, { id: 'b', textEn: 'Faster decision-making' }, { id: 'c', textEn: 'More management layers' }, { id: 'd', textEn: 'Clearer communication' }], correctAnswer: 'b', marks: 1 },
+            { id: 36, type: 'mcq', questionEn: 'What is the purpose of a contingency plan?', questionAr: '', options: [{ id: 'a', textEn: 'To set long-term goals' }, { id: 'b', textEn: 'To address potential crises' }, { id: 'c', textEn: 'To define organizational structure' }, { id: 'd', textEn: 'To manage day-to-day operations' }], correctAnswer: 'b', marks: 1 },
+            { id: 37, type: 'mcq', questionEn: 'What is the main focus of operations management?', questionAr: '', options: [{ id: 'a', textEn: 'Financial planning' }, { id: 'b', textEn: 'Day-to-day operations' }, { id: 'c', textEn: 'Strategic planning' }, { id: 'd', textEn: 'Human resource management' }], correctAnswer: 'b', marks: 1 },
+            { id: 38, type: 'mcq', questionEn: 'Which of the following is a disadvantage of centralized decision-making?', questionAr: '', options: [{ id: 'a', textEn: 'Slower response time' }, { id: 'b', textEn: 'Clear authority' }, { id: 'c', textEn: 'Consistency in decisions' }, { id: 'd', textEn: 'Reduced risk of mistakes' }], correctAnswer: 'a', marks: 1 },
+            { id: 39, type: 'mcq', questionEn: 'What is the primary focus of marketing management?', questionAr: '', options: [{ id: 'a', textEn: 'Financial planning' }, { id: 'b', textEn: 'Promoting and selling products' }, { id: 'c', textEn: 'Managing human resources' }, { id: 'd', textEn: 'Overseeing operations' }], correctAnswer: 'b', marks: 1 },
+            { id: 40, type: 'mcq', questionEn: 'What is a common method for resolving team conflicts?', questionAr: '', options: [{ id: 'a', textEn: 'Avoiding the issue' }, { id: 'b', textEn: 'Open communication' }, { id: 'c', textEn: 'Punishing team members' }, { id: 'd', textEn: 'Ignoring complaints' }], correctAnswer: 'b', marks: 1 },
+            { id: 41, type: 'mcq', questionEn: 'What does the term "corporate culture" refer to?', questionAr: '', options: [{ id: 'a', textEn: 'The structure of the organization' }, { id: 'b', textEn: 'The shared values and beliefs within an organization' }, { id: 'c', textEn: 'The financial performance' }, { id: 'd', textEn: 'None of the above' }], correctAnswer: 'b', marks: 1 }
+        ]
+    },
+    psych_basics: {
+        id: 'psych_basics',
+        title: 'Principles of Psychology',
+        titleAr: 'مبادئ علم النفس',
+        icon: '🧠',
+        color: '#E91E63',
+        questions: [
+            {
+                id: 1,
+                type: 'tf',
+                questionAr: 'ان الفهم هو من اهداف علم النفس',
+                questionEn: 'Understanding is one of the goals of psychology',
+                correctAnswer: true,
+                marks: 1.0
+            },
+            {
+                id: 2,
+                type: 'tf',
+                questionAr: 'ركز فرويد على اللاشعور',
+                questionEn: 'Freud focused on the unconscious',
+                correctAnswer: true,
+                marks: 1.0
+            },
+            {
+                id: 3,
+                type: 'tf',
+                questionAr: 'ان العلم نشاط موضوعي',
+                questionEn: 'Science is an objective activity',
+                correctAnswer: true,
+                marks: 1.0
+            },
+            {
+                id: 4,
+                type: 'tf',
+                questionAr: 'ان النفس هي الروح',
+                questionEn: 'The soul is the spirit',
+                correctAnswer: true,
+                marks: 1.0
+            },
+            {
+                id: 5,
+                type: 'tf',
+                questionAr: 'لا يمكن فصل الجسم عن العقل',
+                questionEn: 'The body cannot be separated from the mind',
+                correctAnswer: true,
+                marks: 1.0
+            }
+        ]
+    },
+    applied_english_102: {
+        id: 'applied_english_102',
+        title: 'Applied English 102',
+        titleAr: 'اللغة الإنجليزية التطبيقية 102',
+        icon: '🇬🇧',
+        color: '#3F51B5',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'In case of disaster, everyone should-------------------------- what he or she can afford.',
+                options: [
+                    { id: 'a', textEn: 'criticize' },
+                    { id: 'b', textEn: 'contribute' },
+                    { id: 'c', textEn: 'quarrel' },
+                    { id: 'd', textEn: 'escalate' }
+                ],
+                correctAnswer: 'b',
+                marks: 1
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'My sister--------------------------the windows yesterday because the weather--------very cold.',
+                options: [
+                    { id: 'a', textEn: 'didn\'t opened / was' },
+                    { id: 'b', textEn: 'didn\'t open / was' },
+                    { id: 'c', textEn: 'didn\'t open / were' },
+                    { id: 'd', textEn: 'wasn\'t opening / was' }
+                ],
+                correctAnswer: 'b',
+                marks: 1
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'My mother is a teacher. She --------------------- English language at a primary school in Jordan.',
+                options: [
+                    { id: 'a', textEn: 'teachs' },
+                    { id: 'b', textEn: 'teaches' },
+                    { id: 'c', textEn: 'teach' },
+                    { id: 'd', textEn: 'taught' }
+                ],
+                correctAnswer: 'b',
+                marks: 1
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'While Salma and I -------------------------, we suddenly felt sleepy',
+                options: [
+                    { id: 'a', textEn: 'were studying' },
+                    { id: 'b', textEn: 'are studying' },
+                    { id: 'c', textEn: 'am studying' },
+                    { id: 'd', textEn: 'was studying' }
+                ],
+                correctAnswer: 'a',
+                marks: 1
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'The doctor told my sister easier to lose weight if she has fast ----------------------.',
+                options: [
+                    { id: 'a', textEn: 'metabolism' },
+                    { id: 'b', textEn: 'diabetes' },
+                    { id: 'c', textEn: 'self-esteem' },
+                    { id: 'd', textEn: 'disorder' }
+                ],
+                correctAnswer: 'a',
+                marks: 1
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'A student in the second year of a course at a college or university is an / a / .----------------------------',
+                options: [
+                    { id: 'a', textEn: 'freshman' },
+                    { id: 'b', textEn: 'junior' },
+                    { id: 'c', textEn: 'senior' },
+                    { id: 'd', textEn: 'sophomore' }
+                ],
+                correctAnswer: 'd',
+                marks: 1
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionEn: 'My friend visited many---------------------------but she still couldn’t stop eating junk.',
+                options: [
+                    { id: 'a', textEn: 'diseases' },
+                    { id: 'b', textEn: 'disorders' },
+                    { id: 'c', textEn: 'nutritionists' },
+                    { id: 'd', textEn: 'potentials' }
+                ],
+                correctAnswer: 'c',
+                marks: 1
+            },
+            {
+                id: 8,
+                type: 'mcq',
+                questionEn: 'The policeman ------------------my brother last night and ------------------his license.',
+                options: [
+                    { id: 'a', textEn: 'stopped / taked' },
+                    { id: 'b', textEn: 'stoped / took' },
+                    { id: 'c', textEn: 'stopped / took' },
+                    { id: 'd', textEn: 'stopped / take' }
+                ],
+                correctAnswer: 'c',
+                marks: 1
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionEn: 'My brother is a pilot . He ---------- usually ---------his plane on Fridays.',
+                options: [
+                    { id: 'a', textEn: 'doesn\'t / flies' },
+                    { id: 'b', textEn: 'don\'t / fly' },
+                    { id: 'c', textEn: 'doesn\'t / fly' }
+                ],
+                correctAnswer: 'c',
+                marks: 1
+            },
+            {
+                id: 10,
+                type: 'mcq',
+                questionEn: 'Did the new manager --------------------------French yesterday ? No, he .------------------------',
+                options: [
+                    { id: 'a', textEn: 'speak / didn\'t' },
+                    { id: 'b', textEn: 'speaking / isn\'t' },
+                    { id: 'c', textEn: 'spoke / didn\'t' },
+                    { id: 'd', textEn: 'speaks / doen\'t' }
+                ],
+                correctAnswer: 'a',
+                marks: 1
+            }
+        ]
+    },
+    comp_networks_1_p1: {
+        id: 'comp_networks_1_p1',
+        title: 'Computer Networks 1 - Part 1',
+        titleAr: 'شبكات الحاسوب ١ - الجزء الأول',
+        icon: '🌐',
+        color: '#2196F3',
+        forceEnglish: true,
+        questions: [
+            { id: 1, type: 'mcq', questionEn: 'What term is used to describe the Internet from a "nuts and bolts" perspective?', options: [{ id: 'a', textEn: 'A "network of networks"' }, { id: 'b', textEn: 'A protocol network' }, { id: 'c', textEn: 'A service provider network' }, { id: 'd', textEn: 'A single network' }], correctAnswer: 'a', marks: 1 },
+            { id: 2, type: 'mcq', questionEn: 'What type of communication link uses copper, fiber, radio, and satellite?', options: [{ id: 'a', textEn: 'Transport link' }, { id: 'b', textEn: 'Data link' }, { id: 'c', textEn: 'Network link' }, { id: 'd', textEn: 'Communication link' }], correctAnswer: 'd', marks: 1 },
+            { id: 3, type: 'mcq', questionEn: 'Which of the following is NOT a type of internet service provider (ISP)?', options: [{ id: 'a', textEn: 'National or global ISP' }, { id: 'b', textEn: 'Local or regional ISP' }, { id: 'c', textEn: 'Data center network' }, { id: 'd', textEn: 'Residential ISP' }], correctAnswer: 'c', marks: 1 },
+            { id: 4, type: 'mcq', questionEn: 'What is the role of packet switches in a network?', options: [{ id: 'a', textEn: 'To establish physical connections' }, { id: 'b', textEn: 'To forward packets of data' }, { id: 'c', textEn: 'To encode and decode data' }, { id: 'd', textEn: 'To manage user access' }], correctAnswer: 'b', marks: 1 },
+            { id: 5, type: 'mcq', questionEn: 'Which devices are considered to be at the network edge?', options: [{ id: 'a', textEn: 'Routers and switches' }, { id: 'b', textEn: 'Hosts (clients and servers)' }, { id: 'c', textEn: 'Protocol layers' }, { id: 'd', textEn: 'ISP backbones' }], correctAnswer: 'b', marks: 1 },
+            { id: 6, type: 'mcq', questionEn: 'What type of network device is used to connect different networks and forward packets?', options: [{ id: 'a', textEn: 'Router' }, { id: 'b', textEn: 'Modem' }, { id: 'c', textEn: 'Switch' }, { id: 'd', textEn: 'Access point' }], correctAnswer: 'a', marks: 1 },
+            { id: 7, type: 'mcq', questionEn: 'Which protocol is associated with web browsing?', options: [{ id: 'a', textEn: 'FTP' }, { id: 'b', textEn: 'SMTP' }, { id: 'c', textEn: 'HTTP' }, { id: 'd', textEn: 'DNS' }], correctAnswer: 'c', marks: 1 },
+            { id: 8, type: 'mcq', questionEn: 'What does TCP stand for?', options: [{ id: 'a', textEn: 'Transmission Control Protocol' }, { id: 'b', textEn: 'Transfer Control Protocol' }, { id: 'c', textEn: 'Transmit Control Protocol' }, { id: 'd', textEn: 'Terminal Control Protocol' }], correctAnswer: 'a', marks: 1 },
+            { id: 9, type: 'mcq', questionEn: 'What is the function of the Internet Engineering Task Force (IETF)?', options: [{ id: 'a', textEn: 'To create hardware for the internet' }, { id: 'b', textEn: 'To manage internet service providers' }, { id: 'c', textEn: 'To oversee data centers' }, { id: 'd', textEn: 'To develop and promote internet standards' }], correctAnswer: 'd', marks: 1 },
+            { id: 10, type: 'mcq', questionEn: 'Which of the following is NOT a type of physical media for network transmission?', options: [{ id: 'a', textEn: 'Twisted pair' }, { id: 'b', textEn: 'Coaxial cable' }, { id: 'c', textEn: 'Fiber optic cable' }, { id: 'd', textEn: 'Network adapter' }], correctAnswer: 'd', marks: 1 },
+            { id: 11, type: 'mcq', questionEn: 'What does DSL stand for?', options: [{ id: 'a', textEn: 'Digital subscriber line' }, { id: 'b', textEn: 'Digital Subscriber Line' }, { id: 'c', textEn: 'Direct Service Line' }, { id: 'd', textEn: 'Digital Signal Line' }], correctAnswer: 'a', marks: 1 },
+            { id: 12, type: 'mcq', questionEn: 'Which of these is an example of a wireless access network?', options: [{ id: 'a', textEn: 'Ethernet' }, { id: 'b', textEn: 'WiFi' }, { id: 'c', textEn: 'Coaxial cable' }, { id: 'd', textEn: 'Fiber optic' }], correctAnswer: 'b', marks: 1 },
+            { id: 13, type: 'mcq', questionEn: 'What is a key characteristic of circuit switching?', options: [{ id: 'a', textEn: 'Packet sharing' }, { id: 'b', textEn: 'Dedicated resources' }, { id: 'c', textEn: 'High error rate' }, { id: 'd', textEn: 'No need for connection setup' }], correctAnswer: 'b', marks: 1 },
+            { id: 14, type: 'mcq', questionEn: 'What is the primary advantage of packet switching over circuit switching?', options: [{ id: 'a', textEn: 'Higher reliability' }, { id: 'b', textEn: 'Better error correction' }, { id: 'c', textEn: 'More efficient resource use' }, { id: 'd', textEn: 'Simpler implementation' }], correctAnswer: 'c', marks: 1 },
+            { id: 15, type: 'mcq', questionEn: 'What is a packet in the context of networking?', options: [{ id: 'a', textEn: 'A fixed-length block of data' }, { id: 'b', textEn: 'A variable-length block of data' }, { id: 'c', textEn: 'A type of error-correcting code' }, { id: 'd', textEn: 'A protocol-specific message' }], correctAnswer: 'b', marks: 1 },
+            { id: 16, type: 'mcq', questionEn: 'What is a common characteristic of fiber optic cables?', options: [{ id: 'a', textEn: 'High-speed transmission' }, { id: 'b', textEn: 'High error rate' }, { id: 'c', textEn: 'Low cost' }, { id: 'd', textEn: 'Easy installation' }], correctAnswer: 'a', marks: 1 },
+            { id: 17, type: 'mcq', questionEn: 'What term describes the delay in data transmission?', options: [{ id: 'a', textEn: 'Latency' }, { id: 'b', textEn: 'Bandwidth' }, { id: 'c', textEn: 'Throughput' }, { id: 'd', textEn: 'Jitter' }], correctAnswer: 'a', marks: 1 },
+            { id: 18, type: 'mcq', questionEn: 'What is the primary function of a router in a network?', options: [{ id: 'a', textEn: 'To convert data formats' }, { id: 'b', textEn: 'To manage network security' }, { id: 'c', textEn: 'To route data packets between networks' }, { id: 'd', textEn: 'To store data' }], correctAnswer: 'c', marks: 1 },
+            { id: 19, type: 'mcq', questionEn: 'What does FDM stand for in networking?', options: [{ id: 'a', textEn: 'Frequency Division Multiplexing' }, { id: 'b', textEn: 'Frequency Data Modulation' }, { id: 'c', textEn: 'Frequency Division Method' }, { id: 'd', textEn: 'Frequency Data Management' }], correctAnswer: 'a', marks: 1 },
+            { id: 20, type: 'mcq', questionEn: 'In what context is TDM used?', options: [{ id: 'a', textEn: 'Packet switching' }, { id: 'b', textEn: 'Network addressing' }, { id: 'c', textEn: 'Data encryption' }, { id: 'd', textEn: 'Circuit switching' }], correctAnswer: 'd', marks: 1 },
+            { id: 21, type: 'mcq', questionEn: 'Which of the following is an example of a network core function?', options: [{ id: 'a', textEn: 'Data storage' }, { id: 'b', textEn: 'Forwarding packets' }, { id: 'c', textEn: 'User authentication' }, { id: 'd', textEn: 'Content delivery' }], correctAnswer: 'b', marks: 1 },
+            { id: 22, type: 'mcq', questionEn: 'What type of network connection is typically used within an enterprise?', options: [{ id: 'a', textEn: 'DSL' }, { id: 'b', textEn: 'Cable modem' }, { id: 'c', textEn: 'Ethernet' }, { id: 'd', textEn: 'Satellite' }], correctAnswer: 'c', marks: 1 }
+        ]
+    },
+    comp_networks_1_p2: {
+        id: 'comp_networks_1_p2',
+        title: 'Computer Networks 1 - Part 2',
+        titleAr: 'شبكات الحاسوب ١ - الجزء الثاني',
+        icon: '🌐',
+        color: '#4CAF50',
+        forceEnglish: true,
+        questions: [
+            { id: 1, type: 'mcq', questionEn: 'Why is layering important in designing complex systems?', options: [{ id: 'a', textEn: 'It allows for identification and relationship of system\'s pieces' }, { id: 'b', textEn: 'It makes the system more confusing' }, { id: 'c', textEn: 'It doesn\'t affect the system at all' }, { id: 'd', textEn: 'It is unnecessary' }], correctAnswer: 'a', marks: 1 },
+            { id: 2, type: 'mcq', questionEn: 'What is the benefit of modularization in a layered system?', options: [{ id: 'a', textEn: 'It makes maintenance easier' }, { id: 'b', textEn: 'It makes maintenance harder' }, { id: 'c', textEn: 'It doesn\'t affect maintenance' }, { id: 'd', textEn: 'It is unnecessary' }], correctAnswer: 'a', marks: 1 },
+            { id: 3, type: 'mcq', questionEn: 'How does a change in a layer\'s service implementation affect the rest of the system?', options: [{ id: 'a', textEn: 'It is transparent to the rest of the system' }, { id: 'b', textEn: 'It breaks the system' }, { id: 'c', textEn: 'It improves the system' }, { id: 'd', textEn: 'It doesn\'t affect the system' }], correctAnswer: 'a', marks: 1 },
+            { id: 4, type: 'mcq', questionEn: 'Which layer of the Internet protocol stack is responsible for supporting network applications?', options: [{ id: 'a', textEn: 'Application' }, { id: 'b', textEn: 'Transport' }, { id: 'c', textEn: 'Network' }, { id: 'd', textEn: 'Link' }], correctAnswer: 'a', marks: 1 },
+            { id: 5, type: 'mcq', questionEn: 'Which layer of the Internet protocol stack is responsible for routing datagrams?', options: [{ id: 'a', textEn: 'Application' }, { id: 'b', textEn: 'Transport' }, { id: 'c', textEn: 'Network' }, { id: 'd', textEn: 'Link' }], correctAnswer: 'c', marks: 1 },
+            { id: 6, type: 'mcq', questionEn: 'What is encapsulation in the context of layering and services?', options: [{ id: 'a', textEn: 'It involves encapsulating messages with headers' }, { id: 'b', textEn: 'It involves breaking down messages into smaller parts' }, { id: 'c', textEn: 'It involves encrypting messages' }, { id: 'd', textEn: 'It is not relevant to layering' }], correctAnswer: 'a', marks: 1 },
+            { id: 7, type: 'mcq', questionEn: 'What analogy is used to explain encapsulation?', options: [{ id: 'a', textEn: 'Stacking dolls' }, { id: 'b', textEn: 'Jigsaw puzzles' }, { id: 'c', textEn: 'Building blocks' }, { id: 'd', textEn: 'None of the above' }], correctAnswer: 'a', marks: 1 },
+            { id: 8, type: 'mcq', questionEn: 'How does a network-layer protocol transfer a transport-layer segment?', options: [{ id: 'a', textEn: 'By encapsulating it with a network-layer header' }, { id: 'b', textEn: 'By breaking it down into smaller parts' }, { id: 'c', textEn: 'By encrypting it' }, { id: 'd', textEn: 'By compressing it' }], correctAnswer: 'a', marks: 1 },
+            { id: 9, type: 'mcq', questionEn: 'What is the purpose of a link-layer frame?', options: [{ id: 'a', textEn: 'To transfer datagrams between neighboring hosts' }, { id: 'b', textEn: 'To encrypt data' }, { id: 'c', textEn: 'To compress data' }, { id: 'd', textEn: 'To break down data into smaller parts' }], correctAnswer: 'a', marks: 1 },
+            { id: 10, type: 'mcq', questionEn: 'How does a link-layer protocol encapsulate a network datagram?', options: [{ id: 'a', textEn: 'With a link-layer header' }, { id: 'b', textEn: 'With a network-layer header' }, { id: 'c', textEn: 'With a transport-layer header' }, { id: 'd', textEn: 'With an application-layer header' }], correctAnswer: 'a', marks: 1 }
+        ]
+    },
+    os_mid: {
+        id: 'os_mid',
+        title: 'Operating Systems - Mid Exam',
+        titleAr: 'نظم التشغيل - مادة الميد',
+        icon: '⚙️',
+        color: '#FF5722',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'What is the core component of an OS that manages processes and memory?',
+                options: [
+                    { id: 'a', textEn: 'User Interface (GUI)' },
+                    { id: 'b', textEn: 'Kernel' },
+                    { id: 'c', textEn: 'File System' },
+                    { id: 'd', textEn: 'Compiler' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'Which of the following is NOT a standard process state?',
+                options: [
+                    { id: 'a', textEn: 'Ready' },
+                    { id: 'b', textEn: 'Running' },
+                    { id: 'c', textEn: 'Deleted' },
+                    { id: 'd', textEn: 'Waiting' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'The process of switching the CPU from one process to another is called:',
+                options: [
+                    { id: 'a', textEn: 'Process Scheduling' },
+                    { id: 'b', textEn: 'Context Switching' },
+                    { id: 'c', textEn: 'Multitasking' },
+                    { id: 'd', textEn: 'Threading' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'The scheduling algorithm that serves the process that arrives first is:',
+                options: [
+                    { id: 'a', textEn: 'SJF' },
+                    { id: 'b', textEn: 'Round Robin' },
+                    { id: 'c', textEn: 'FCFS' },
+                    { id: 'd', textEn: 'Priority Scheduling' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'What is "Starvation" in process scheduling?',
+                options: [
+                    { id: 'a', textEn: 'Process stopping work' },
+                    { id: 'b', textEn: 'Low priority process never getting CPU' },
+                    { id: 'c', textEn: 'Lack of RAM' },
+                    { id: 'd', textEn: 'Slow CPU speed' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'A small program that loads the OS during startup is called:',
+                options: [
+                    { id: 'a', textEn: 'BIOS' },
+                    { id: 'b', textEn: 'Bootstrap Loader' },
+                    { id: 'c', textEn: 'Safe Mode' },
+                    { id: 'd', textEn: 'Terminal' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionEn: 'Which of the following is an open-source OS?',
+                options: [
+                    { id: 'a', textEn: 'Windows' },
+                    { id: 'b', textEn: 'Linux' },
+                    { id: 'c', textEn: 'macOS' },
+                    { id: 'd', textEn: 'iOS' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            }
+        ]
+    },
+    os_final: {
+        id: 'os_final',
+        title: 'Operating Systems - Final Exam',
+        titleAr: 'نظم التشغيل - مادة الفاينل',
+        icon: '⚙️',
+        color: '#FF5722',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'In compare_and_swap(value, expected, new_value), the update occurs only if:',
+                options: [
+                    { id: 'a', textEn: 'expected == new_value' },
+                    { id: 'b', textEn: '*value == new_value' },
+                    { id: 'c', textEn: 'value is zero' },
+                    { id: 'd', textEn: '*value == expected' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'Mutex locks rely on:',
+                options: [
+                    { id: 'a', textEn: 'Preemptive scheduling' },
+                    { id: 'b', textEn: 'Signals' },
+                    { id: 'c', textEn: 'Atomic hardware instructions' },
+                    { id: 'd', textEn: 'Shared memory' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'What is the danger of calling wait(mutex) twice without a signal()?',
+                options: [
+                    { id: 'a', textEn: 'Deadlock' },
+                    { id: 'b', textEn: 'Race condition' },
+                    { id: 'c', textEn: 'Progress violation' },
+                    { id: 'd', textEn: 'Infinite loop' }
+                ],
+                correctAnswer: 'a',
+                marks: 2.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'In a monitor, the synchronization between threads is achieved using:',
+                options: [
+                    { id: 'a', textEn: 'External variables' },
+                    { id: 'b', textEn: 'Internal condition variables' },
+                    { id: 'c', textEn: 'Shared global variables' },
+                    { id: 'd', textEn: 'Busy waiting' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'What happens in a bounded-waiting implementation using compare-and-swap if all processes are waiting?',
+                options: [
+                    { id: 'a', textEn: 'One enters at random' },
+                    { id: 'b', textEn: 'The next eligible process is selected in order' },
+                    { id: 'c', textEn: 'All processes enter together' },
+                    { id: 'd', textEn: 'Deadlock occurs' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'For a Resource Allocation Graph with cycles: R1→T1→R2→T2→R1 and R3→T2→R2→T3→R3. How many cycles cause the deadlock?',
+                options: [
+                    { id: 'a', textEn: '3' },
+                    { id: 'b', textEn: '4' },
+                    { id: 'c', textEn: '2' },
+                    { id: 'd', textEn: '1' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionEn: 'System has 5 threads (T0-T4) and resources A(10), B(5), C(7). Allocation: T0(0,1,0), T1(2,0,0), T2(3,0,2), T3(2,1,1), T4(0,0,2). What are the Available resources?',
+                options: [
+                    { id: 'a', textEn: '(3, 4, 2)' },
+                    { id: 'b', textEn: '(4, 3, 2)' },
+                    { id: 'c', textEn: '(3, 3, 3)' },
+                    { id: 'd', textEn: '(3, 3, 2)' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 8,
+                type: 'mcq',
+                questionEn: 'Based on the previous data (Max for T4: 4,3,3 and Alloc for T4: 0,0,2), what is the "Need" matrix for process T4?',
+                options: [
+                    { id: 'a', textEn: '(4, 3, 1)' },
+                    { id: 'b', textEn: '(0, 0, 2)' },
+                    { id: 'c', textEn: '(3, 3, 2)' },
+                    { id: 'd', textEn: '(4, 2, 1)' }
+                ],
+                correctAnswer: 'a',
+                marks: 2.0
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionEn: 'Assume Available is (0, 2, 2). Which process can safely execute immediately if Needs are: T0(7,4,3), T1(1,2,2), T2(6,0,0), T3(0,1,1), T4(4,3,1)?',
+                options: [
+                    { id: 'a', textEn: 'T0 only' },
+                    { id: 'b', textEn: 'T3 only' },
+                    { id: 'c', textEn: 'T2 only' },
+                    { id: 'd', textEn: 'T4 only' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 10,
+                type: 'mcq',
+                questionEn: 'If process T1 requests (1, 0, 2) when Available is (3, 3, 2) and its Need is (1, 2, 2), should the system grant it immediately?',
+                options: [
+                    { id: 'a', textEn: 'Yes, the system remains in a safe state' },
+                    { id: 'b', textEn: 'No, it will cause deadlock' },
+                    { id: 'c', textEn: 'Cannot determine without Max values' },
+                    { id: 'd', textEn: 'It will block the system indefinitely' }
+                ],
+                correctAnswer: 'a',
+                marks: 2.0
+            },
+            {
+                id: 11,
+                type: 'mcq',
+                questionEn: 'Which of the following is a possible safe sequence of execution for the given system?',
+                options: [
+                    { id: 'a', textEn: 'T3 -> T1 -> T4 -> T0 -> T2' },
+                    { id: 'b', textEn: 'T2 -> T0 -> T1 -> T4 -> T3' },
+                    { id: 'c', textEn: 'T4 -> T3 -> T2 -> T1 -> T0' },
+                    { id: 'd', textEn: 'T1 -> T2 -> T4 -> T3 -> T0' }
+                ],
+                correctAnswer: 'a',
+                marks: 2.0
+            },
+            {
+                id: 12,
+                type: 'mcq',
+                questionEn: 'If process T2 requests (4,0,1) but its Need for resource C is only 0, should it be granted immediately?',
+                options: [
+                    { id: 'a', textEn: 'Yes, because available is enough' },
+                    { id: 'b', textEn: 'No, because the system enters an unsafe state' },
+                    { id: 'c', textEn: 'Yes, because total resource is sufficient' },
+                    { id: 'd', textEn: 'No, because the request is more than the need' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 13,
+                type: 'mcq',
+                questionEn: 'Deadlock Detection: System has Available(0,0,0). Allocations: T0(0,1,0), T1(2,0,0), T3(2,1,1). Requests: T0(0,0,0), T1(2,0,2), T2(0,0,0), T3(1,0,0). Which processes can complete immediately?',
+                options: [
+                    { id: 'a', textEn: 'T1 only' },
+                    { id: 'b', textEn: 'T0 and T2 only' },
+                    { id: 'c', textEn: 'T3 and T4 only' },
+                    { id: 'd', textEn: 'All processes' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 14,
+                type: 'mcq',
+                questionEn: 'After T0 and T2 (with Allocations 0,1,0 and 3,0,3) complete, what will be the new Available resources if starting from (0,0,0)?',
+                options: [
+                    { id: 'a', textEn: '(5, 1, 3)' },
+                    { id: 'b', textEn: '(3, 1, 3)' },
+                    { id: 'c', textEn: '(6, 1, 3)' },
+                    { id: 'd', textEn: '(7, 2, 6)' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 15,
+                type: 'mcq',
+                questionEn: 'With updated Available = (2,0,3), and Requests T1(2,0,2), T3(1,0,0), T4(0,0,2), which process can now complete?',
+                options: [
+                    { id: 'a', textEn: 'T1 only' },
+                    { id: 'b', textEn: 'T3 only' },
+                    { id: 'c', textEn: 'T4 only' },
+                    { id: 'd', textEn: 'All processes can run now' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 16,
+                type: 'mcq',
+                questionEn: 'A system has Available(3,1,3). T1 requests (5,0,2), while T3 and T4 can complete using current resources. What should the system do?',
+                options: [
+                    { id: 'a', textEn: 'Grant T1\'s request immediately' },
+                    { id: 'b', textEn: 'Deny T1\'s request and allow T3 and T4 to complete' },
+                    { id: 'c', textEn: 'Terminate T1 to free its resources' },
+                    { id: 'd', textEn: 'Block all processes until T1\'s request is fulfilled' }
+                ],
+                correctAnswer: 'b',
+                marks: 2.0
+            },
+            {
+                id: 17,
+                type: 'mcq',
+                questionEn: 'Which of the following correctly represents the behavior of a test_and_set function?',
+                options: [
+                    { id: 'a', textEn: 'lock = 1;' },
+                    { id: 'b', textEn: 'compare_and_swap(&lock, 1, 0)' },
+                    { id: 'c', textEn: 'compare_and_swap(&lock, 0, 1)' },
+                    { id: 'd', textEn: 'if (lock == 0) lock = 1;' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 18,
+                type: 'mcq',
+                questionEn: 'If Hyper-Threading is enabled, how many kernel threads will be available if the CPU has 4 cores?',
+                options: [
+                    { id: 'a', textEn: '4' },
+                    { id: 'b', textEn: '6' },
+                    { id: 'c', textEn: '8' },
+                    { id: 'd', textEn: '16' }
+                ],
+                correctAnswer: 'c',
+                marks: 2.0
+            },
+            {
+                id: 19,
+                type: 'mcq',
+                questionEn: 'What is the difference between i++ and atomic increment (atomic i++)?',
+                options: [
+                    { id: 'a', textEn: 'There is no difference; both produce the same result' },
+                    { id: 'b', textEn: 'i++ is faster because it is a single CPU instruction' },
+                    { id: 'c', textEn: 'Atomic increment can only be used in single-threaded programs' },
+                    { id: 'd', textEn: 'i++ is not thread-safe, while atomic increment is thread-safe and guarantees correct results' }
+                ],
+                correctAnswer: 'd',
+                marks: 2.0
+            },
+            {
+                id: 20,
+                type: 'mcq',
+                questionEn: 'Which option correctly states the three requirements of a correct solution to the critical-section problem?',
+                options: [
+                    { id: 'a', textEn: 'Mutual Exclusion, Immediate Entry, Same Process Speed' },
+                    { id: 'b', textEn: 'Mutual Exclusion, Progress, Bounded Waiting' },
+                    { id: 'c', textEn: 'Shared Access, Priority Scheduling, No Waiting Limit' },
+                    { id: 'd', textEn: 'Mutual Exclusion, Speed Dependency, Starvation' }
+                ],
+                correctAnswer: 'b',
+            }
+        ]
+    },
+    quiz1: {
+        id: 'quiz1',
+        title: 'Quiz 1',
+        titleAr: 'الكويز الأول',
+        icon: '🕌',
+        color: '#4CAF50',
+        questions: []
+    },
+    quiz2: {
+        id: 'quiz2',
+        title: 'Quiz 2',
+        titleAr: 'الكويز الثاني',
+        icon: '🕌',
+        color: '#4CAF50',
+        questions: []
+    },
+    calculus_quiz1: {
+        id: 'calculus_quiz1',
+        title: 'Quiz 1 - Functions',
+        titleAr: 'الكويز الأول - الاقترانات',
+        icon: '📐',
+        color: '#FF9800',
+        questions: []
+    },
+    calculus_quiz2: {
+        id: 'calculus_quiz2',
+        title: 'Quiz 2',
+        titleAr: 'الكويز الثاني',
+        icon: '📐',
+        color: '#FF9800',
+        questions: []
+    },
+    info_security: {
+        id: 'info_security',
+        title: 'Information Security Principles',
+        titleAr: 'مبادئ أمن المعلومات',
+        icon: '🔒',
+        color: '#F44336',
+        questions: []
+    },
+    entrepreneurship_quiz1: {
+        id: 'entrepreneurship_quiz1',
+        title: 'Quiz 1',
+        titleAr: 'الكويز الأول',
+        icon: '📝',
+        color: '#FFC107',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'What is "Mass Customization" (MC) described as?',
+                options: [
+                    { id: 'a', textEn: 'Offering only one standard product for all customers' },
+                    { id: 'b', textEn: 'Providing packages of non-price factors tailored to different market segments' },
+                    { id: 'c', textEn: 'Eliminating all personalization from the market' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'Which source of innovation is linked to our desire for "personalization"?',
+                options: [
+                    { id: 'a', textEn: 'Completely ignoring customer preferences' },
+                    { id: 'b', textEn: 'The demand for variety and personalized goods' },
+                    { id: 'c', textEn: 'Mass production without variation' },
+                    { id: 'd', textEn: 'Uniform products for every market' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'Which saying captures the idea of "need pull" innovation?',
+                options: [
+                    { id: 'a', textEn: 'Accidents lead to breakthroughs' },
+                    { id: 'b', textEn: 'Necessity is the Mother of invention' },
+                    { id: 'c', textEn: 'Technology drives markets' },
+                    { id: 'd', textEn: 'Innovation springs from imagination' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'In major humanitarian crises, which areas force a rapid pace of innovation?',
+                options: [
+                    { id: 'a', textEn: 'Logistics, shelter, healthcare, water, and energy' },
+                    { id: 'b', textEn: 'Luxury travel and dining' },
+                    { id: 'c', textEn: 'Fashion and entertainment' },
+                    { id: 'd', textEn: 'Sports equipment design' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'What does "knowledge push" refer to in the context of innovation?',
+                options: [
+                    { id: 'a', textEn: 'Identifying unmet consumer needs' },
+                    { id: 'b', textEn: 'Providing childcare services' },
+                    { id: 'c', textEn: 'Large spending on research and development (R&D)' },
+                    { id: 'd', textEn: 'Reducing waste in production processes' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'One of the following is an example of social innovation that has emerged from meeting needs:',
+                options: [
+                    { id: 'a', textEn: 'Preschools that provide childcare for working parents' },
+                    { id: 'b', textEn: 'Online banking platforms' },
+                    { id: 'c', textEn: 'Electric cars for urban residents' },
+                    { id: 'd', textEn: 'Smartphones with high-resolution cameras' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionEn: 'Urgency of a need can have a forcing effect on innovation, what major effect has the energy crisis had?',
+                options: [
+                    { id: 'a', textEn: 'It limited innovation to healthcare only' },
+                    { id: 'b', textEn: 'It created a significant pull for innovation around alternative energy' },
+                    { id: 'c', textEn: 'It stopped all innovation activities worldwide' },
+                    { id: 'd', textEn: 'It reduced interest in alternative energy sources' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 8,
+                type: 'mcq',
+                questionEn: 'What does "crisis-driven innovation" refer to?',
+                options: [
+                    { id: 'a', textEn: 'Innovation that avoids any changes in processes' },
+                    { id: 'b', textEn: 'Innovation limited to product design only' },
+                    { id: 'c', textEn: 'Innovation that occurs only during peacetime' },
+                    { id: 'd', textEn: 'Innovation forced by urgent needs during crises' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionEn: 'Which of the following is NOT listed as a source of innovation in the text?',
+                options: [
+                    { id: 'a', textEn: 'Celebrity endorsements' },
+                    { id: 'b', textEn: 'Users as Innovators' },
+                    { id: 'c', textEn: 'Futures and Forecasting' },
+                    { id: 'd', textEn: 'Accidents' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 10,
+                type: 'mcq',
+                questionEn: '"Base of the Pyramid" markets are characterized by:',
+                options: [
+                    { id: 'a', textEn: 'Small, aging populations' },
+                    { id: 'b', textEn: 'Primarily industrial economies' },
+                    { id: 'c', textEn: 'Large, young populations with limited income' },
+                    { id: 'd', textEn: 'High disposable income' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            }
+        ]
+    },
+    entrepreneurship_quiz2: {
+        id: 'entrepreneurship_quiz2',
+        title: 'Quiz 2',
+        titleAr: 'الكويز الثاني',
+        icon: '📝',
+        color: '#FFC107',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'Which of the following is NOT listed among the success factors for new product development?',
+                options: [
+                    { id: 'a', textEn: 'Clear product definition' },
+                    { id: 'b', textEn: 'Project organization' },
+                    { id: 'c', textEn: 'Risk assessment' },
+                    { id: 'd', textEn: 'Customer contact intensity' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'During project selection, which type of criteria is identified as the most common used to screen and evaluate projects before development begins?',
+                options: [
+                    { id: 'a', textEn: 'Financial criteria' },
+                    { id: 'b', textEn: 'Market criteria' },
+                    { id: 'c', textEn: 'Ethical criteria' },
+                    { id: 'd', textEn: 'Technological criteria' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'How many stages does the simplified model that may differentiate the various factors that must be managed at each stage?',
+                options: [
+                    { id: 'a', textEn: 'Five stages' },
+                    { id: 'b', textEn: 'Six stages' },
+                    { id: 'c', textEn: 'Three stages' },
+                    { id: 'd', textEn: 'Four stages' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'Which Innovation characteristic (factor) influencing adoption is defined as: "the extent to which an innovation can be tested on a limited scale"?',
+                options: [
+                    { id: 'a', textEn: 'Observability' },
+                    { id: 'b', textEn: 'Trialability' },
+                    { id: 'c', textEn: 'Compatibility' },
+                    { id: 'd', textEn: 'Complexity' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'Which statement about the storage of services is accurate?',
+                options: [
+                    { id: 'a', textEn: 'Services can be stocked in warehouses for later use' },
+                    { id: 'b', textEn: 'Services are stored as inventory items' },
+                    { id: 'c', textEn: 'Services cannot usually be stored' },
+                    { id: 'd', textEn: 'Services are usually stored as digital files' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'The term "Observability" means:',
+                options: [
+                    { id: 'a', textEn: 'How cheap the innovation is' },
+                    { id: 'b', textEn: 'How visible to others the results are' },
+                    { id: 'c', textEn: 'How visible the product is on the shelves' },
+                    { id: 'd', textEn: 'How regulated the innovation is' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionEn: 'In the simplified model, the stage that involves testing, launching and marketing the new product is:',
+                options: [
+                    { id: 'a', textEn: 'Product development' },
+                    { id: 'b', textEn: 'Concept generation' },
+                    { id: 'c', textEn: 'Project assessment and selection' },
+                    { id: 'd', textEn: 'Product commercialization' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 8,
+                type: 'mcq',
+                questionEn: 'To ensure the success of new products, top management support will extend:',
+                options: [
+                    { id: 'a', textEn: 'From concept through to launch' },
+                    { id: 'b', textEn: 'From market research to product launch' },
+                    { id: 'c', textEn: 'From prototype testing to commercialization' },
+                    { id: 'd', textEn: 'From idea generation to post‑launch review' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionEn: 'Which category of innovation is described as creating new services and products?',
+                options: [
+                    { id: 'a', textEn: 'Organizational innovations' },
+                    { id: 'b', textEn: 'Technological innovations' },
+                    { id: 'c', textEn: 'Process innovations' },
+                    { id: 'd', textEn: 'Commercial innovations' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 10,
+                type: 'mcq',
+                questionEn: 'The gradual process of reducing uncertainty through a series of problem-solving phases that extend from scanning and selecting into implementation is:',
+                options: [
+                    { id: 'a', textEn: 'New product or service development process' },
+                    { id: 'b', textEn: 'Reducing uncertainty process' },
+                    { id: 'c', textEn: 'Increasing marketing budget process' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            }
+        ]
+    },
+    entrepreneurship_quiz3: {
+        id: 'entrepreneurship_quiz3',
+        title: 'Quiz 3',
+        titleAr: 'الكويز الثالث',
+        icon: '📝',
+        color: '#FFC107',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'A strong value proposition mainly focuses on:',
+                options: [
+                    { id: 'a', textEn: 'Customer benefits and problems solved' },
+                    { id: 'b', textEn: 'Production efficiency' },
+                    { id: 'c', textEn: 'Legal requirements' },
+                    { id: 'd', textEn: 'Employee benefits' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'A business model is best defined as:',
+                options: [
+                    { id: 'a', textEn: 'An explanation of how value is created for customers' },
+                    { id: 'b', textEn: 'A financial report' },
+                    { id: 'c', textEn: 'A production plan' },
+                    { id: 'd', textEn: 'A marketing strategy' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'In the Individual decision type, the final decision is made...',
+                options: [
+                    { id: 'a', textEn: 'By a committee' },
+                    { id: 'b', textEn: 'Independently of peers' },
+                    { id: 'c', textEn: 'Through a vote' },
+                    { id: 'd', textEn: 'By a leader' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'A business model explains how an idea is transformed into:',
+                options: [
+                    { id: 'a', textEn: 'Something valuable for customers' },
+                    { id: 'b', textEn: 'A technical process' },
+                    { id: 'c', textEn: 'An organizational structure' },
+                    { id: 'd', textEn: 'A legal contract' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'Technological innovations are the source of what improvements?',
+                options: [
+                    { id: 'a', textEn: 'productivity and quality improvements' },
+                    { id: 'b', textEn: 'new services' },
+                    { id: 'c', textEn: 'environmental sustainability' },
+                    { id: 'd', textEn: 'Social and health gains' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'What factor describes how much an innovation is favored over the product it replaces?',
+                options: [
+                    { id: 'a', textEn: 'Relative advantage' },
+                    { id: 'b', textEn: 'Compatibility' },
+                    { id: 'c', textEn: 'Compatibility' },
+                    { id: 'd', textEn: 'Observability' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionEn: 'What does the acronym DFM stand for?',
+                options: [
+                    { id: 'a', textEn: 'Design for Manufacture' },
+                    { id: 'b', textEn: 'Dynamic Flow Management' },
+                    { id: 'c', textEn: 'Design for Marketing' },
+                    { id: 'd', textEn: 'Design for Marketing' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 8,
+                type: 'mcq',
+                questionEn: 'Which model uses \'gates\' to make go/no‑go decisions?',
+                options: [
+                    { id: 'a', textEn: 'Porter\'s approach' },
+                    { id: 'b', textEn: 'Ansoff matrix' },
+                    {
+                        id: 'c', textEn: 'Cooper\'s approach'
+                    },
+                    { id: 'd', textEn: 'SWOT analysis' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionEn: 'Which of the following is listed as a tangible aspect affecting the perceptions of service quality?',
+                options: [
+                    { id: 'a', textEn: 'Appearance of facilities, equipment and staff' },
+                    { id: 'b', textEn: 'Number of patents' },
+                    { id: 'c', textEn: 'Speed of internet connection' },
+                    { id: 'd', textEn: 'Size of warehouse' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 10,
+                type: 'mcq',
+                questionEn: 'Generic business models are best described as:',
+                options: [
+                    { id: 'a', textEn: 'Limited to start-ups' },
+                    { id: 'b', textEn: 'Unique to one organization' },
+                    { id: 'c', textEn: 'Outdated business practices' },
+                    { id: 'd', textEn: 'Common patterns used across industries' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            }
+        ]
+    },
+    entrepreneurship_quiz4: {
+        id: 'entrepreneurship_quiz4',
+        title: 'Quiz 4',
+        titleAr: 'الكويز الرابع',
+        icon: '📝',
+        color: '#FFC107',
+        forceEnglish: true,
+        questions: []
+    },
+    info_sec_quiz1: {
+        id: 'info_sec_quiz1',
+        title: 'Quiz 1',
+        titleAr: 'الكويز الأول',
+        icon: '🔒',
+        color: '#F44336',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'In the relational database model, a relation is best described as:',
+                options: [
+                    { id: 'a', textEn: 'A table consisting of tuples and attributes' },
+                    { id: 'b', textEn: 'A set of attributes sharing a common domain' },
+                    { id: 'c', textEn: 'A single record stored in a database' },
+                    { id: 'd', textEn: 'A logical pointer to another table' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'Which statement best characterizes an attribute in a relational database?',
+                options: [
+                    { id: 'a', textEn: 'It uniquely distinguishes one tuple from another' },
+                    { id: 'b', textEn: 'It represents a column holding values of the same type' },
+                    { id: 'c', textEn: 'It defines a relationship between two relations' },
+                    { id: 'd', textEn: 'It stores a query result temporarily' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'What is the primary purpose of a primary key?',
+                options: [
+                    { id: 'a', textEn: 'To enforce access control policies' },
+                    { id: 'b', textEn: 'To uniquely identify each tuple within a relation' },
+                    { id: 'c', textEn: 'To optimize encryption performance' },
+                    { id: 'd', textEn: 'To define relationships without constraints' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'SQL is best described as a language that is:',
+                options: [
+                    { id: 'a', textEn: 'Vendor-specific and implementation-dependent' },
+                    { id: 'b', textEn: 'Standardized for defining and manipulating relational data' },
+                    { id: 'c', textEn: 'Used exclusively for querying encrypted databases' },
+                    { id: 'd', textEn: 'Limited to data retrieval operations' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'Which SQL command is used to assign access privileges or roles to users?',
+                options: [
+                    { id: 'a', textEn: 'AUTHORIZE' },
+                    { id: 'b', textEn: 'REGISTER' },
+                    { id: 'c', textEn: 'DEFINE' },
+                    { id: 'd', textEn: 'GRANT' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'An SQL injection attack that exploits forged HTTP headers is classified under which attack avenue?',
+                options: [
+                    { id: 'a', textEn: 'User input manipulation' },
+                    { id: 'b', textEn: 'Server variables' },
+                    { id: 'c', textEn: 'Second-order injection' },
+                    { id: 'd', textEn: 'Physical user input' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionEn: 'Which SQL injection technique forces a conditional statement to always evaluate as true?',
+                options: [
+                    { id: 'a', textEn: 'Blind injection' },
+                    { id: 'b', textEn: 'Tautology-based injection' },
+                    { id: 'c', textEn: 'Piggybacked queries' },
+                    { id: 'd', textEn: 'Illegal query injection' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 8,
+                type: 'mcq',
+                questionEn: 'Which countermeasure most directly prevents user input from altering the structure of an SQL statement?',
+                options: [
+                    { id: 'a', textEn: 'Query result filtering' },
+                    { id: 'b', textEn: 'Parameterized queries' },
+                    { id: 'c', textEn: 'Signature-based detection' },
+                    { id: 'd', textEn: 'Database encryption' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionEn: 'Which inference control approach attempts to stop sensitive information disclosure during query execution?',
+                options: [
+                    { id: 'a', textEn: 'Design-time inference detection' },
+                    { id: 'b', textEn: 'Role hierarchy enforcement' },
+                    { id: 'c', textEn: 'Query-time inference detection' },
+                    { id: 'd', textEn: 'Attribute-level encryption' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 10,
+                type: 'mcq',
+                questionEn: 'What is a key disadvantage of encrypting large portions of a database?',
+                options: [
+                    { id: 'a', textEn: 'Reduced availability due to stricter access controls' },
+                    { id: 'b', textEn: 'Elimination of role-based authorization' },
+                    { id: 'c', textEn: 'Increased complexity in key management and query processing' },
+                    { id: 'd', textEn: 'Incompatibility with relational schemas' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            }
+        ]
+    },
+    num_analysis_quiz1: {
+        id: 'num_analysis_quiz1',
+        title: 'Quiz 1',
+        titleAr: 'الكويز الأول',
+        icon: '📊',
+        color: '#673AB7',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'Given matrix A = [[-3, 0, 2, 5], [-2, 1, 0, -1], [4, 2, 6, 3], [3, -1, -4, -5]]. Then the CO_factor entry C₃₄ =',
+                options: [
+                    { id: 'a', textEn: '32' },
+                    { id: 'b', textEn: '-55' },
+                    { id: 'c', textEn: '55' },
+                    { id: 'd', textEn: '-10' },
+                    { id: 'e', textEn: '10' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'The value of x₁ using Cramer\'s Rule for the System: x₁ - 3x₂ + x₃ = 4, 2x₁ - x₂ = -2, 4x₁ - 3x₃ = 0',
+                options: [
+                    { id: 'a', textEn: 'x₁ = 2/11' },
+                    { id: 'b', textEn: 'x₁ = -1/11' },
+                    { id: 'c', textEn: 'x₁ = -30/11' },
+                    { id: 'd', textEn: 'x₁ = 3/11' },
+                    { id: 'e', textEn: 'x₁ = -38/11' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'The inverse of the matrix A = [[2, 6, 6], [2, 7, 6], [2, 7, 7]] is A⁻¹',
+                options: [
+                    { id: 'a', textEn: 'A⁻¹ = [[3/2, -11/10, -6/5], [-1, 1, 1], [-1/2, 7/10, 2/5]]' },
+                    { id: 'b', textEn: 'A⁻¹ = [[1, 3, 1], [0, 1, -1], [-2, 2, 0]]' },
+                    { id: 'c', textEn: 'A⁻¹ = [[7/2, 0, -3], [-1, 1, 0], [0, -1, 1]]' },
+                    { id: 'd', textEn: 'A⁻¹ = [[1/3, 0, 1], [1/4, -3/4, 5], [13/100, 0, -9/100]]' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'The easiest choice to evaluate the determinant of the matrix A = [[-6, 0, 9, 1], [-2, 0, 0, -1], [4, 2, 0, 3], [3, -1, 0, 10]], Using C, Where C is the matrix of Cofactors is: |A|=',
+                options: [
+                    { id: 'a', textEn: '|A|=c₄₁a₄₁ + c₄₂a₄₂ + c₄₃a₄₃ + c₄₄a₄₄' },
+                    { id: 'b', textEn: '|A|=c₁₂a₁₂ + c₂₂a₂₂ + c₃₂a₃₂ + c₄₂a₄₂' },
+                    { id: 'c', textEn: '|A|=c₂₁a₂₁ + c₂₂a₂₂ + c₂₃a₂₃ + c₂₄a₂₄' },
+                    { id: 'd', textEn: '|A|=c₁₃a₁₃ + c₂₃a₂₃ + c₃₃a₃₃ + c₄₃a₄₃' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'For the matrix A = [[2, 3], [-1, 5]] then A² + 4',
+                options: [
+                    { id: 'a', textEn: '[[5, 25], [-3, 26]]' },
+                    { id: 'b', textEn: '[[8, 3], [-1, 29]]' },
+                    { id: 'c', textEn: '[[8, 7], [3, 29]]' },
+                    { id: 'd', textEn: '[[5, 21], [-7, 26]]' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            }
+        ]
+    },
+    ai_programming_quiz1: {
+        id: 'ai_programming_quiz1',
+        title: 'Quiz 1',
+        titleAr: 'الكويز الأول',
+        icon: '🤖',
+        color: '#009688',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'tf',
+                questionEn: 'Python lists are immutable, meaning their elements cannot be changed after creation.',
+                questionAr: 'القوائم في بايثون غير قابلة للتغيير، أي لا يمكن تغيير عناصرها بعد إنشائها.',
+                correctAnswer: false,
+                marks: 2.0
+            },
+            {
+                id: 2,
+                type: 'tf',
+                questionEn: 'List indexing in Python starts from index 1.',
+                questionAr: 'فهرسة القوائم في بايثون تبدأ من الفهرس 1.',
+                correctAnswer: false,
+                marks: 2.0
+            },
+            {
+                id: 3,
+                type: 'tf',
+                questionEn: 'The slice my_list[2:5] includes the element at index 5.',
+                questionAr: 'التقطيع my_list[2:5] يتضمن العنصر عند الفهرس 5.',
+                correctAnswer: false,
+                marks: 2.0
+            },
+            {
+                id: 4,
+                type: 'tf',
+                questionEn: 'A tuple with one element must include a trailing comma to be recognized as a tuple.',
+                questionAr: 'يجب أن يتضمن الـ tuple الذي يحتوي على عنصر واحد فاصلة في النهاية ليتم التعرف عليه كـ tuple.',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 5,
+                type: 'tf',
+                questionEn: 'You can delete an entire tuple using the del keyword.',
+                questionAr: 'يمكنك حذف tuple بالكامل باستخدام الكلمة المفتاحية del.',
+                correctAnswer: true,
+                marks: 1.0
+            }
+        ]
+    },
+    ml_midterm: {
+        id: 'ml_midterm',
+        title: 'Midterm Past Papers',
+        titleAr: 'أسئلة سنوات ميد',
+        icon: '🤖',
+        color: '#E91E63',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'Which of the following is an example of a supervised learning task?',
+                options: [
+                    { id: 'a', textEn: 'Clustering customers into groups' },
+                    { id: 'b', textEn: 'Predicting house prices based on size and location' },
+                    { id: 'c', textEn: 'Finding associations in market basket data' },
+                    { id: 'd', textEn: 'Reducing the number of features in a dataset' }
+                ],
+                correctAnswer: 'b',
+                marks: 3.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'In binary logistic regression ..................?',
+                options: [
+                    { id: 'a', textEn: 'The dependent variable is continuous' },
+                    { id: 'b', textEn: 'The dependent variable consists of two categories' },
+                    { id: 'c', textEn: 'The dependent variable is divided into two equal subcategories' },
+                    { id: 'd', textEn: 'None of the answers' }
+                ],
+                correctAnswer: 'b',
+                marks: 3.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: '<div style="font-family: Arial, sans-serif; line-height: 1.6;"><p style="margin-bottom: 15px;">Below are three graphs (A, B, and C) showing the relationship between the cost function <strong>J(θ)</strong> and the number of iterations:</p><div style="display: flex; justify-content: space-around; margin: 20px 0; flex-wrap: wrap;"><div style="text-align: center; margin: 10px;"><div style="font-weight: bold; margin-bottom: 10px; color: #2196F3;">Graph A</div><svg width="120" height="100" style="border: 2px solid #2196F3; border-radius: 8px; background: white;"><path d="M 10 15 Q 25 35, 40 50 Q 55 58, 110 60" stroke="#2196F3" stroke-width="2.5" fill="none"/><line x1="10" y1="90" x2="110" y2="90" stroke="#333" stroke-width="1.5"/><line x1="10" y1="10" x2="10" y2="90" stroke="#333" stroke-width="1.5"/><text x="60" y="98" font-size="9" fill="#333" text-anchor="middle">Iterations</text><text x="5" y="50" font-size="9" fill="#333" transform="rotate(-90 5 50)" text-anchor="middle">J(θ)</text></svg><div style="font-size: 11px; margin-top: 5px;">Rapid decrease → plateau</div></div><div style="text-align: center; margin: 10px;"><div style="font-weight: bold; margin-bottom: 10px; color: #4CAF50;">Graph B</div><svg width="120" height="100" style="border: 2px solid #4CAF50; border-radius: 8px; background: white;"><path d="M 10 15 Q 40 30, 70 50 Q 90 65, 110 75" stroke="#4CAF50" stroke-width="2.5" fill="none"/><line x1="10" y1="90" x2="110" y2="90" stroke="#333" stroke-width="1.5"/><line x1="10" y1="10" x2="10" y2="90" stroke="#333" stroke-width="1.5"/><text x="60" y="98" font-size="9" fill="#333" text-anchor="middle">Iterations</text><text x="5" y="50" font-size="9" fill="#333" transform="rotate(-90 5 50)" text-anchor="middle">J(θ)</text></svg><div style="font-size: 11px; margin-top: 5px;">Steady curved decrease</div></div><div style="text-align: center; margin: 10px;"><div style="font-weight: bold; margin-bottom: 10px; color: #F44336;">Graph C</div><svg width="120" height="100" style="border: 2px solid #F44336; border-radius: 8px; background: white;"><path d="M 10 75 Q 40 65, 70 50 Q 90 35, 110 25" stroke="#F44336" stroke-width="2.5" fill="none"/><line x1="10" y1="90" x2="110" y2="90" stroke="#333" stroke-width="1.5"/><line x1="10" y1="10" x2="10" y2="90" stroke="#333" stroke-width="1.5"/><text x="60" y="98" font-size="9" fill="#333" text-anchor="middle">Iterations</text><text x="5" y="50" font-size="9" fill="#333" transform="rotate(-90 5 50)" text-anchor="middle">J(θ)</text></svg><div style="font-size: 11px; margin-top: 5px;">Cost increases</div></div></div><p style="margin-top: 20px; padding: 12px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; border-radius: 4px; color: inherit;">Suppose <strong style="font-family: \'Courier New\', monospace;">l1, l2, and l3</strong> are the three learning rates for A, B, and C, respectively. Which of the following is true about <strong style="font-family: \'Courier New\', monospace;">l1, l2, and l3</strong>?</p></div>',
+                options: [
+                    { id: 'a', textEn: 'l1 > l2 > l3' },
+                    { id: 'b', textEn: 'l2 < l1 < l3' },
+                    { id: 'c', textEn: 'l1 = l2 = l3' },
+                    { id: 'd', textEn: 'None' }
+                ],
+                correctAnswer: 'b',
+                marks: 3.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'In the bias-variance tradeoff, a model with high variance is most likely to:',
+                options: [
+                    { id: 'a', textEn: 'Underfit the training data' },
+                    { id: 'b', textEn: 'Overfit the training data' },
+                    { id: 'c', textEn: 'Have a high bias' },
+                    { id: 'd', textEn: 'None of the answers' }
+                ],
+                correctAnswer: 'b',
+                marks: 3.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'How many coefficients do you need to estimate in a simple linear regression model (One independent variable)?',
+                options: [
+                    { id: 'a', textEn: '1' },
+                    { id: 'b', textEn: '2' },
+                    { id: 'c', textEn: '3' },
+                    { id: 'd', textEn: '4' }
+                ],
+                correctAnswer: 'b',
+                marks: 3.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: '.................. is a technique to standardize the independent features present in the data in a fixed range.',
+                options: [
+                    { id: 'a', textEn: 'Normalization' },
+                    { id: 'b', textEn: 'Regularization' },
+                    { id: 'c', textEn: 'Optimization' },
+                    { id: 'd', textEn: 'Validation' }
+                ],
+                correctAnswer: 'a',
+                marks: 3.0
+            }
+        ]
+    },
+    ai_programming_quiz1: {
+        id: 'ai_programming_quiz1',
+        title: 'Quiz 1',
+        titleAr: 'الكويز الأول',
+        icon: '🤖',
+        color: '#009688',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'tf',
+                questionEn: 'Python lists are immutable, meaning their elements cannot be changed after creation.',
+                questionAr: 'القوائم في بايثون غير قابلة للتغيير، أي لا يمكن تغيير عناصرها بعد إنشائها.',
+                correctAnswer: false,
+                marks: 2.0
+            },
+            {
+                id: 2,
+                type: 'tf',
+                questionEn: 'List indexing in Python starts from index 1.',
+                questionAr: 'فهرسة القوائم في بايثون تبدأ من الفهرس 1.',
+                correctAnswer: false,
+                marks: 2.0
+            },
+            {
+                id: 3,
+                type: 'tf',
+                questionEn: 'The slice my_list[2:5] includes the element at index 5.',
+                questionAr: 'التقطيع my_list[2:5] يتضمن العنصر عند الفهرس 5.',
+                correctAnswer: false,
+                marks: 2.0
+            },
+            {
+                id: 4,
+                type: 'tf',
+                questionEn: 'A tuple with one element must include a trailing comma to be recognized as a tuple.',
+                questionAr: 'يجب أن يتضمن الـ tuple الذي يحتوي على عنصر واحد فاصلة في النهاية ليتم التعرف عليه كـ tuple.',
+                correctAnswer: true,
+                marks: 2.0
+            },
+            {
+                id: 5,
+                type: 'tf',
+                questionEn: 'You can delete an entire tuple using the del keyword.',
+                questionAr: 'يمكنك حذف tuple بالكامل باستخدام الكلمة المفتاحية del.',
+                correctAnswer: true,
+                marks: 1.0
+            }
+        ]
+    },
+    ml_midterm: {
+        id: 'ml_midterm',
+        title: 'Midterm Past Papers',
+        titleAr: 'أسئلة سنوات ميد',
+        icon: '🤖',
+        color: '#E91E63',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'Which of the following is an example of a supervised learning task?',
+                options: [
+                    { id: 'a', textEn: 'Clustering customers into groups' },
+                    { id: 'b', textEn: 'Predicting house prices based on size and location' },
+                    { id: 'c', textEn: 'Finding associations in market basket data' },
+                    { id: 'd', textEn: 'Reducing the number of features in a dataset' }
+                ],
+                correctAnswer: 'b',
+                marks: 3.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'In binary logistic regression ..................?',
+                options: [
+                    { id: 'a', textEn: 'The dependent variable is continuous' },
+                    { id: 'b', textEn: 'The dependent variable consists of two categories' },
+                    { id: 'c', textEn: 'The dependent variable is divided into two equal subcategories' },
+                    { id: 'd', textEn: 'None of the answers' }
+                ],
+                correctAnswer: 'b',
+                marks: 3.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: '<div style="font-family: Arial, sans-serif; line-height: 1.6;"><p style="margin-bottom: 15px;">Below are three graphs (A, B, and C) showing the relationship between the cost function <strong>J(θ)</strong> and the number of iterations:</p><div style="display: flex; justify-content: space-around; margin: 20px 0; flex-wrap: wrap;"><div style="text-align: center; margin: 10px;"><div style="font-weight: bold; margin-bottom: 10px; color: #2196F3;">Graph A</div><svg width="120" height="100" style="border: 2px solid #2196F3; border-radius: 8px; background: white;"><path d="M 10 15 Q 25 35, 40 50 Q 55 58, 110 60" stroke="#2196F3" stroke-width="2.5" fill="none"/><line x1="10" y1="90" x2="110" y2="90" stroke="#333" stroke-width="1.5"/><line x1="10" y1="10" x2="10" y2="90" stroke="#333" stroke-width="1.5"/><text x="60" y="98" font-size="9" fill="#333" text-anchor="middle">Iterations</text><text x="5" y="50" font-size="9" fill="#333" transform="rotate(-90 5 50)" text-anchor="middle">J(θ)</text></svg><div style="font-size: 11px; margin-top: 5px;">Rapid decrease → plateau</div></div><div style="text-align: center; margin: 10px;"><div style="font-weight: bold; margin-bottom: 10px; color: #4CAF50;">Graph B</div><svg width="120" height="100" style="border: 2px solid #4CAF50; border-radius: 8px; background: white;"><path d="M 10 15 Q 40 30, 70 50 Q 90 65, 110 75" stroke="#4CAF50" stroke-width="2.5" fill="none"/><line x1="10" y1="90" x2="110" y2="90" stroke="#333" stroke-width="1.5"/><line x1="10" y1="10" x2="10" y2="90" stroke="#333" stroke-width="1.5"/><text x="60" y="98" font-size="9" fill="#333" text-anchor="middle">Iterations</text><text x="5" y="50" font-size="9" fill="#333" transform="rotate(-90 5 50)" text-anchor="middle">J(θ)</text></svg><div style="font-size: 11px; margin-top: 5px;">Steady curved decrease</div></div><div style="text-align: center; margin: 10px;"><div style="font-weight: bold; margin-bottom: 10px; color: #F44336;">Graph C</div><svg width="120" height="100" style="border: 2px solid #F44336; border-radius: 8px; background: white;"><path d="M 10 75 Q 40 65, 70 50 Q 90 35, 110 25" stroke="#F44336" stroke-width="2.5" fill="none"/><line x1="10" y1="90" x2="110" y2="90" stroke="#333" stroke-width="1.5"/><line x1="10" y1="10" x2="10" y2="90" stroke="#333" stroke-width="1.5"/><text x="60" y="98" font-size="9" fill="#333" text-anchor="middle">Iterations</text><text x="5" y="50" font-size="9" fill="#333" transform="rotate(-90 5 50)" text-anchor="middle">J(θ)</text></svg><div style="font-size: 11px; margin-top: 5px;">Cost increases</div></div></div><p style="margin-top: 20px; padding: 12px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3; border-radius: 4px; color: inherit;">Suppose <strong style="font-family: \'Courier New\', monospace;">l1, l2, and l3</strong> are the three learning rates for A, B, and C, respectively. Which of the following is true about <strong style="font-family: \'Courier New\', monospace;">l1, l2, and l3</strong>?</p></div>',
+                options: [
+                    { id: 'a', textEn: 'l1 > l2 > l3' },
+                    { id: 'b', textEn: 'l2 < l1 < l3' },
+                    { id: 'c', textEn: 'l1 = l2 = l3' },
+                    { id: 'd', textEn: 'None' }
+                ],
+                correctAnswer: 'b',
+                marks: 3.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'In the bias-variance tradeoff, a model with high variance is most likely to:',
+                options: [
+                    { id: 'a', textEn: 'Underfit the training data' },
+                    { id: 'b', textEn: 'Overfit the training data' },
+                    { id: 'c', textEn: 'Have a high bias' },
+                    { id: 'd', textEn: 'None of the answers' }
+                ],
+                correctAnswer: 'b',
+                marks: 3.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'How many coefficients do you need to estimate in a simple linear regression model (One independent variable)?',
+                options: [
+                    { id: 'a', textEn: '1' },
+                    { id: 'b', textEn: '2' },
+                    { id: 'c', textEn: '3' },
+                    { id: 'd', textEn: '4' }
+                ],
+                correctAnswer: 'b',
+                marks: 3.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: '.................. is a technique to standardize the independent features present in the data in a fixed range.',
+                options: [
+                    { id: 'a', textEn: 'Normalization' },
+                    { id: 'b', textEn: 'Regularization' },
+                    { id: 'c', textEn: 'Optimization' },
+                    { id: 'd', textEn: 'Validation' }
+                ],
+                correctAnswer: 'a',
+                marks: 3.0
+            }
+        ]
+    },
+    ml_final: {
+        id: 'ml_final',
+        title: 'Final Past Papers',
+        titleAr: 'أسئلة سنوات فاينل',
+        icon: '🤖',
+        color: '#E91E63',
+        forceEnglish: true,
+        questions: []
+    },
+    ml_quizzes: {
+        id: 'ml_quizzes',
+        title: 'Quizzes',
+        titleAr: 'كويزات',
+        icon: '🤖',
+        color: '#E91E63',
+        forceEnglish: true,
+        questions: [
+            {
+                id: 1,
+                type: 'mcq',
+                questionEn: 'In deep networks, why is ReLU often preferred over sigmoid in hidden layers?',
+                options: [
+                    { id: 'a', textEn: 'ReLU guarantees reaching the global minimum' },
+                    { id: 'b', textEn: 'Sigmoid\'s derivative becomes very small away from the origin → slow learning (vanishing gradients)' },
+                    { id: 'c', textEn: 'Sigmoid cannot model non-linear relationships' },
+                    { id: 'd', textEn: 'ReLU outputs probabilities that sum to 1' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 2,
+                type: 'mcq',
+                questionEn: 'A neural network uses a softmax output layer for a 3-class classification problem. The input logits to the softmax layer are: z = [2.33, -1.46, 0.56]. Which of the following options best represents the softmax output probabilities, and what is the predicted class?',
+                options: [
+                    { id: 'a', textEn: '[0.33,0.33,0.33] → Class 2' },
+                    { id: 'b', textEn: '[0.84,0.02,0.14] → Class 1' },
+                    { id: 'c', textEn: '[0.60,0.10,0.30] → Class 1' },
+                    { id: 'd', textEn: '[0.14,0.02,0.84] → Class 3' }
+                ],
+                correctAnswer: 'b',
+                marks: 1.0
+            },
+            {
+                id: 3,
+                type: 'mcq',
+                questionEn: 'Why is the binary step activation a bad choice in multi-layer networks trained with backpropagation?',
+                options: [
+                    { id: 'a', textEn: 'It always causes exploding gradients' },
+                    { id: 'b', textEn: 'It requires softmax in the output layer' },
+                    { id: 'c', textEn: 'Its derivative is zero, so weights won\'t update during backpropagation' },
+                    { id: 'd', textEn: 'It only works for multi-class problems' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 4,
+                type: 'mcq',
+                questionEn: 'Which statement best explains the vanishing gradient issue (as described) and a listed solution?',
+                options: [
+                    { id: 'a', textEn: 'Gradients shrink only in CNNs; solution is softmax' },
+                    { id: 'b', textEn: 'Gradients grow across layers; solution is dropout' },
+                    { id: 'c', textEn: 'Gradients shrink as they propagate back (especially with sigmoid); solution is LSTM' },
+                    { id: 'd', textEn: 'Gradients vanish because the learning rate is always zero; solution is more epochs' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 5,
+                type: 'mcq',
+                questionEn: 'For a binary random variable, the entropy is maximized when:',
+                options: [
+                    { id: 'a', textEn: 'The probability of success is 1.' },
+                    { id: 'b', textEn: 'The probability of success is 0.' },
+                    { id: 'c', textEn: 'The probability of success is 0.5.' },
+                    { id: 'd', textEn: 'The probabilities are skewed toward one outcome.' }
+                ],
+                correctAnswer: 'c',
+                marks: 1.0
+            },
+            {
+                id: 6,
+                type: 'mcq',
+                questionEn: 'Which statement is true regarding data farther away from the mean in a Gaussian distribution?',
+                options: [
+                    { id: 'a', textEn: 'Data distribution is always skewed to the right.' },
+                    { id: 'b', textEn: 'Data farther away from the mean are more frequent.' },
+                    { id: 'c', textEn: 'Frequency is constant regardless of distance from the mean.' },
+                    { id: 'd', textEn: 'Data farther away from the mean are less frequent.' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            },
+            {
+                id: 7,
+                type: 'mcq',
+                questionEn: 'For a binomial distribution B(x;8,0.4) what does the "0.4" represent?',
+                options: [
+                    { id: 'a', textEn: 'Probability of success' },
+                    { id: 'b', textEn: 'Probability of failure' },
+                    { id: 'c', textEn: 'Number of successes' },
+                    { id: 'd', textEn: 'Number of trials' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 8,
+                type: 'mcq',
+                questionEn: 'Given f(x)=x^2, determine the convexity of this function:',
+                options: [
+                    { id: 'a', textEn: 'Convex, since f\'\'(x)=2>0' },
+                    { id: 'b', textEn: 'Neither convex nor concave' },
+                    { id: 'c', textEn: 'Linear' },
+                    { id: 'd', textEn: 'Concave, since f\'\'(x)=2<0' }
+                ],
+                correctAnswer: 'a',
+                marks: 1.0
+            },
+            {
+                id: 9,
+                type: 'mcq',
+                questionEn: 'If the probabilities of outcomes for three players (A, B, C) are respectively 0.2, 0.3, and 0.5, which formula correctly calculates the multinomial probability of player A winning 1 game, player B winning 2 games, and player C winning 3 games out of 6?',
+                options: [
+                    { id: 'a', textEn: '(6!/(2!2!2!))(0.2³)(0.3²)(0.5¹)' },
+                    { id: 'b', textEn: '(6!/(1!1!4!))(0.2²)(0.3³)(0.5¹)' },
+                    { id: 'c', textEn: '(6!/(3!2!1!))(0.2¹)(0.3³)(0.5²)' },
+                    { id: 'd', textEn: '(6!/(1!2!3!))(0.2¹)(0.3²)(0.5³)' }
+                ],
+                correctAnswer: 'd',
+                marks: 1.0
+            }
+        ]
+    }
+};
+
+export const quizCategories = [
+    {
+        id: 'oop',
+        name: 'Object Oriented Programming',
+        nameAr: 'برمجة موجهة للكائنات',
+        icon: '💻',
+        color: '#2196F3',
+        isNew: true,
+        parts: [
+            { id: 'oop_midterm', title: 'Midterm Past Papers', titleAr: 'أسئلة سنوات ميد' },
+            { id: 'oop_final', title: 'Final Past Papers', titleAr: 'أسئلة سنوات فاينل' },
+            { id: 'oop_quizzes', title: 'Quizzes', titleAr: 'كويزات' }
+        ]
+    },
+    { id: 'comp_skills', name: 'Computer Skills', nameAr: 'مهارات حاسوب والتعلم الالكتروني', icon: '💻', color: '#00BCD4' },
+    {
+        id: 'digital_society',
+        name: 'Digital Society',
+        nameAr: 'مجتمع رقمي',
+        icon: '🌐',
+        color: '#9C27B0',
+        parts: [
+            { id: 'digital_society_1', title: 'Part 1', titleAr: 'الجزء الأول' },
+            { id: 'digital_society_2', title: 'Part 2', titleAr: 'الجزء الثاني' },
+            { id: 'digital_society_3', title: 'Part 3', titleAr: 'الجزء الثالث' }
+        ]
+    },
+    {
+        id: 'vr_business',
+        name: 'Business Principles for VR',
+        nameAr: 'مبادئ الأعمال للواقع الافتراضي',
+        icon: '💼',
+        color: '#607D8B',
+        parts: [
+            { id: 'vr_biz_1', title: 'Part 1', titleAr: 'الجزء الأول' },
+            { id: 'vr_biz_2', title: 'Part 2', titleAr: 'الجزء الثاني' },
+            { id: 'vr_biz_3', title: 'Part 3', titleAr: 'الجزء الثالث' }
+        ]
+    },
+    { id: 'psych_basics', name: 'Principles of Psychology', nameAr: 'مبادئ علم النفس', icon: '🧠', color: '#E91E63' },
+    { id: 'applied_english_102', name: 'Applied English 102', nameAr: 'اللغة الإنجليزية التطبيقية 102', icon: '🇬🇧', color: '#3F51B5' },
+    {
+        id: 'comp_networks_1',
+        name: 'Computer Networks 1',
+        nameAr: 'شبكات الحاسوب ١',
+        icon: '🌐',
+        color: '#2196F3',
+        parts: [
+            { id: 'comp_networks_1_p1', title: 'Part 1', titleAr: 'الجزء الأول' },
+            { id: 'comp_networks_1_p2', title: 'Part 2', titleAr: 'الجزء الثاني' }
+        ]
+    },
+    {
+        id: 'operating_systems',
+        name: 'Operating Systems',
+        nameAr: 'نظم التشغيل',
+        icon: '⚙️',
+        color: '#FF5722',
+        isNew: true,
+        parts: [
+            { id: 'os_mid', title: 'Mid Exam', titleAr: 'مادة الميد' },
+            { id: 'os_final', title: 'Final Exam', titleAr: 'مادة الفاينل' }
+        ]
+    },
+    {
+        id: 'islam_and_life',
+        name: 'Islam and Life',
+        nameAr: 'الإسلام والحياة',
+        icon: '🕌',
+        color: '#4CAF50',
+        isNew: true,
+        parts: [
+            { id: 'quiz1', title: 'Quiz 1', titleAr: 'الكويز الأول' },
+            { id: 'quiz2', title: 'Quiz 2', titleAr: 'الكويز الثاني' }
+        ]
+    },
+    {
+        id: 'calculus_1',
+        name: 'Calculus 1',
+        nameAr: 'تفاضل وتكامل 1',
+        icon: '📐',
+        color: '#FF9800',
+        isNew: true,
+        parts: [
+            { id: 'calculus_quiz1', title: 'Quiz 1 - Functions', titleAr: 'الكويز الأول - الاقترانات' },
+            { id: 'calculus_quiz2', title: 'Quiz 2', titleAr: 'الكويز الثاني' }
+        ]
+    },
+    {
+        id: 'info_security',
+        name: 'Information Security Principles',
+        nameAr: 'مبادئ أمن المعلومات',
+        icon: '🔒',
+        color: '#F44336',
+        isNew: true,
+        parts: [
+            { id: 'info_sec_quiz1', title: 'Quiz 1', titleAr: 'الكويز الأول' }
+        ]
+    },
+    {
+        id: 'entrepreneurship',
+        name: 'Entrepreneurship & Innovation',
+        nameAr: 'الريادة والابتكار',
+        icon: '🚀',
+        color: '#FFC107',
+        forceEnglish: true,
+        isNew: true,
+        parts: [
+            { id: 'entrepreneurship_quiz1', title: 'Quiz 1', titleAr: 'الكويز الأول' },
+            { id: 'entrepreneurship_quiz2', title: 'Quiz 2', titleAr: 'الكويز الثاني' },
+            { id: 'entrepreneurship_quiz3', title: 'Quiz 3', titleAr: 'الكويز الثالث' },
+            { id: 'entrepreneurship_quiz4', title: 'Quiz 4', titleAr: 'الكويز الرابع' }
+        ]
+    },
+    {
+        id: 'numerical_analysis',
+        name: 'Numerical Analysis Principles',
+        nameAr: 'مبادئ التحليل العددي',
+        icon: '📊',
+        color: '#673AB7',
+        isNew: true,
+        parts: [
+            { id: 'num_analysis_quiz1', title: 'Quiz 1', titleAr: 'الكويز الأول' }
+        ]
+    },
+    {
+        id: 'ai_programming',
+        name: 'AI Programming',
+        nameAr: 'برمجة الذكاء الاصطناعي',
+        icon: '🤖',
+        color: '#009688',
+        isNew: true,
+        parts: [
+            { id: 'ai_programming_quiz1', title: 'Quiz 1', titleAr: 'الكويز الأول' }
+        ]
+    },
+    {
+        id: 'machine_learning',
+        name: 'Machine Learning',
+        nameAr: 'تعلم الآلة',
+        icon: '🤖',
+        color: '#E91E63',
+        forceEnglish: true,
+        isNew: true,
+        parts: [
+            { id: 'ml_midterm', title: 'Midterm Past Papers', titleAr: 'أسئلة سنوات ميد' },
+            { id: 'ml_final', title: 'Final Past Papers', titleAr: 'أسئلة سنوات فاينل' },
+            { id: 'ml_quizzes', title: 'Quizzes', titleAr: 'كويزات' }
+        ]
+    }
+];

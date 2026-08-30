@@ -1,0 +1,109 @@
+.printable-table-card {
+  width: 100%;
+  max-width: 100%;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 22px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.05);
+  margin-bottom: 32px;
+}
+
+.print-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.print-card-title {
+  font-size: 1.35rem;
+  margin-bottom: 4px;
+}
+
+.print-card-subtitle {
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.print-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.print-button {
+  min-width: 110px;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.printable-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid rgba(31, 41, 55, 0.12);
+}
+
+.printable-table th,
+.printable-table td {
+  padding: 14px 12px;
+  border: 1px solid rgba(31, 41, 55, 0.12);
+  text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.printable-table th {
+  background: rgba(243, 244, 246, 0.95);
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.printable-table tr:nth-child(even) td {
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.empty-row {
+  text-align: center;
+  padding: 22px 0;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 720px) {
+  .print-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .printable-table-card {
+    border: none;
+    box-shadow: none;
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+  }
+
+  .printable-table {
+    font-size: 11pt;
+  }
+
+  .printable-table th {
+    background: #f4f4f4 !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .printable-table td,
+  .printable-table th {
+    border-color: #777 !important;
+  }
+}

@@ -1,0 +1,227 @@
+.watcher-page-container {
+  min-height: 100vh;
+  padding-top: 80px;
+  background-color: #FAF6EE;
+  background-image: radial-gradient(#E5DDCB 0.75px, #FAF6EE 0.75px);
+  background-size: 16px 16px;
+}
+
+.watcher-hero {
+  background: linear-gradient(135deg, #004D40 0%, #064e3b 50%, #005C4B 100%);
+  border-bottom: 4px solid #d4af37;
+  padding: 60px 24px;
+  text-align: center;
+  color: #ffffff;
+}
+
+.watcher-hero-content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.watcher-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  padding: 6px 16px;
+  border-radius: 50px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+.live-dot-pulse {
+  width: 8px;
+  height: 8px;
+  background: #34d399;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #34d399;
+  animation: pulsePulse 1.4s infinite;
+}
+
+.watcher-hero h1 {
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin: 0 0 12px 0;
+}
+
+.watcher-hero .highlight-text {
+  color: #6ee7b7;
+}
+
+.watcher-hero p {
+  font-size: 1.05rem;
+  opacity: 0.9;
+  margin: 0 0 28px 0;
+  line-height: 1.7;
+}
+
+.watcher-hero-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.btn-hero-watcher-primary {
+  background: linear-gradient(135deg, #d4af37 0%, #b89332 100%);
+  color: #004D40;
+  font-weight: 900;
+  padding: 12px 26px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.btn-hero-watcher-primary:hover {
+  transform: translateY(-2px);
+  color: #00332C;
+}
+
+.btn-hero-watcher-secondary {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-weight: 800;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.watcher-main-content {
+  width: 96%;
+  max-width: 1750px;
+  margin: 30px auto 80px auto;
+  padding: 0 16px;
+}
+
+.watcher-tabs-bar {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.watcher-tab-btn {
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: 1.5px solid #E6DEC8;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.watcher-tab-btn.active {
+  background: #004D40;
+  color: #ffffff;
+  border-color: #004D40;
+  box-shadow: 0 4px 14px rgba(0, 77, 64, 0.25);
+}
+
+.watcher-embed-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1.5px solid #E6DEC8;
+  padding: 16px;
+  box-shadow: 0 8px 30px rgba(100, 80, 50, 0.08);
+}
+
+.embed-notice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #064e3b;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.embed-direct-link {
+  color: #059669;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.embed-direct-link:hover {
+  text-decoration: underline;
+}
+
+.iframe-wrapper {
+  width: 100%;
+  height: 750px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #E6DEC8;
+}
+
+.watcher-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.watcher-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.guide-card {
+  background: #ffffff;
+  border: 1.5px solid #E6DEC8;
+  border-radius: 18px;
+  padding: 28px 22px;
+  position: relative;
+  text-align: right;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.guide-num {
+  width: 40px;
+  height: 40px;
+  background: #004D40;
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+}
+
+.guide-card h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #004D40;
+  margin: 0 0 10px 0;
+}
+
+.guide-card p {
+  font-size: 0.92rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.7;
+}
+
+@media (max-width: 768px) {
+  .watcher-hero h1 { font-size: 1.8rem; }
+  .iframe-wrapper { height: 600px; }
+  .watcher-tabs-bar { flex-direction: column; }
+}

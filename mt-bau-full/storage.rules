@@ -1,0 +1,14 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow public uploads to contributions folder (max 10MB, images & PDFs)
+    match /contributions/{allPaths=**} {
+      allow read: if true;
+      allow create: if request.resource.size < 10 * 1024 * 1024
+                    && (request.resource.contentType.matches('image/.*')
+                        || request.resource.contentType == 'application/pdf');
+      allow update, delete: if request.auth != null;
+    }
+  }
+}

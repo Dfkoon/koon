@@ -1,0 +1,147 @@
+.bookmarks-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(10, 15, 29, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.bookmarks-container {
+  width: 100%;
+  max-width: 500px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+[data-theme='dark'] .bookmarks-container {
+  background: #141a2e;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.bookmarks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] .bookmarks-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.bookmarks-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  color: inherit;
+}
+
+.close-btn:hover {
+  opacity: 1;
+}
+
+.bookmarks-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.no-bookmarks {
+  text-align: center;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.locker-icon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.no-bookmarks p {
+  font-weight: 600;
+}
+
+.no-bookmarks small {
+  opacity: 0.6;
+}
+
+.bookmark-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.03);
+  gap: 12px;
+  transition: background 0.2s;
+}
+
+[data-theme='dark'] .bookmark-item {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.bookmark-item:hover {
+  background: rgba(224, 43, 32, 0.08);
+}
+
+.bookmark-icon {
+  font-size: 1.3rem;
+}
+
+.bookmark-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.bookmark-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.bookmark-type {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.remove-bookmark-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  font-size: 0.9rem;
+}
+
+.remove-bookmark-btn:hover {
+  opacity: 1;
+}

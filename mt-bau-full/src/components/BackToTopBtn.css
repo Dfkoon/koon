@@ -1,0 +1,60 @@
+.back-to-top-btn {
+    position: fixed;
+    bottom: 36px;
+    right: 100px;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e02b20 0%, #c01010 100%);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 20px rgba(224, 43, 32, 0.38);
+    z-index: 9980;
+    opacity: 0;
+    transform: translateY(20px) scale(0.85);
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+}
+
+[dir="rtl"] .back-to-top-btn {
+    right: auto;
+    left: 100px;
+}
+
+.back-to-top-btn.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.back-to-top-btn:hover {
+    transform: translateY(-3px) scale(1.08);
+    box-shadow: 0 10px 28px rgba(224, 43, 32, 0.5);
+}
+
+.back-to-top-btn:active {
+    transform: scale(0.95);
+}
+
+.back-to-top-btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+@media (max-width: 768px) {
+    .back-to-top-btn,
+    [dir="rtl"] .back-to-top-btn {
+        right: 16px;
+        left: auto;
+        bottom: 100px;
+    }
+
+    [dir="rtl"] .back-to-top-btn {
+        left: 16px;
+        right: auto;
+    }
+}

@@ -1,0 +1,230 @@
+.academic-countdown-card {
+    background: var(--card-bg, #ffffff);
+    border: 1px solid rgba(224, 43, 32, 0.15);
+    border-radius: 20px;
+    padding: 24px 28px;
+    box-shadow: 0 12px 35px rgba(224, 43, 32, 0.07);
+    margin: 20px auto 28px;
+    max-width: 1000px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.academic-countdown-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--event-color, #e02b20);
+    border-radius: 20px 20px 0 0;
+    transition: background 0.4s;
+}
+
+.countdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.title-with-icon {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.event-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.title-with-icon h3 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin: 0 0 6px;
+    line-height: 1.3;
+}
+
+.countdown-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.event-badge {
+    background: rgba(224, 43, 32, 0.1);
+    color: #e02b20;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid rgba(224, 43, 32, 0.2);
+}
+
+.event-date-str {
+    font-size: 0.78rem;
+    opacity: 0.6;
+    font-weight: 600;
+}
+
+.countdown-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.event-selector-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.event-tab {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    font-size: 1.3rem;
+    width: 42px;
+    height: 42px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+[data-theme='dark'] .event-tab {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.event-tab:hover {
+    background: rgba(224, 43, 32, 0.08);
+    transform: translateY(-2px);
+}
+
+.event-tab.active {
+    border-color: var(--tab-color, #e02b20);
+    background: rgba(224, 43, 32, 0.08);
+    box-shadow: 0 4px 12px rgba(224, 43, 32, 0.15);
+}
+
+/* Add to Calendar */
+.add-to-calendar-btn {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    color: #3b82f6;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    font-family: inherit;
+}
+
+.add-to-calendar-btn:hover {
+    background: rgba(59, 130, 246, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+/* Timer */
+.countdown-timer-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    direction: ltr;
+}
+
+.timer-box {
+    background: linear-gradient(135deg,
+        rgba(224, 43, 32, 0.06) 0%,
+        rgba(224, 43, 32, 0.03) 100%
+    );
+    border: 1px solid rgba(224, 43, 32, 0.12);
+    border-radius: 14px;
+    padding: 18px 12px;
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.timer-box:hover {
+    transform: translateY(-2px);
+}
+
+.timer-box .number {
+    display: block;
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: var(--event-color, #e02b20);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.4s;
+}
+
+.timer-box .label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    opacity: 0.6;
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* Past message */
+.countdown-past-msg {
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 700;
+    opacity: 0.75;
+    padding: 20px;
+    background: rgba(16, 185, 129, 0.06);
+    border-radius: 12px;
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    color: #059669;
+}
+
+/* Dark mode */
+[data-theme='dark'] .academic-countdown-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(224, 43, 32, 0.2);
+}
+
+[data-theme='dark'] .timer-box {
+    background: rgba(224, 43, 32, 0.08);
+    border-color: rgba(224, 43, 32, 0.18);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .academic-countdown-card {
+        padding: 18px 16px;
+    }
+
+    .countdown-timer-grid {
+        gap: 8px;
+    }
+
+    .timer-box .number {
+        font-size: 1.8rem;
+    }
+
+    .countdown-header {
+        flex-direction: column;
+    }
+
+    .countdown-header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}

@@ -1,0 +1,443 @@
+.smart-advisor-container {
+    max-width: 900px;
+    margin: 4rem auto;
+    padding: 2.5rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.advisor-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.advisor-header h3 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 0.8rem;
+    background: linear-gradient(135deg, #fff 0%, var(--primary-light) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.advisor-header p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+.advisor-steps-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.step-dot {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--text-muted);
+    transition: all 0.4s ease;
+}
+
+.step-dot.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 0 20px rgba(211, 47, 47, 0.4);
+}
+
+.step-line {
+    width: 60px;
+    height: 2px;
+    background: var(--glass-border);
+}
+
+.advisor-step {
+    animation: fadeIn 0.5s ease-out;
+    position: relative;
+}
+
+.plan-type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.plan-option-card {
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.plan-option-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-8px);
+    border-color: var(--primary-light);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+.plan-badge-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1.2rem;
+}
+
+.plan-option-card h5 {
+    font-size: 1.2rem;
+    color: var(--text-main);
+    margin-bottom: 0.6rem;
+}
+
+.plan-option-card p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.back-step-btn {
+    position: absolute;
+    top: -10px;
+    right: 0;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.back-step-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.advisor-step h4 {
+    font-size: 1.4rem;
+    color: var(--text-main);
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.major-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.major-option {
+    padding: 1.2rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    color: var(--text-muted);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.major-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-3px);
+}
+
+.major-option.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.advisor-next-btn {
+    display: block;
+    width: 100%;
+    max-width: 300px;
+    margin: 2rem auto 0;
+    padding: 1.2rem;
+    border: none;
+    border-radius: 50px;
+    background: var(--primary);
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.4s ease;
+}
+
+.advisor-next-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.advisor-next-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(211, 47, 47, 0.4);
+}
+
+.semester-block {
+    margin-bottom: 2.5rem;
+}
+
+.semester-block h5 {
+    font-size: 1.2rem;
+    color: var(--primary-light);
+    margin-bottom: 1.2rem;
+    border-right: 4px solid var(--primary);
+    padding-right: 1rem;
+}
+
+.courses-grid-mini {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.course-check-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.course-check-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.course-check-item.checked {
+    border-color: var(--primary-light);
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.check-box {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--glass-border);
+    border-radius: 6px;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.course-check-item.checked .check-box {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.course-check-item.checked .check-box::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+}
+
+.course-check-info .name {
+    display: block;
+    font-size: 1rem;
+    color: var(--text-main);
+}
+
+.course-check-info .credits {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.advisor-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 3rem;
+}
+
+.advisor-back-btn {
+    padding: 1.2rem 2.5rem;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    border-radius: 50px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.recommendations-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.recommendation-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.recommendation-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    background: var(--primary);
+}
+
+.rec-icon {
+    font-size: 1.8rem;
+}
+
+.rec-info h5 {
+    font-size: 1.1rem;
+    color: var(--text-main);
+    margin-bottom: 0.3rem;
+}
+
+.rec-info p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.rec-prereq {
+    margin-top: 0.8rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.prereq-name {
+    color: var(--primary-light);
+    margin-right: 0.4rem;
+    font-weight: 600;
+}
+
+.advisor-reset-btn {
+    display: block;
+    margin: 3rem auto 0;
+    padding: 1rem 2rem;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--primary-light);
+    border-radius: 50px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.advisor-reset-btn:hover {
+    background: rgba(var(--primary-rgb), 0.1);
+    border-color: var(--primary);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .smart-advisor-container {
+        padding: 1.5rem;
+        margin: 2rem 1rem;
+    }
+
+    .advisor-steps-indicator {
+        gap: 0.5rem;
+    }
+
+    .step-line {
+        width: 30px;
+    }
+}
+
+/* Beta Badge Style */
+.beta-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #FF9800, #F57C00);
+    color: white;
+    font-size: 0.9rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-inline-start: 10px;
+    vertical-align: middle;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(245, 124, 0, 0.3);
+    animation: pulse 2s infinite;
+    -webkit-text-fill-color: white;
+    /* Override parent h3 gradient text */
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Under Construction Overlay */
+.under-construction-overlay {
+    margin-top: 15px;
+    background: rgba(var(--primary-rgb), 0.1);
+    border: 1px dashed var(--primary);
+    padding: 8px;
+    border-radius: 8px;
+    color: var(--primary-light);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.plan-option-card:has(.under-construction-overlay) {
+    cursor: not-allowed;
+    opacity: 0.8;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.plan-option-card:has(.under-construction-overlay):hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--glass-border);
+}

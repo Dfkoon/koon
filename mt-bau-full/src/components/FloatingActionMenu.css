@@ -1,0 +1,150 @@
+.fab-menu-wrapper {
+    position: fixed;
+    bottom: 36px;
+    right: 36px;
+    z-index: 9970;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.fab-menu-wrapper.rtl {
+    right: auto;
+    left: 36px;
+    align-items: flex-start;
+}
+
+/* Main toggle button */
+.fab-main-btn {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+}
+
+.fab-main-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+}
+
+.fab-main-btn.active {
+    background: linear-gradient(135deg, #e02b20 0%, #c01010 100%);
+    border-color: rgba(224, 43, 32, 0.3);
+    box-shadow: 0 8px 28px rgba(224, 43, 32, 0.4);
+    transform: rotate(0deg) scale(1.05);
+}
+
+.fab-main-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: transform 0.3s ease;
+}
+
+/* Actions container */
+.fab-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.25s ease, transform 0.3s ease;
+}
+
+.fab-menu-wrapper.rtl .fab-actions {
+    align-items: flex-start;
+}
+
+.fab-menu-wrapper.open .fab-actions {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Individual action buttons */
+.fab-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card-bg, #fff);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 28px;
+    padding: 10px 16px 10px 12px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: inherit;
+    font-family: inherit;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: nowrap;
+    transform: scale(0.9);
+}
+
+.fab-menu-wrapper.open .fab-action-btn {
+    transform: scale(1);
+}
+
+.fab-menu-wrapper.rtl .fab-action-btn {
+    flex-direction: row-reverse;
+    padding: 10px 12px 10px 16px;
+}
+
+.fab-action-btn:hover {
+    background: #e02b20;
+    color: #fff;
+    border-color: #e02b20;
+    transform: scale(1.06);
+    box-shadow: 0 8px 24px rgba(224, 43, 32, 0.3);
+}
+
+[data-theme='dark'] .fab-action-btn {
+    background: #1e2535;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.fab-action-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.fab-action-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .fab-menu-wrapper,
+    .fab-menu-wrapper.rtl {
+        bottom: 100px;
+        right: 16px;
+        left: auto;
+    }
+
+    .fab-menu-wrapper.rtl {
+        left: 16px;
+        right: auto;
+    }
+
+    .fab-main-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+}

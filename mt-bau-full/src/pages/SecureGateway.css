@@ -1,0 +1,611 @@
+/* ═══════════════════════════════════════════════════════
+   SecureGateway.css — Isolated Coordinator Gateway Styles
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Root layout ─────────────────────────────────────── */
+.sgw-root {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(
+        ellipse at 30% 20%,
+        hsl(230, 35%, 8%) 0%,
+        hsl(220, 30%, 5%) 60%,
+        hsl(215, 25%, 3%) 100%
+    );
+    font-family: 'Segoe UI', 'Tahoma', Arial, sans-serif;
+    padding: 2rem;
+}
+
+/* ── Ambient orbs ─────────────────────────────────────── */
+.sgw-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    animation: sgwOrb 8s ease-in-out infinite alternate;
+}
+
+.sgw-orb-1 {
+    width: 400px;
+    height: 400px;
+    top: -120px;
+    left: -100px;
+    background: radial-gradient(circle, hsla(210, 80%, 45%, 0.18) 0%, transparent 70%);
+    animation-duration: 9s;
+}
+
+.sgw-orb-2 {
+    width: 350px;
+    height: 350px;
+    bottom: -80px;
+    right: -80px;
+    background: radial-gradient(circle, hsla(270, 70%, 50%, 0.15) 0%, transparent 70%);
+    animation-duration: 11s;
+    animation-delay: -3s;
+}
+
+.sgw-orb-3 {
+    width: 250px;
+    height: 250px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, hsla(190, 80%, 40%, 0.08) 0%, transparent 70%);
+    animation-duration: 7s;
+    animation-delay: -1.5s;
+}
+
+@keyframes sgwOrb {
+    0%   { transform: scale(1) translate(0, 0); }
+    50%  { transform: scale(1.1) translate(20px, -15px); }
+    100% { transform: scale(0.95) translate(-10px, 20px); }
+}
+
+.sgw-orb-3 {
+    animation-name: sgwOrb3;
+}
+
+@keyframes sgwOrb3 {
+    0%   { transform: translate(-50%, -50%) scale(1); }
+    50%  { transform: translate(-45%, -55%) scale(1.15); }
+    100% { transform: translate(-55%, -45%) scale(0.9); }
+}
+
+/* ── Card wrapper ─────────────────────────────────────── */
+.sgw-card-wrapper {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 440px;
+}
+
+/* ── Main card ────────────────────────────────────────── */
+.sgw-card {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 2.5rem 2.2rem 2rem;
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+        0 1px 0 rgba(255, 255, 255, 0.12) inset;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    direction: rtl;
+    text-align: center;
+}
+
+.sgw-card:hover {
+    box-shadow:
+        0 35px 90px rgba(0, 0, 0, 0.55),
+        0 0 40px rgba(100, 150, 255, 0.06),
+        0 0 0 1px rgba(255, 255, 255, 0.07) inset,
+        0 1px 0 rgba(255, 255, 255, 0.14) inset;
+}
+
+/* ── Shake animation ─────────────────────────────────── */
+.sgw-shake {
+    animation: sgwShake 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes sgwShake {
+    0%, 100% { transform: translateX(0); }
+    15%       { transform: translateX(-10px); }
+    30%       { transform: translateX(9px); }
+    45%       { transform: translateX(-7px); }
+    60%       { transform: translateX(6px); }
+    75%       { transform: translateX(-4px); }
+    90%       { transform: translateX(3px); }
+}
+
+/* ── Success state ───────────────────────────────────── */
+.sgw-success-state {
+    border-color: rgba(85, 239, 196, 0.3);
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.5),
+        0 0 50px rgba(85, 239, 196, 0.15),
+        0 0 0 1px rgba(85, 239, 196, 0.15) inset;
+}
+
+/* ── Header ──────────────────────────────────────────── */
+.sgw-header {
+    margin-bottom: 2rem;
+}
+
+.sgw-shield {
+    font-size: 3rem;
+    line-height: 1;
+    margin-bottom: 1rem;
+    animation: sgwShieldFloat 3s ease-in-out infinite;
+}
+
+@keyframes sgwShieldFloat {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-6px); }
+}
+
+.sgw-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f0f4ff;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.3px;
+}
+
+.sgw-subtitle {
+    font-size: 0.9rem;
+    color: rgba(200, 215, 255, 0.55);
+    margin: 0;
+}
+
+/* ── Form ────────────────────────────────────────────── */
+.sgw-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.3rem;
+    text-align: right;
+}
+
+.sgw-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sgw-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(200, 215, 255, 0.7);
+    letter-spacing: 0.3px;
+}
+
+.sgw-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.sgw-input-icon {
+    position: absolute;
+    right: 12px;
+    font-size: 1rem;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.sgw-input {
+    width: 100%;
+    padding: 11px 40px 11px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    color: #f0f4ff;
+    font-size: 0.92rem;
+    outline: none;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+    box-sizing: border-box;
+    direction: ltr;
+    text-align: center;
+}
+
+.sgw-input:focus {
+    border-color: rgba(120, 170, 255, 0.5);
+    box-shadow: 0 0 0 3px rgba(100, 150, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.sgw-input::placeholder {
+    color: rgba(200, 215, 255, 0.25);
+    font-size: 0.85rem;
+}
+
+.sgw-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── CAPTCHA area ────────────────────────────────────── */
+.sgw-captcha-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    justify-content: flex-end;
+}
+
+.sgw-captcha-canvas {
+    width: 180px;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: default;
+    display: block;
+}
+
+.sgw-captcha-refresh {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: #f0f4ff;
+    font-size: 1.1rem;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.sgw-captcha-refresh:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: rotate(180deg);
+}
+
+.sgw-captcha-input {
+    padding: 11px 14px;
+    letter-spacing: 4px;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+/* ── Attempt indicator ───────────────────────────────── */
+.sgw-attempts-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-direction: row-reverse;
+}
+
+.sgw-attempt-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.sgw-attempt-used {
+    background: #ff7675;
+    border-color: #ff5252;
+    box-shadow: 0 0 8px rgba(255, 82, 82, 0.5);
+}
+
+.sgw-attempts-label {
+    font-size: 0.78rem;
+    color: rgba(200, 215, 255, 0.45);
+    margin-right: 0.3rem;
+}
+
+/* ── Error message ───────────────────────────────────── */
+.sgw-error {
+    background: rgba(255, 82, 82, 0.1);
+    border: 1px solid rgba(255, 82, 82, 0.25);
+    border-radius: 10px;
+    padding: 0.7rem 1rem;
+    font-size: 0.83rem;
+    color: #ff9f9f;
+    line-height: 1.5;
+    text-align: center;
+}
+
+/* ── Submit button ───────────────────────────────────── */
+.sgw-submit-btn {
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, hsl(210, 80%, 50%) 0%, hsl(240, 70%, 55%) 100%);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 6px 20px rgba(70, 130, 230, 0.35);
+    margin-top: 0.3rem;
+}
+
+.sgw-submit-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, hsl(210, 85%, 55%) 0%, hsl(240, 75%, 60%) 100%);
+    box-shadow: 0 10px 30px rgba(70, 130, 230, 0.5);
+    transform: translateY(-2px);
+}
+
+.sgw-submit-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 4px 12px rgba(70, 130, 230, 0.3);
+}
+
+.sgw-submit-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ── Loading spinner ─────────────────────────────────── */
+.sgw-spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid rgba(255, 255, 255, 0.25);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: sgwSpin 0.7s linear infinite;
+    display: inline-block;
+}
+
+@keyframes sgwSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Subtitle Hint & Secondary Buttons ───────────────────── */
+.sgw-subtitle-hint {
+    font-size: 0.85rem;
+    color: rgba(200, 215, 255, 0.6);
+    margin-bottom: 1.2rem;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.sgw-home-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    color: rgba(200, 215, 255, 0.7);
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    width: 100%;
+    margin-top: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.sgw-home-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── 2FA Badge & OTP Inputs ───────────────────────────── */
+.sgw-2fa-badge {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 16px;
+    padding: 1.2rem 1rem;
+    margin-bottom: 1.4rem;
+    text-align: center;
+}
+
+.sgw-2fa-icon-ring {
+    width: 52px;
+    height: 52px;
+    background: rgba(99, 102, 241, 0.18);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.6rem;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+}
+
+.sgw-2fa-icon {
+    font-size: 1.6rem;
+}
+
+.sgw-2fa-title {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #ffffff;
+    margin-bottom: 0.3rem;
+}
+
+.sgw-2fa-desc {
+    font-size: 0.82rem;
+    color: rgba(200, 215, 255, 0.7);
+    line-height: 1.45;
+}
+
+.sgw-2fa-desc strong {
+    color: #818cf8;
+}
+
+.sgw-2fa-timer-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+    font-size: 0.75rem;
+    color: rgba(200, 215, 255, 0.5);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.sgw-2fa-timer-dot {
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #10b981;
+    animation: sgwPulse 1.5s infinite;
+}
+
+@keyframes sgwPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.sgw-otp-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    direction: ltr;
+    margin-top: 0.4rem;
+}
+
+.sgw-otp-box {
+    width: 46px;
+    height: 54px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-family: monospace;
+    text-align: center;
+    transition: all 0.2s ease;
+    outline: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.sgw-otp-box:focus {
+    border-color: #818cf8;
+    background: rgba(99, 102, 241, 0.12);
+    box-shadow: 0 0 16px rgba(99, 102, 241, 0.35);
+    transform: translateY(-2px);
+}
+
+.sgw-otp-filled {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: rgba(99, 102, 241, 0.08);
+}
+
+/* ── Locked state ────────────────────────────────────── */
+.sgw-locked-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem 0;
+}
+
+.sgw-lock-icon {
+    font-size: 3rem;
+    animation: sgwLockPulse 2s ease-in-out infinite;
+}
+
+@keyframes sgwLockPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%       { transform: scale(1.1); opacity: 0.8; }
+}
+
+.sgw-lock-msg {
+    color: rgba(200, 215, 255, 0.6);
+    font-size: 0.9rem;
+    line-height: 1.7;
+    text-align: center;
+    margin: 0;
+}
+
+.sgw-countdown {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #ff9f9f;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -1px;
+    text-shadow: 0 0 20px rgba(255, 100, 100, 0.4);
+}
+
+/* ── Success animation ───────────────────────────────── */
+.sgw-success-anim {
+    display: flex;
+    justify-content: center;
+    padding: 1.5rem 0 2rem;
+}
+
+.sgw-checkmark-circle {
+    width: 80px;
+    height: 80px;
+}
+
+.sgw-checkmark-svg {
+    width: 80px;
+    height: 80px;
+    stroke: #55efc4;
+}
+
+.sgw-check-circle {
+    stroke-dasharray: 166;
+    stroke-dashoffset: 166;
+    stroke-width: 2;
+    stroke-miterlimit: 10;
+    fill: none;
+    stroke: #55efc4;
+    animation: sgwCheckCircle 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.sgw-check-path {
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke: #55efc4;
+    animation: sgwCheckPath 0.4s 0.5s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+@keyframes sgwCheckCircle {
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes sgwCheckPath {
+    to { stroke-dashoffset: 0; }
+}
+
+/* ── Footer note ─────────────────────────────────────── */
+.sgw-footer-note {
+    margin-top: 1.8rem;
+    font-size: 0.75rem;
+    color: rgba(200, 215, 255, 0.25);
+    text-align: center;
+    line-height: 1.6;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 480px) {
+    .sgw-card {
+        padding: 2rem 1.5rem 1.8rem;
+        border-radius: 20px;
+    }
+    .sgw-title { font-size: 1.3rem; }
+}

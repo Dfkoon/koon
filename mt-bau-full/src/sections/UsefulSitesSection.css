@@ -1,0 +1,139 @@
+.useful-sites-section {
+    padding: 80px 5%;
+    background-color: var(--bg-secondary);
+    /* Optional: distinct background if needed, otherwise inherit */
+}
+
+.sites-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    padding: 20px 0;
+}
+
+.sites-track {
+    display: flex;
+    gap: 2rem;
+    width: max-content;
+    padding: 2rem 0;
+    padding-right: 2rem;
+    /* Matches gap to ensure 50% shift is seamless */
+    animation: sites-scroll-loop 30s linear infinite;
+}
+
+.sites-track:hover {
+    animation-play-state: paused;
+}
+
+[dir="rtl"] .sites-track {
+    padding-right: 0;
+    padding-left: 2rem;
+    /* Matches gap for RTL */
+    animation: sites-scroll-loop-rtl 30s linear infinite;
+}
+
+.site-card {
+    width: 300px;
+    padding: 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    transition: var(--transition);
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Optional: Add a subtle hover effect that differs from services */
+.site-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border-color: var(--primary);
+}
+
+.site-icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    background: var(--glass-bg);
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    /* Circle for variety? Or stick to square 20px radius like services? Let's stick to consistent 20px */
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    color: var(--primary);
+}
+
+.site-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.site-desc {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    min-height: 3em;
+}
+
+.site-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    background: var(--glass-bg);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    text-decoration: none;
+    display: inline-block;
+    margin-top: auto;
+    /* Push to bottom */
+}
+
+.site-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-2px);
+}
+
+@keyframes sites-scroll-loop {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+@keyframes sites-scroll-loop-rtl {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(50%);
+    }
+}
+
+@media (max-width: 768px) {
+    .site-card {
+        width: 280px;
+        padding: 1.5rem;
+    }
+
+    .sites-track {
+        animation-duration: 40s;
+    }
+}

@@ -1,0 +1,93 @@
+.star-rating-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 0 6px;
+    transition: all 0.3s ease;
+}
+
+.star-rating-wrapper.rating-success {
+    animation: ratePop 0.5s ease-out;
+}
+
+.star-rating-interactive,
+.star-rating-done {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rate-label {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    font-weight: 600;
+}
+
+.stars-row {
+    display: flex;
+    gap: 4px;
+    direction: ltr;
+}
+
+.star-btn {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: #d1d5db;
+    transition: color 0.15s ease, transform 0.15s ease;
+    padding: 0;
+    line-height: 1;
+}
+
+.stars-row.readonly .star-btn {
+    cursor: default;
+}
+
+.star-btn.filled {
+    color: #f59e0b;
+}
+
+.star-btn:hover:not(.readonly *) {
+    transform: scale(1.2);
+    color: #f59e0b;
+}
+
+.avg-display {
+    font-size: 0.78rem;
+    opacity: 0.6;
+}
+
+.thanks-msg {
+    font-size: 0.82rem;
+    color: #10b981;
+    font-weight: 600;
+}
+
+/* Compact version */
+.star-rating-compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.82rem;
+    direction: ltr;
+}
+
+.star-compact-icon {
+    font-size: 0.9rem;
+}
+
+.star-compact-val {
+    font-weight: 700;
+    color: #f59e0b;
+}
+
+.star-compact-count {
+    opacity: 0.6;
+}
+
+@keyframes ratePop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+}

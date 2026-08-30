@@ -1,0 +1,377 @@
+.graduation_promo {
+  padding: 80px 5%;
+  background: var(--bg-gradient);
+  position: relative;
+  overflow: hidden;
+}
+
+.promo-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.promo-content {
+  display: flex;
+  align-items: center;
+  gap: 50px;
+  padding: 50px;
+  border-radius: 40px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
+  min-height: 520px; /* Fixing height to prevent jumping */
+}
+
+.promo-image-side {
+  flex: 1;
+  position: relative;
+}
+
+.main-image-wrapper {
+  position: relative;
+  border-radius: 30px;
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+  transform: rotate(-2deg);
+  transition: transform 0.5s ease;
+}
+
+.main-image-wrapper:hover {
+  transform: rotate(0deg) scale(1.02);
+}
+
+.promo-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.promo-svg-wrapper {
+  width: 100%;
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(var(--primary-rgb), 0.1) 0%, transparent 70%);
+  border-radius: 20px;
+}
+
+.royal-book-svg {
+  width: 90%;
+  height: auto;
+  filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5));
+  transition: all 0.5s ease;
+}
+
+.main-image-wrapper:hover .royal-book-svg {
+  filter: drop-shadow(0 30px 50px rgba(var(--primary-rgb), 0.3));
+  transform: translateY(-10px) scale(1.05);
+}
+
+.image-overlay-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(var(--primary-rgb), 0.2), transparent);
+  pointer-events: none;
+}
+
+.promo-text-side {
+  flex: 1.2;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: right;
+}
+
+.promo-badge {
+  display: inline-block;
+  align-self: flex-start;
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary);
+  padding: 8px 20px;
+  border-radius: 50px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  border: 1px solid rgba(var(--primary-rgb), 0.2);
+  margin-bottom: 5px;
+}
+
+.promo-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-main);
+}
+
+.promo-title .highlight {
+  color: var(--primary);
+  display: block;
+}
+
+.promo-description {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.promo-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.promo-cta-btn {
+  background: var(--primary);
+  color: white;
+  padding: 15px 35px;
+  border-radius: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 20px rgba(var(--primary-rgb), 0.3);
+}
+
+.promo-cta-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 25px rgba(var(--primary-rgb), 0.4);
+}
+
+.promo-secondary-btn {
+  background: rgba(var(--text-main-rgb), 0.05);
+  color: var(--text-main);
+  padding: 15px 30px;
+  border-radius: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(var(--text-main-rgb), 0.1);
+  transition: all 0.3s ease;
+}
+
+.promo-secondary-btn:hover {
+  background: rgba(var(--text-main-rgb), 0.1);
+  transform: translateY(-3px);
+}
+
+.promo-contact-info {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(var(--text-main-rgb), 0.1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.phone-label {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.phone-number {
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 1.3rem;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Responsive Table & Mobile */
+@media (max-width: 992px) {
+  .promo-content {
+    flex-direction: column;
+    padding: 40px 25px;
+    gap: 35px;
+    min-height: 700px; /* Mobile height stability */
+  }
+  
+  .promo-title {
+    font-size: 2rem;
+  }
+  
+  .promo-text-side {
+    text-align: center;
+    align-items: center;
+  }
+  
+  .promo-badge {
+    align-self: center;
+  }
+  
+  .promo-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .promo-cta-btn, .promo-secondary-btn {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .graduation-promo {
+    padding: 40px 15px;
+  }
+  
+  .promo-title {
+    font-size: 1.8rem;
+  }
+}
+
+/* --- Smart Slider Enhancements --- */
+.promo-tasks-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: right;
+  margin-bottom: 20px;
+}
+
+.promo-tasks-list li {
+  font-size: 1.1rem;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(var(--text-main-rgb), 0.03);
+  padding: 8px 15px;
+  border-radius: 12px;
+  transition: transform 0.3s ease;
+}
+
+.promo-tasks-list li:hover {
+  transform: translateX(-5px);
+  background: rgba(var(--primary-rgb), 0.05);
+}
+
+.promo-quote {
+  font-style: italic;
+  color: var(--primary);
+  font-weight: 700;
+  margin-top: 15px;
+  font-size: 1.1rem;
+  border-right: 3px solid var(--primary);
+  padding-right: 15px;
+}
+
+.promo-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(var(--text-main-rgb), 0.1);
+}
+
+.slider-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(var(--text-main-rgb), 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dot.active {
+  width: 25px;
+  background: var(--primary);
+  border-radius: 10px;
+}
+
+.charity-svg .royal-book-svg {
+  filter: drop-shadow(0 20px 30px rgba(20, 184, 166, 0.3));
+}
+
+[data-theme="light"] .promo-tasks-list li {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* Red-themed badge for Horizon, Teal for Nabdh */
+.promo-badge {
+  transition: background 0.5s ease;
+}
+
+
+/* --- Real Image Styling for Ofoq Designs --- */
+.promo-image-wrapper {
+  width: 100%;
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 20px;
+  background: rgba(var(--text-main-rgb), 0.05);
+}
+
+.promo-image-real {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.main-image-wrapper:hover .promo-image-real {
+  transform: scale(1.08);
+}
+
+
+/* --- Corner Layout for Charity --- */
+.charity-layout .promo-text-side {
+  flex: 1;
+  width: 100%;
+  position: relative;
+  text-align: right;
+}
+
+.charity-layout .promo-title {
+    max-width: 80%; /* Leave space for corner logo */
+}
+
+.corner-logo {
+  position: absolute;
+  top: -10px;
+  left: -20px;
+  width: 120px;
+  height: 120px;
+  z-index: 5;
+  filter: drop-shadow(0 10px 20px rgba(20, 184, 166, 0.2));
+  opacity: 0.8;
+  transition: all 0.5s ease;
+}
+
+.charity-layout:hover .corner-logo {
+    opacity: 1;
+    transform: scale(1.1) rotate(-5deg);
+}
+
+.corner-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Adjusting layout for full width */
+.charity-layout {
+    justify-content: center;
+}
+
+[data-theme="light"] .corner-logo {
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1));
+}
+

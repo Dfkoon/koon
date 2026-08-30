@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+  <style>
+    .ent{fill:#fff;stroke:#111;stroke-width:3px;}
+    .attr{fill:#fff;stroke:#111;stroke-width:2px;}
+    .rel{fill:#fff;stroke:#111;stroke-width:3px;}
+    .text{font-family:Arial, Helvetica, sans-serif;font-size:16px;fill:#111}
+  </style>
+  <rect x="90" y="70" width="120" height="50" class="ent" rx="6"/>
+  <text x="150" y="102" text-anchor="middle" class="text">S</text>
+  <ellipse cx="110" cy="40" rx="30" ry="18" class="attr"/>
+  <text x="110" y="44" text-anchor="middle" class="text">s1</text>
+  <ellipse cx="190" cy="40" rx="30" ry="18" class="attr"/>
+  <text x="190" y="44" text-anchor="middle" class="text">s2</text>
+  <polygon points="140,120 110,160 170,160" fill="#fff" stroke="#111" stroke-width="3"/>
+  <text x="140" y="147" text-anchor="middle" class="text">ISA</text>
+  <rect x="20" y="170" width="120" height="50" class="ent" rx="6"/>
+  <text x="80" y="202" text-anchor="middle" class="text">A</text>
+  <ellipse cx="40" cy="200" rx="30" ry="18" class="attr"/>
+  <text x="40" y="204" text-anchor="middle" class="text">a1</text>
+  <rect x="170" y="170" width="120" height="50" class="ent" rx="6"/>
+  <text x="230" y="202" text-anchor="middle" class="text">B</text>
+  <ellipse cx="230" cy="200" rx="30" ry="18" class="attr"/>
+  <text x="230" y="204" text-anchor="middle" class="text">b1</text>
+  <ellipse cx="230" cy="250" rx="30" ry="18" class="attr" stroke-dasharray="6,4"/>
+  <text x="230" y="254" text-anchor="middle" class="text">b2</text>
+  <rect x="380" y="170" width="120" height="50" class="ent" rx="6"/>
+  <text x="440" y="202" text-anchor="middle" class="text">C</text>
+  <ellipse cx="410" cy="140" rx="30" ry="18" class="attr"/>
+  <text x="410" y="144" text-anchor="middle" class="text">x</text>
+  <ellipse cx="470" cy="140" rx="30" ry="18" class="attr"/>
+  <text x="470" y="144" text-anchor="middle" class="text">y</text>
+  <polygon points="300,190 360,190 370,220 290,220" class="rel"/>
+  <text x="330" y="210" text-anchor="middle" class="text">R1</text>
+  <line x1="210" y1="190" x2="300" y2="200" stroke="#111" stroke-width="2"/>
+  <line x1="420" y1="190" x2="380" y2="190" stroke="#111" stroke-width="2" marker-end="url(#arrow)"/>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#111"/>
+    </marker>
+  </defs>
+</svg>

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+  <style>
+    .ent{fill:#fff;stroke:#111;stroke-width:3px;}
+    .attr{fill:#fff;stroke:#111;stroke-width:2px;}
+    .rel{fill:#fff;stroke:#111;stroke-width:3px;}
+    .text{font-family:Arial, Helvetica, sans-serif;font-size:16px;fill:#111}
+  </style>
+
+  <!-- Customer entity -->
+  <rect x="80" y="70" width="180" height="64" class="ent" rx="8"/>
+  <text x="170" y="108" text-anchor="middle" class="text">Customer</text>
+  <ellipse cx="60" cy="40" rx="42" ry="18" class="attr" />
+  <text x="60" y="44" text-anchor="middle" class="text">email</text>
+  <ellipse cx="170" cy="40" rx="42" ry="18" class="attr" />
+  <text x="170" y="44" text-anchor="middle" class="text">name</text>
+  <ellipse cx="260" cy="40" rx="42" ry="18" class="attr" />
+  <text x="260" y="44" text-anchor="middle" class="text">credit</text>
+  <line x1="80" y1="90" x2="60" y2=  <line x1="80" y1="90" x2="60" y2=  <line x1="80" y1="90" x2="60" y2=  <line x1="80" y1="90""   <line x1="80" y1="90" x2="60" y2=  <line x1="80" y1="90" x2="60" y2=  <line x1="80" th  <line 
+  <!-- Reviewer specialization -->
+  <path d="M170 134 L150 174 L190 174 Z" fill="#fff" stroke="#111" stroke-width="2" />
+
+  <!-- Reviewer entity -->
+  <rect x="120" y="180" width="140" height="60" class="ent" rx="8"/>
+  <text x="190" y="215" text-anchor="middle" class="text">Reviewer</text>
+  <ellipse cx="190" cy="250" rx="50" ry="18" class="attr"/>
+  <text x="190" y="254" text-anchor="middle" class="text">reputation</text>
+  <line x1="170" y1="180" x2="170" y2="198" stroke="#111" stroke-width="2" />
+
+  <!-- Review entity -->
+  <rect x="560" y="170" width="180" height="72" class="ent" rx="  <rect x="560" y="170" width="180" height="72" class="ent" rx="  <ew</text>
+  <ellipse cx="720" cy="200" rx="48" ry="18" class="  <ellipse cx="720" cy="200" rx="48" ry="18" class="  <ellipse cx="72t</text>
+  <ellipse cx="720" cy="235" rx="48" ry="18" class="attr"/>
+  <text x="720" y="239" text-anchor="middle" class="text">date</text>
+  <ellipse cx="650" cy="275" rx="48" ry="18" class="attr"/>
+  <text x="650" y="279" text-a  <text x="650" y="279" xt">rating<  <text x="650" y="279" text-a  <text x="650" y="279" xt">rating<  <text x420,250" fill=  <text x="650" y="279" tke  <text x="650" y="279" text-a  <text x="650" y="279" xt">rating<  xt  <text x="650" y="279" text-a  <text x="650" y="279" xt">rating<  <tex1"   <text x="650" y="279" text-a  <text x="650" y="279" xt">"200" stroke="#111" stroke-width="2" />
+  <line x1="170" y1="220" x2="330" y2="210" stroke="#111" stroke-width="2" />
+
+</svg>

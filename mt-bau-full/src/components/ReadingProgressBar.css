@@ -1,0 +1,22 @@
+.reading-progress-track {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: transparent;
+    z-index: 99999;
+    pointer-events: none;
+}
+
+.reading-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #e02b20 0%, #ff6b6b 50%, #ffd700 100%);
+    border-radius: 0 3px 3px 0;
+    transition: width 0.08s linear;
+    box-shadow: 0 0 8px rgba(224, 43, 32, 0.5);
+}
+
+[dir="rtl"] .reading-progress-fill {
+    border-radius: 3px 0 0 3px;
+}

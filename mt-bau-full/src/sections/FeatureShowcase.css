@@ -1,0 +1,371 @@
+.feature-showcase-section {
+    padding: 60px 5%;
+    display: flex;
+    flex-direction: column;
+    gap: 80px;
+    overflow-x: hidden;
+    /* Prevent horizontal scroll from animations */
+}
+
+.feature-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4rem;
+    padding: 2rem 0;
+    opacity: 0;
+    transform: translateY(50px);
+    transition: all 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.feature-row.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.feature-row.reverse {
+    flex-direction: row;
+}
+
+.feature-content {
+    flex: none;
+    width: 100%;
+    max-width: 680px;
+    text-align: center;
+}
+
+.feature-visual {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.feature-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.feature-icon {
+    font-size: 2rem;
+}
+
+.feature-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--text-main) 0%, var(--primary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.2;
+}
+
+.feature-desc {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+}
+
+.feature-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--primary);
+    color: white;
+    padding: 12px 28px;
+    border-radius: 50px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.feature-btn:hover {
+    background: transparent;
+    /* var(--primary-dark) */
+    color: var(--primary);
+    border-color: var(--primary);
+    transform: translateX(5px);
+}
+
+[dir="rtl"] .feature-btn:hover {
+    transform: translateX(-5px);
+}
+
+.btn-arrow {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.feature-btn:hover .btn-arrow {
+    transform: translateX(5px);
+}
+
+[dir="rtl"] .feature-btn:hover .btn-arrow {
+    transform: translateX(-5px);
+}
+
+/* Visuals */
+.feature-image-container {
+    width: 100%;
+    max-width: 550px;
+    border-radius: 20px;
+    overflow: hidden;
+    transform: perspective(1000px) rotateY(-5deg);
+    transition: all 0.4s ease;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px -10px var(--feature-color, rgba(255, 255, 255, 0.1));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.feature-row.reverse .feature-image-container {
+    transform: perspective(1000px) rotateY(5deg);
+}
+
+.feature-image-container:hover {
+    transform: perspective(1000px) rotateY(0deg) scale(1.02);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 50px -10px var(--feature-color, rgba(255, 255, 255, 0.2));
+    border-color: var(--feature-color, rgba(255, 255, 255, 0.3));
+}
+
+.feature-image {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+/* Specific Fix for About Us (Logo) */
+.feature-image-container.feature-about {
+    background: #ffffff;
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+[data-theme="dark"] .feature-image-container.feature-about {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.feature-image.feature-about {
+    object-fit: contain;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 400px;
+}
+
+.feature-image-container:hover .feature-image {
+    transform: scale(1.05);
+}
+
+.feature-image-container.feature-about:hover .feature-image {
+    transform: scale(1.1);
+}
+
+/* Placeholder for missing images */
+.feature-placeholder {
+    width: 100%;
+    max-width: 500px;
+    height: 300px;
+    background: var(--glass-bg);
+    /* Fallback */
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), 0 0 30px -10px var(--feature-color, rgba(255, 255, 255, 0.1));
+    border: 1px solid var(--glass-border);
+    transition: all 0.4s ease;
+}
+
+.feature-placeholder:hover {
+    transform: scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 50px -10px var(--feature-color, rgba(255, 255, 255, 0.2));
+    border-color: var(--feature-color, rgba(255, 255, 255, 0.3));
+}
+
+/* Specific backgrounds for missing image sections */
+.feature-placeholder.materials-bg {
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+    background-size: 200% 200%;
+    animation: gradient-shift 15s ease infinite;
+}
+
+.feature-placeholder.faq-bg {
+    background: linear-gradient(135deg, #000428, #004e92);
+}
+
+.feature-placeholder.about-bg {
+    background: linear-gradient(135deg, #667db6, #0082c8, #0082c8, #667db6);
+    background-size: 300% 300%;
+    animation: gradient-shift 20s ease infinite;
+}
+
+.placeholder-icon {
+    font-size: 6rem;
+    opacity: 0.9;
+    z-index: 2;
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+    animation: float-icon 6s ease-in-out infinite;
+}
+
+.placeholder-decor {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    top: -50px;
+    left: -50px;
+    animation: pulse-soft 8s infinite alternate;
+}
+
+.placeholder-decor-2 {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+    bottom: -30px;
+    right: -30px;
+    animation: pulse-soft 6s infinite alternate-reverse;
+}
+
+@keyframes gradient-shift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes float-icon {
+    0% {
+        transform: translateY(0px) rotate(0deg);
+    }
+
+    50% {
+        transform: translateY(-15px) rotate(5deg);
+    }
+
+    100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+}
+
+@keyframes pulse-soft {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.3;
+    }
+
+    100% {
+        transform: scale(1.2);
+        opacity: 0.6;
+    }
+}
+
+/* Responsive adjustments while keeping side-by-side layout */
+@media (max-width: 900px) {
+    .feature-showcase-section {
+        padding: 40px 3%;
+        /* Reduce padding */
+        gap: 50px;
+    }
+
+    .feature-row {
+        gap: 1.5rem;
+        /* Reduce gap between text and image */
+        padding: 1rem 0;
+    }
+
+    /* Keep row-reverse for alternating looks */
+    .feature-row.reverse {
+        flex-direction: row-reverse;
+    }
+
+    .feature-content {
+        flex: 1;
+        /* Take up half space */
+        min-width: 0;
+        /* Prevent overflow */
+    }
+
+    .feature-visual {
+        flex: 1;
+        /* Take up half space */
+        min-width: 0;
+    }
+
+    /* adjust typography for smaller space */
+    .feature-title {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .feature-desc {
+        font-size: 0.85rem;
+        line-height: 1.4;
+        margin-bottom: 1rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 4;
+        /* Limit lines if text is too long */
+        line-clamp: 4;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Reduce icon size */
+    .feature-icon-wrapper {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 0.8rem;
+        border-radius: 10px;
+    }
+
+    .feature-icon {
+        font-size: 1.2rem;
+    }
+
+    /* Smaller button */
+    .feature-btn {
+        padding: 8px 16px;
+        font-size: 0.8rem;
+    }
+
+    /* Adjust Visuals size */
+    .feature-image-container,
+    .feature-placeholder {
+        height: 180px;
+        /* shorter fixed height */
+        max-width: 100%;
+    }
+
+    .feature-image-container.feature-about {
+        height: 250px;
+        /* Give logo more height on mobile */
+        padding: 1rem;
+    }
+
+    .placeholder-icon {
+        font-size: 3rem;
+    }
+}

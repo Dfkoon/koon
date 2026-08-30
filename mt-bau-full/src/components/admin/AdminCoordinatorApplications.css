@@ -1,0 +1,136 @@
+.aca-container {
+  padding: 1.75rem;
+  border-radius: 24px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.06);
+}
+
+.aca-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.aca-header h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.3rem;
+}
+
+.aca-header p {
+  margin: 0;
+  color: var(--text-muted, #64748b);
+  max-width: 620px;
+}
+
+.aca-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  color: var(--text-main, #1f2937);
+  font-weight: 700;
+}
+
+.aca-summary span {
+  background: rgba(229, 231, 235, 0.9);
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+}
+
+.aca-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.aca-search-input {
+  width: 100%;
+  max-width: 460px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--glass-border, rgba(148, 163, 184, 0.3));
+  border-radius: 999px;
+  background: var(--secondary-bg, #f8fafc);
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease;
+}
+
+.aca-search-input:focus {
+  outline: none;
+  border-color: var(--primary, #d32f2f);
+}
+
+.aca-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.aca-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.aca-table th,
+.aca-table td {
+  text-align: left;
+  padding: 1rem 0.9rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  vertical-align: top;
+}
+
+.aca-table th {
+  color: var(--text-main, #1f2937);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.aca-table tbody tr:hover {
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.aca-motivation-cell {
+  max-width: 320px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.aca-delete-btn {
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.aca-delete-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.aca-empty {
+  padding: 2.2rem 1.2rem;
+  text-align: center;
+  color: var(--text-muted, #475569);
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: 18px;
+}
+
+@media (max-width: 860px) {
+  .aca-header,
+  .aca-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .aca-table {
+    min-width: 640px;
+  }
+}

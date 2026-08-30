@@ -1,0 +1,402 @@
+/* News Page Container */
+.news-page {
+    min-height: 100vh;
+    padding-top: 80px;
+}
+
+/* Hero Section - Matching AcademicPlans */
+.news-hero {
+    position: relative;
+    min-height: 350px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    overflow: hidden;
+    margin-bottom: 3rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.8));
+    z-index: 0;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 2rem;
+}
+
+.hero-title {
+    font-size: clamp(2.5rem, 6vw, 3.5rem);
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 1rem;
+    text-shadow: none;
+}
+
+.hero-subtitle {
+    font-size: clamp(1rem, 2.5vw, 1.3rem);
+    color: rgba(255, 255, 255, 0.8);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* Filters Section */
+.news-filters {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 3rem;
+    position: relative;
+    z-index: 2;
+    margin-top: -40px;
+    /* Overlap hero */
+}
+
+.filter-btn {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    color: var(--text-muted);
+    border: 1px solid var(--glass-border);
+    border-radius: 50px;
+    padding: 0.8rem 2rem;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: var(--transition);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.filter-btn:hover {
+    transform: translateY(-3px);
+    background: rgba(var(--text-main-rgb), 0.1);
+    color: var(--text-main);
+}
+
+.filter-btn.active {
+    background: linear-gradient(135deg, var(--secondary), var(--secondary-light));
+    color: white;
+    border-color: var(--secondary);
+    box-shadow: 0 10px 30px rgba(80, 100, 0, 0.3);
+}
+
+/* News Grid Container */
+.news-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+}
+
+/* News Card */
+.news-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    transition: var(--transition);
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.news-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--secondary);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Card Badge */
+.card-badge {
+    position: absolute;
+    top: 1.5rem;
+    padding: 0.5rem 1.2rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: white;
+    z-index: 2;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    /* Directional positioning handled below */
+}
+
+/* RTL/LTR Handling for Badge */
+[dir="rtl"] .card-badge {
+    left: 1.5rem;
+    right: auto;
+}
+
+[dir="ltr"] .card-badge {
+    right: 1.5rem;
+    left: auto;
+}
+
+/* Card Header with Icon */
+.card-header {
+    padding: 2rem 2rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 15px;
+    background: rgba(var(--bg-dark-rgb), 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    flex-shrink: 0;
+    border: 1px solid var(--glass-border);
+}
+
+.card-title-group h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+}
+
+.card-date {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Card Content */
+.card-content {
+    padding: 0 2rem 2rem;
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    line-height: 1.8;
+}
+
+.card-content strong {
+    color: var(--text-main);
+}
+
+.custom-list {
+    margin-inline-start: 1rem;
+    /* Better than margin-right for RTL/LTR */
+    list-style-type: disc;
+    padding: 0;
+}
+
+.custom-list li {
+    margin-bottom: 0.5rem;
+}
+
+.card-content a {
+    color: var(--secondary-light);
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.card-content a:hover {
+    text-decoration: underline;
+    color: var(--secondary);
+}
+
+/* Images in Card */
+.news-image {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Footer Tag */
+.news-footer {
+    padding: 1rem 2rem;
+    background: rgba(0, 0, 0, 0.1);
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.footer-tag {
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .news-hero {
+        min-height: 300px;
+    }
+
+    .news-filters {
+        flex-direction: column;
+        align-items: stretch;
+        margin-top: 1rem;
+    }
+
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .card-badge {
+        position: relative;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: inline-block;
+        margin-bottom: 1rem;
+        margin-inline-end: 2rem;
+    }
+}
+
+/* Coming Soon Overlay */
+.coming-soon-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
+    /* Blocks interaction with content behind */
+}
+
+.coming-soon-box {
+    background: var(--bg-dark) !important;
+    backdrop-filter: blur(20px);
+    padding: 3rem 4rem;
+    text-align: center;
+    border: 2px solid var(--primary);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+    transform: scale(1);
+    animation: pulse-border 2s infinite;
+    border-radius: 24px;
+    color: var(--text-main) !important;
+}
+
+[data-theme='light'] .coming-soon-box {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] .coming-soon-box {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes pulse-border {
+    0% {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.4);
+    }
+
+    70% {
+        border-color: var(--primary-light);
+        box-shadow: 0 0 0 20px rgba(var(--primary-rgb), 0);
+    }
+
+    100% {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0);
+    }
+}
+
+.coming-soon-icon-large {
+    font-size: 5rem;
+    margin-bottom: 1.5rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+.coming-soon-box h1 {
+    font-size: 2.5rem;
+    color: #ffffff !important;
+    margin-bottom: 1rem;
+    font-weight: 800;
+}
+
+[data-theme='light'] .coming-soon-box h1 {
+    color: #ffffff !important;
+}
+
+.coming-soon-box p {
+    color: var(--text-muted) !important;
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+[data-theme='light'] .coming-soon-box p {
+    color: #444444 !important;
+}
+
+.coming-soon-badge {
+    display: inline-block;
+    padding: 0.5rem 1.5rem;
+    background: rgba(var(--primary-rgb), 0.2);
+    color: var(--primary-light);
+    border-radius: 50px;
+    font-weight: 700;
+    border: 1px solid var(--primary);
+}
+
+/* Blurred Content Wrapper */
+.content-blur-wrapper {
+    filter: blur(8px) brightness(0.9);
+    pointer-events: none;
+    user-select: none;
+    transition: filter 0.5s ease;
+}
+
+[data-theme='dark'] .content-blur-wrapper {
+    filter: blur(8px) brightness(0.6);
+}
+
+@media (max-width: 768px) {
+    .coming-soon-box {
+        padding: 2rem 1.5rem;
+    }
+
+    .coming-soon-box h1 {
+        font-size: 2rem;
+    }
+
+    .coming-soon-box p {
+        font-size: 1rem;
+    }
+}

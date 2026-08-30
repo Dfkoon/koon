@@ -9,6 +9,8 @@ import { sendDonationToSheets, sendBookingToSheets } from '../services/googleShe
 import { saveCourseDonation, saveCourseBooking } from '../services/courseStatusService';
 import emailjs from '@emailjs/browser';
 import QRBookingCard from '../components/QRBookingCard';
+import MaterialStatusChecker from '../components/MaterialStatusChecker';
+import { sendAdminNotification } from '../services/notificationService';
 import './MaterialExchange.css';
 
 
@@ -168,7 +170,8 @@ const MaterialExchange = ({ isEmbedded = false }) => {
         workdayNoticeAr: 'ارج أوقات الشغل اليومي، الطلبات تُراجع لاحقاً.',
         workdayNoticeEn: 'Outside working hours, requests are reviewed later.',
         isExchangeActive: true,
-        donationFormFrozen: false
+        donationFormFrozen: false,
+        donationEnabled: true
 
     });
     const [showMaterialReportModal, setShowMaterialReportModal] = useState(false);
@@ -493,11 +496,22 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                     let phase = data.campaignPhase || 'exchange';
                     if (phase === 'booking') phase = 'exchange';
                     if (phase === 'donation') phase = 'collection';
+                    const campaignEnabled = data.exchange_campaign_enabled !== undefined
+                        ? Boolean(data.exchange_campaign_enabled)
+                        : phase !== 'suspended';
+                    const bookingEnabled = data.exchange_booking_enabled !== undefined
+                        ? Boolean(data.exchange_booking_enabled)
+                        : phase === 'exchange';
+                    const donationEnabled = data.exchange_donation_enabled !== undefined
+                        ? Boolean(data.exchange_donation_enabled)
+                        : !Boolean(data.donationFormFrozen);
+                    const statusCheckerEnabled = data.material_status_checker_enabled === true || data.material_status_checker_enabled === '1' || data.material_status_checker_enabled === 1;
                     setSystemSettings(prev => ({
                         ...prev,
                         campaignPhase: phase,
                         allowRegistration: data.allow_registration !== undefined ? Boolean(data.allow_registration) : true,
-                        isExchangeActive: phase !== 'suspended',
+                        isExchangeActive: campaignEnabled,
+                        materialStatusCheckerEnabled: statusCheckerEnabled,
                         secretGatewayCode: data.secretGatewayCode || 'makanak2025',
                         exchangeSuspendedMessageAr: data.exchangeSuspendedMessageAr || prev.exchangeSuspendedMessageAr,
                         exchangeSuspendedMessageEn: data.exchangeSuspendedMessageEn || prev.exchangeSuspendedMessageEn,
@@ -532,7 +546,8 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                         coordinatorFemaleTasksV2: data.coordinatorFemaleTasksV2 || [],
                         sharedCoordinatorTasksV2: data.sharedCoordinatorTasksV2 || [],
                         taskAutoDeleteHours: data.taskAutoDeleteHours !== undefined ? Number(data.taskAutoDeleteHours) : 24,
-                        donationFormFrozen: data.donationFormFrozen !== undefined ? data.donationFormFrozen : false,
+                        donationFormFrozen: !donationEnabled,
+                        donationEnabled,
                         donationEndTime: data.donationEndTime || '',
                         bookingStartTime: data.bookingStartTime || '',
                         workdayEnabled: data.workdayEnabled !== undefined ? Boolean(data.workdayEnabled) : false,
@@ -565,7 +580,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                         }
                     }
                     setTaskCompletions(cleaned);
-                    setBookingOpen(phase === 'exchange');
+                    setBookingOpen(campaignEnabled && bookingEnabled);
                     setEditSettings({
                         campaignPhase: phase,
                         secretGatewayCode: data.secretGatewayCode || 'makanak2025',
@@ -645,13 +660,23 @@ const MaterialExchange = ({ isEmbedded = false }) => {
             let phase = data.campaignPhase || 'exchange';
             if (phase === 'booking') phase = 'exchange';
             if (phase === 'donation') phase = 'collection';
+            const campaignEnabled = data.exchange_campaign_enabled !== undefined
+                ? Boolean(data.exchange_campaign_enabled)
+                : phase !== 'suspended';
+            const bookingEnabled = data.exchange_booking_enabled !== undefined
+                ? Boolean(data.exchange_booking_enabled)
+                : phase === 'exchange';
+            const donationEnabled = data.exchange_donation_enabled !== undefined
+                ? Boolean(data.exchange_donation_enabled)
+                : !Boolean(data.donationFormFrozen);
             setSystemSettings(prev => ({
                 ...prev,
                 campaignPhase: phase,
-                isExchangeActive: phase !== 'suspended',
-                donationFormFrozen: data.donationFormFrozen !== undefined ? data.donationFormFrozen : false
+                isExchangeActive: campaignEnabled,
+                donationFormFrozen: !donationEnabled,
+                donationEnabled
             }));
-            setBookingOpen(phase === 'exchange');
+            setBookingOpen(campaignEnabled && bookingEnabled);
         }, (error) => {
             console.error('Error listening to campaign settings:', error);
         });
@@ -970,15 +995,16 @@ const MaterialExchange = ({ isEmbedded = false }) => {
             const materialsList = donationsData.flatMap(donation => {
                 const materials = donation.materials || (donation.itemName ? [donation.itemName] : []);
                 return materials.map((m, idx) => {
-                    const materialObj = typeof m === 'object' && m !== null ? m : { name: m, status: donation.status };
-                    if (!materialObj.status) materialObj.status = donation.status;
+                    const materialObj = typeof m === 'object' && m !== null ? { ...m } : { name: m };
+                    const status = materialObj.status || (materialObj.takerInfo ? 'reserved' : donation.status);
+                    materialObj.status = status;
                     return {
                         ...donation,
                         materialItem: materialObj,
                         originalIndex: idx,
                         uniqueKey: `${donation.id}-${idx}`,
                         materialName: materialObj.name,
-                        isReserved: materialObj.status === 'reserved' || materialObj.status === 'completed'
+                        isReserved: status === 'reserved' || status === 'completed'
                     };
                 });
             });
@@ -1261,6 +1287,18 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 status: 'pending'
             });
 
+            // Send real-time admin notification
+            sendAdminNotification(
+                preRequestForm.type === 'need' ? 'new_booking' : 'new_donation',
+                preRequestForm.type === 'need'
+                    ? (isAr ? `طلب مسبق لمادة: ${preRequestForm.materialName.trim()}` : `Pre-Request: ${preRequestForm.materialName.trim()}`)
+                    : (isAr ? `تبرع جديد بكتاب/مادة: ${preRequestForm.materialName.trim()}` : `New Material Donation: ${preRequestForm.materialName.trim()}`),
+                isAr
+                    ? `قدم الطالب ${preRequestForm.studentName.trim()} طلباً (${preRequestForm.type === 'need' ? 'احتياج' : 'تبرع'}) بخصوص ${preRequestForm.materialName.trim()}`
+                    : `Student ${preRequestForm.studentName.trim()} submitted a request for ${preRequestForm.materialName.trim()}`,
+                { phone: preRequestForm.phoneNumber.trim(), studentName: preRequestForm.studentName.trim(), materialName: preRequestForm.materialName.trim() }
+            );
+
             toast.success(isAr ? 'تم حفظ طلبك المسبق بنجاح' : 'Your pre-request was saved successfully');
             setPreRequestForm({ type: 'donate', studentName: '', phoneNumber: '', materialName: '', notes: '', agreedToPreRequestTerms: false });
         } catch (error) {
@@ -1306,6 +1344,14 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 createdAt: serverTimestamp(),
                 status: 'pending'
             });
+
+            // Send real-time admin notification
+            sendAdminNotification(
+                'new_application',
+                isAr ? 'طلب انضمام لمنسق جديد' : 'New Coordinator Application',
+                isAr ? `قدم الطالب ${coordinatorApplicationForm.name.trim()} طلب انضمام لفريق التنسيق` : `Student ${coordinatorApplicationForm.name.trim()} submitted coordinator application`,
+                { phone: coordinatorApplicationForm.phoneNumber.trim(), studentName: coordinatorApplicationForm.name.trim() }
+            );
 
             toast.success(isAr ? 'تم إرسال طلب الانضمام بنجاح' : 'Your application was submitted successfully');
             setCoordinatorApplicationForm({ name: '', phoneNumber: '', email: '', motivation: '', agreedToCoordinatorTerms: false });
@@ -1415,6 +1461,16 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 donorName: selectedMaterial.donorName || 'Unknown',
                 donorPhone: selectedMaterial.donorPhone || 'Unknown'
             }).catch(err => console.warn('Email notification failed:', err));
+
+            // Send Realtime Admin Notification
+            sendAdminNotification(
+                'new_booking',
+                isAr ? `حجز مادة جديدة: ${selectedMaterial?.materialName || 'مادة'}` : `New Booking: ${selectedMaterial?.materialName || 'Material'}`,
+                isAr
+                    ? `قام الطالب ${bookingData.name.trim()} بحجز مادة "${selectedMaterial?.materialName || ''}"`
+                    : `Student ${bookingData.name.trim()} booked "${selectedMaterial?.materialName || ''}"`,
+                { phone: bookingData.phone.trim(), studentName: bookingData.name.trim(), materialName: selectedMaterial?.materialName }
+            );
 
             await saveCourseBooking({
                 studentName: bookingData.name.trim(),
@@ -4255,6 +4311,11 @@ Please contact us to coordinate the pickup.Thank you.`;
                             </div>
                         </form>
                     </section>
+
+                    {/* ─── نموذج معرفة حالة الطلبات — يُخفي نفسه إذا material_status_checker_enabled = false ─── */}
+                    {systemSettings.materialStatusCheckerEnabled && (
+                        <MaterialStatusChecker isAr={isAr} isEnabledProp={systemSettings.materialStatusCheckerEnabled} />
+                    )}
 
                     <section className="join-coordinator-section glass-card">
                         <div className="section-header">

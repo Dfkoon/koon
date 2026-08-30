@@ -1,0 +1,352 @@
+.grading-system-page {
+    min-height: 100vh;
+    padding-top: 80px;
+    background-color: var(--bg-dark);
+}
+
+/* Hero Section */
+.grading-hero {
+    position: relative;
+    min-height: 350px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    overflow: hidden;
+    margin-bottom: 3rem;
+    text-align: center;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.8));
+    z-index: 0;
+}
+
+.grading-hero .hero-content {
+    position: relative;
+    z-index: 1;
+    padding: 2rem;
+}
+
+.grading-hero h1 {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 1rem;
+    text-shadow: none;
+}
+
+.grading-hero p {
+    font-size: clamp(1.1rem, 2vw, 1.4rem);
+    color: rgba(255, 255, 255, 0.8);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.grading-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+}
+
+/* Announcement Section */
+.announcement-section {
+    padding: 2.5rem;
+    margin-bottom: 3rem;
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    animation: fadeIn 0.5s ease-out;
+}
+
+.section-title {
+    color: #ffffff;
+    font-size: 1.8rem;
+    text-align: center;
+    margin-bottom: 2rem;
+    font-weight: 700;
+}
+
+.announcement-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.announcement-card {
+    background: rgba(var(--primary-rgb), 0.05);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    padding: 1.5rem;
+    border-radius: 15px;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    transition: var(--transition);
+}
+
+.announcement-card:hover {
+    transform: translateY(-3px);
+    background: rgba(var(--primary-rgb), 0.1);
+    box-shadow: 0 10px 30px rgba(var(--primary-rgb), 0.1);
+}
+
+.announcement-icon {
+    font-size: 1.5rem;
+}
+
+.announcement-card p {
+    color: var(--text-main);
+    font-size: 1.05rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Grading Sections */
+.grading-section {
+    padding: 3rem;
+    margin-bottom: 3rem;
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+}
+
+.grading-section h3 {
+    text-align: center;
+    font-size: 2rem;
+    color: var(--text-main);
+    margin-bottom: 1rem;
+}
+
+.highlight-text {
+    color: var(--text-main);
+}
+
+.section-desc {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    margin-bottom: 2.5rem;
+}
+
+/* Tables */
+.table-responsive {
+    overflow-x: auto;
+    border-radius: 15px;
+    border: 1px solid var(--glass-border);
+}
+
+.grading-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+.grading-table th,
+.grading-table td {
+    padding: 1.2rem;
+    text-align: center;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.grading-table th {
+    background: rgba(var(--primary-rgb), 0.15);
+    color: var(--text-main);
+    font-weight: 700;
+    font-size: 1.1rem;
+    white-space: nowrap;
+}
+
+.grading-table td {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    transition: var(--transition);
+}
+
+.grading-table tr:last-child td {
+    border-bottom: none;
+}
+
+.grading-table tr:hover td {
+    background: rgba(var(--primary-rgb), 0.05);
+    color: var(--text-main);
+}
+
+.grade-col {
+    font-weight: 700;
+    color: var(--primary-light) !important;
+    font-size: 1.2rem !important;
+}
+
+.points-col {
+    font-weight: 600;
+    color: var(--text-main) !important;
+}
+
+/* Compact Table for Letters */
+.grading-table.compact {
+    min-width: 400px;
+}
+
+.grading-table.compact th,
+.grading-table.compact td {
+    padding: 1rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .grading-hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .grading-section {
+        padding: 1.5rem;
+    }
+
+    .grading-table th,
+    .grading-table td {
+        padding: 0.8rem;
+        font-size: 0.95rem;
+    }
+}
+
+/* Comparison Table & Badges */
+.announcement-card.success {
+    background: rgba(46, 204, 113, 0.1);
+    border-color: rgba(46, 204, 113, 0.3);
+}
+
+.announcement-card.success .announcement-icon {
+    font-size: 1.8rem;
+}
+
+.announcement-card.warning {
+    background: rgba(241, 196, 15, 0.1);
+    border-color: rgba(241, 196, 15, 0.3);
+}
+
+.status-badge {
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.status-badge.pass {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+    border: 1px solid rgba(46, 204, 113, 0.4);
+}
+
+.status-badge.fail {
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+    border: 1px solid rgba(231, 76, 60, 0.4);
+}
+
+.row-fail td {
+    background: rgba(231, 76, 60, 0.05);
+}
+
+.comparison-table .old-val {
+    color: var(--text-muted);
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+.comparison-table .new-val {
+    color: #2ecc71;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.comparison-table .diff-val {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.new-weight-header {
+    background: rgba(46, 204, 113, 0.15) !important;
+    color: #2ecc71 !important;
+}
+
+/* ── GPA Status Quick Checker ── */
+.gpa-status-card {
+    margin-top: 2rem;
+}
+
+.gpa-status-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 18px 0 14px;
+}
+
+.gpa-status-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1.5px solid transparent;
+    transition: transform 0.2s ease;
+}
+
+.gpa-status-item:hover {
+    transform: translateX(-4px);
+}
+
+[dir="ltr"] .gpa-status-item:hover {
+    transform: translateX(4px);
+}
+
+.gpa-status-range {
+    font-size: 1.05rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    display: inline-block;
+}
+
+.gpa-status-label {
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.gpa-status-tip {
+    font-size: 0.85rem;
+    opacity: 0.65;
+    padding: 10px 14px;
+    background: rgba(0,0,0,0.04);
+    border-radius: 10px;
+    line-height: 1.6;
+    margin-bottom: 0;
+}
+
+[data-theme='dark'] .gpa-status-tip {
+    background: rgba(255,255,255,0.04);
+}
+
+@media (max-width: 600px) {
+    .gpa-status-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        padding: 10px 14px;
+    }
+}

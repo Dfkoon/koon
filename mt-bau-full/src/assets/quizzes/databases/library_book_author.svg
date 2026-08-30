@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+  <style>
+    .ent{fill:#fff;stroke:#111;stroke-width:3px;}
+    .attr{fill:#fff;stroke:#111;stroke-width:2px;}
+    .rel{fill:#fff;stroke:#111;stroke-width:3px;}
+    .text{font-family:Arial, Helvetica, sans-serif;font-size:16px;fill:#111}
+  </style>
+  <rect x="80" y="120" width="160" height="60" class="ent" rx="6"/>
+  <text x="160" y="155" text-anchor="middle" class="text">LIBRARY BOOK</text>
+  <ellipse cx="100" cy="90" rx="40" ry="20" class="attr"/>
+  <text x="100" y="94" text-anchor="middle" class="text">LBID</text>
+  <ellipse cx="180" cy="90" rx="40" ry="20" class="attr"/>
+  <text x="180" y="94" text-anchor="middle" class="text">LBName</text>
+  <rect x="540" y="90" width="160" height="60" class="ent" rx="6"/>
+  <text x="620" y="125" text-anchor="middle" class="text">COPY</text>
+  <ellipse cx="560" cy="60" rx="40" ry="20" class="attr"/>
+  <text x="560" y="64" text-anchor="middle" class="text">CopyID</text>
+  <ellipse cx="680" cy="60" rx="40" ry="20" class="attr"/>
+  <text x="680" y="64" text-anchor="middle" class="text">CoverType</text>
+  <rect x="520" y="240" width="160" height="60" class="ent" rx="6"/>
+  <text x="600" y="275" text-anchor="middle" class="text">AUTHOR</text>
+  <ellipse cx="540" cy="310" rx="40" ry="20" class="attr"/>
+  <text x="540" y="314" text-anchor="middle" class="text">AuthorID</text>
+  <ellipse cx="660" cy="310" rx="40" ry="20" class="attr"/>
+  <text x="660" y="314" text-anchor="middle" class="text">AuthorName</text>
+  <polygon points="300,150 440,150 470,180 270,180" class="rel"/>
+  <text x="360" y="175" text-anchor="middle" class="text">Has</text>
+  <line x1="240" y1="150" x2="300" y2="150" stroke="#111" stroke-width="2" marker-end="url(#arrow1)"/>
+  <line x1="500" y1="150" x2="540" y2="150" stroke="#111" stroke-width="2" marker-end="url(#arrow1)"/>
+  <polygon points="220,190 380,190 410,220 190,220" class="rel"/>
+  <text x="300" y="215" text-anchor="middle" class="text">IsWrittenBy</text>
+  <line x1="200" y1="190" x2="240" y2="190" stroke="#111" stroke-width="2" marker-end="url(#arrow1)"/>
+  <line x1="520" y1="190" x2="560" y2="190" stroke="#111" stroke-width="2" marker-end="url(#arrow1)"/>
+  <defs>
+    <marker id="arrow1" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#111"/>
+    </marker>
+  </defs>
+</svg>

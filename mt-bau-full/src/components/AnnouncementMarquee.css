@@ -1,0 +1,88 @@
+.marquee-container {
+    max-width: 90%;
+    margin: 2rem auto;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.marquee-label {
+    background: var(--primary);
+    color: white;
+    padding: 10px 25px;
+    font-weight: 800;
+    font-size: 1.2rem;
+    z-index: 2;
+    flex-shrink: 0;
+    box-shadow: 10px 0 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Wrapper clips the scrolling track */
+.marquee-track-wrapper {
+    flex: 1;
+    overflow: hidden;
+    padding: 10px 0;
+}
+
+/* The actual scrolling row — contains 2 copies of the content */
+.marquee-track {
+    display: flex;
+    width: max-content;
+    /* Scroll leftward (RTL sites scroll rightward by default — we force LTR here) */
+    animation: marqueeScroll 30s linear infinite;
+    direction: ltr;
+}
+
+/* Pause on hover for readability */
+.marquee-track-wrapper:hover .marquee-track {
+    animation-play-state: paused;
+}
+
+@keyframes marqueeScroll {
+    0%   { transform: translateX(-50%); }
+    100% { transform: translateX(0); }
+}
+
+.marquee-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 20px;
+    white-space: nowrap;
+    padding: 0 30px;
+    color: var(--text-main);
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.marquee-separator {
+    height: 30px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .marquee-container {
+        max-width: 95%;
+    }
+
+    .marquee-label {
+        padding: 8px 15px;
+        font-size: 1rem;
+    }
+
+    .marquee-item {
+        font-size: 0.95rem;
+        padding: 0 20px;
+    }
+
+    .marquee-track {
+        animation-duration: 20s;
+    }
+}

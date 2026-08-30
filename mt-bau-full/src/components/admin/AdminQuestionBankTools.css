@@ -1,0 +1,887 @@
+/* ── AdminQuestionBankTools.css ── */
+
+.qbank-tools-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  direction: rtl;
+  font-family: 'Tajawal', system-ui, sans-serif;
+  animation: qbFadeIn 0.2s ease-out;
+}
+
+.qbank-tools-modal {
+  background: #ffffff;
+  width: 100%;
+  max-width: 1050px;
+  max-height: 90vh;
+  border-radius: 20px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.8);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: qbSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Header ── */
+.qbank-tools-header {
+  padding: 1.25rem 1.75rem;
+  background: #0f172a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qbank-tools-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.qbank-tools-header-title h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.qbank-tools-badge {
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+
+.qbank-tools-close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.qbank-tools-close-btn:hover {
+  background: #ef4444;
+}
+
+/* ── Tabs ── */
+.qbank-tools-tabs {
+  display: flex;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.5rem 1.75rem 0;
+  gap: 0.5rem;
+}
+
+.qbank-tools-tab-btn {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  border-radius: 8px 8px 0 0;
+}
+
+.qbank-tools-tab-btn:hover {
+  color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.05);
+}
+
+.qbank-tools-tab-btn.active {
+  color: #0284c7;
+  border-bottom-color: #0284c7;
+  background: #ffffff;
+}
+
+/* ── Target Bar ── */
+.qbank-tools-target-bar {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem 1.75rem;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+.qbank-target-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 260px;
+}
+
+.qbank-target-item label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.qbank-select {
+  flex: 1;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.qbank-select:focus {
+  border-color: #0ea5e9;
+}
+
+/* ── Tab Content Container ── */
+.qbank-tab-content {
+  padding: 1.5rem 1.75rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Instruction Box ── */
+.qbank-instruction-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  color: #1e3a8a;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.qbank-info-icon {
+  font-size: 1.3rem;
+}
+
+.qbank-instruction-box strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #1d4ed8;
+}
+
+.qbank-instruction-box p {
+  margin: 0;
+  color: #3b82f6;
+}
+
+/* ── Textarea ── */
+.qbank-bulk-textarea {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1.5px solid #cbd5e1;
+  font-size: 0.92rem;
+  font-family: inherit;
+  resize: vertical;
+  background: #f8fafc;
+  color: #0f172a;
+  line-height: 1.6;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s;
+}
+
+.qbank-bulk-textarea:focus {
+  border-color: #0ea5e9;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+/* ── Actions Row ── */
+.qbank-importer-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.qbank-action-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  transition: all 0.2s;
+}
+
+.qbank-action-btn.primary {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+
+.qbank-action-btn.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+}
+
+.qbank-action-btn.primary.large {
+  font-size: 1rem;
+  padding: 0.9rem 2rem;
+}
+
+.qbank-action-btn.secondary {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.qbank-action-btn.secondary:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.qbank-action-btn.text {
+  background: transparent;
+  color: #ef4444;
+}
+
+.qbank-action-btn.text:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.qbank-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Preview Area ── */
+.qbank-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1.5px solid #f1f5f9;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.qbank-preview-title h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.qbank-preview-subtitle {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.qbank-preview-top-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.qbank-mini-btn {
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  transition: all 0.15s;
+}
+
+.qbank-mini-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.qbank-mini-btn.danger {
+  color: #ef4444;
+  border-color: #fca5a5;
+}
+
+.qbank-mini-btn.danger:hover {
+  background: #fef2f2;
+}
+
+.qbank-mini-btn.success {
+  color: #16a34a;
+  border-color: #86efac;
+}
+
+.qbank-mini-btn.success:hover {
+  background: #f0fdf4;
+}
+
+/* ── Parsed Cards List ── */
+.qbank-parsed-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-left: 0.5rem;
+}
+
+.qbank-parsed-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  transition: all 0.2s;
+}
+
+.qbank-parsed-card.selected {
+  border-color: #93c5fd;
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.08);
+}
+
+.qbank-parsed-card.unselected {
+  opacity: 0.55;
+  background: #f8fafc;
+}
+
+.qbank-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qbank-card-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.qbank-card-qnum {
+  font-weight: 800;
+  font-size: 1rem;
+  color: #0284c7;
+}
+
+.qbank-card-type-tag {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.qbank-card-type-tag span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.qbank-card-pts {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+.qbank-card-del-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.qbank-card-del-btn:hover {
+  opacity: 1;
+}
+
+.qbank-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.qbank-card-field label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.qbank-input {
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.qbank-input:focus {
+  border-color: #0ea5e9;
+}
+
+/* ── Card Options ── */
+.qbank-card-options-box {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 0.85rem;
+  border: 1px solid #f1f5f9;
+}
+
+.qbank-card-opt-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  display: block;
+  margin-bottom: 0.6rem;
+}
+
+.qbank-card-opts-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qbank-card-opt-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #ffffff;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.qbank-card-opt-row.is-correct {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.qbank-opt-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.88rem;
+  outline: none;
+  font-family: inherit;
+  color: #0f172a;
+}
+
+.qbank-card-explanation {
+  font-size: 0.82rem;
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  color: #92400e;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+}
+
+/* ── Importer Bottom Bar ── */
+.qbank-importer-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1.5px solid #e2e8f0;
+  padding-top: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.qbank-save-info {
+  font-size: 0.95rem;
+  color: #334155;
+}
+
+.qbank-save-info strong {
+  color: #0284c7;
+  font-size: 1.2rem;
+}
+
+/* ════════════════════════════════════════════════════════════════════════ */
+/* AUDITOR STYLES                                                          */
+/* ════════════════════════════════════════════════════════════════════════ */
+.qbank-auditor-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: #f8fafc;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+.qbank-audit-scope-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.qbank-audit-scope-bar label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.qbank-pill-group {
+  display: flex;
+  background: #e2e8f0;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.qbank-pill-btn {
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.qbank-pill-btn.active {
+  background: #ffffff;
+  color: #0284c7;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Metrics Grid ── */
+.qbank-audit-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.85rem;
+}
+
+.qbank-metric-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qbank-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.qbank-metric-card.active {
+  border-color: #0ea5e9;
+  background: #f0f9ff;
+}
+
+.qbank-metric-num {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.qbank-metric-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.qbank-metric-card.warning .qbank-metric-num { color: #f59e0b; }
+.qbank-metric-card.danger .qbank-metric-num { color: #ef4444; }
+.qbank-metric-card.info .qbank-metric-num { color: #6366f1; }
+
+/* ── Issue Sections ── */
+.qbank-audit-details-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.qbank-issue-section {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+
+.qbank-issue-title {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.qbank-issue-title.warning { color: #d97706; }
+.qbank-issue-title.danger { color: #dc2626; }
+.qbank-issue-title.info { color: #4f46e5; }
+
+.qbank-issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* Duplicates Box */
+.qbank-duplicate-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  padding: 1rem;
+  position: relative;
+}
+
+.qbank-dup-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.qbank-dup-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.qbank-dup-item {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 0.85rem;
+  border: 1px solid #fef3c7;
+}
+
+.qbank-dup-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #78350f;
+  margin-bottom: 0.4rem;
+}
+
+.qbank-dup-item p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+/* Generic Issue Card */
+.qbank-issue-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  gap: 1rem;
+}
+
+.qbank-issue-tags {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.qbank-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.qbank-tag.danger {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.qbank-issue-qtext {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Reported Question Card */
+.qbank-reported-card {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qbank-reported-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.qbank-rep-badge {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.qbank-rep-reasons {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #fee2e2;
+  font-size: 0.84rem;
+}
+
+.qbank-rep-reasons strong {
+  color: #991b1b;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.qbank-rep-reasons ul {
+  margin: 0;
+  padding-right: 1.2rem;
+}
+
+.qbank-rep-reason {
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+/* Spelling Card */
+.qbank-spelling-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  gap: 1rem;
+}
+
+.qbank-spelling-compare {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.qbank-spelling-orig, .qbank-spelling-sugg {
+  flex: 1;
+}
+
+.qbank-subtag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.qbank-subtag.red { color: #dc2626; }
+.qbank-subtag.green { color: #16a34a; }
+
+.qbank-spelling-compare p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #1e293b;
+}
+
+.qbank-spelling-arrow {
+  font-size: 1.1rem;
+  color: #8b5cf6;
+}
+
+/* Clean State */
+.qbank-clean-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: #f0fdf4;
+  border: 1.5px dashed #86efac;
+  border-radius: 16px;
+}
+
+.qbank-clean-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.qbank-clean-state h4 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #15803d;
+}
+
+.qbank-clean-state p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #16a34a;
+}
+
+/* ── Animations ── */
+@keyframes qbFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes qbSlideUp {
+  from { opacity: 0; transform: translateY(15px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 768px) {
+  .qbank-dup-pair {
+    grid-template-columns: 1fr;
+  }
+  .qbank-spelling-compare {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
