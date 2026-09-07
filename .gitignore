@@ -1,25 +1,56 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-.env
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# ملفات مؤقتة ومحلية
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+*.sqlite
+*.sqlite.before-*
+.official-live-sync
+firebase-service-account.json
+
+# مجلدات لها repo منفصل أو غير مطلوب رفعها
+0000/
+panel 2/
+koon.quiz/
+material-exchange-copy/
+video/
+scripts/
+
+# React build output
+mt-bau-full/dist/
+mt-bau-full/node_modules/
+
+# ملفات مؤقتة في mt-bau-full
+mt-bau-full/database.sqlite
+mt-bau-full/temp_questions.txt
+mt-bau-full/report.html
+mt-bau-full/drive_page.html
+mt-bau-full/ds5_data.txt
+mt-bau-full/dfs_check.py
+mt-bau-full/rename_avatars.py
+mt-bau-full/write_archive.js
+mt-bau-full/migrate_archive.js
+mt-bau-full/export_donations.js
+mt-bau-full/test_server.cjs
+mt-bau-full/test_write.js
+mt-bau-full/apply_css.cjs
+mt-bau-full/archive_data.json
+mt-bau-full/bau_course_watcher/
+
+# doc files غير ضرورية
+mt-bau-full/*.md
+mt-bau-full/*.txt
+mt-bau-full/COMPLETION_*
+mt-bau-full/FINAL_*
+mt-bau-full/FEATURES_*
+mt-bau-full/FILES_*
+mt-bau-full/INTEGRATION_*
+mt-bau-full/QUICK_*
+mt-bau-full/START_*
+mt-bau-full/STATUS_*
+mt-bau-full/SYSTEM_*
+mt-bau-full/DATABASE_*
+mt-bau-full/COMPONENTS_*
+mt-bau-full/NEW_*
+mt-bau-full/INDEX.md
+mt-bau-full/API_REFERENCE.js
+
+# سكريبت deploy محلي
+deploy_all.sh
