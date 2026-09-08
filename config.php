@@ -1,4 +1,10 @@
 <?php
+$svcPath = '/home/makanak-admin/data/firebase-service-account.json';
+if (file_exists($svcPath)) {
+    putenv('GOOGLE_APPLICATION_CREDENTIALS=' . $svcPath);
+    putenv('FIREBASE_SERVICE_ACCOUNT_JSON=' . file_get_contents($svcPath));
+}
+
 /**
  * config.php
  * إعداد الجلسة وقاعدة البيانات (SQLite - ملف واحد، لا يحتاج سيرفر DB منفصل)
