@@ -102,6 +102,21 @@ const STAFF_USERS = {
     sara: { role: 'coordinator', nameAr: 'سار', nameEn: 'Sara', gender: 'female' }
 };
 
+const DEMO_EXCHANGE_MATERIAL_PATTERNS = [
+    /three easy pieces/i,
+    /pfleeger/i,
+    /tanenbaum/i,
+    /artificial intelligence.*modern approach/i,
+    /calculus.*early transcendentals/i,
+    /physics for scientists and engineers/i,
+    /oop.*java/i
+];
+
+function isDemoExchangeMaterial(materialName) {
+    const name = String(materialName || '').trim();
+    return DEMO_EXCHANGE_MATERIAL_PATTERNS.some((pattern) => pattern.test(name));
+}
+
 const MaterialExchange = ({ isEmbedded = false }) => {
     const { language, t } = useLanguage();
     const isAr = language === 'ar';
@@ -1008,7 +1023,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                     };
                 });
             });
-            setAllMaterials(materialsList);
+            setAllMaterials(materialsList.filter((material) => !isDemoExchangeMaterial(material.materialName)));
         } catch (error) {
             console.error('Error fetching donations:', error);
             if (error.code === 'permission-denied') {

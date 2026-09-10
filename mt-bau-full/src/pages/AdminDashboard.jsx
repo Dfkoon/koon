@@ -3758,6 +3758,7 @@ const AdminDashboard = ({ isEmbedded = false }) => {
             </div>
           </div>
         </div>
+      )}
       {/* ══ Question Bank AI Assistant & Auditor Modal ══ */}
       {showQuestionBankTools && (
         <AdminQuestionBankTools
