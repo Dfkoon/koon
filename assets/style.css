@@ -1,0 +1,538 @@
+
+/* ==========================================================================
+   الخط الرسمي الموحد الشامل لكافة صفحات وعناصر الموقع (IBM Plex Sans Arabic)
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after, html, body, div, span, applet, object, iframe,
+p, blockquote, pre, a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var,
+b, u, i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup, menu, nav, output, ruby, section, summary,
+time, mark, audio, video, input, button, select, textarea, optgroup, option {
+  font-family: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+h1, h2, h3, h4, h5, h6, .kufi, .sidebar-brand-text, .brand-title, .modal-title, .panel-box-title, .masthead h1, .ga-title {
+  font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif !important;
+}
+
+.mono, code, pre, kbd, samp, .font-mono, .ide-code, .pts, .qnum, .opt-mark {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace !important;
+}
+
+
+/* ============================================================
+   الخط الرسمي الموحد للموقع ولوحة التحكم (IBM Plex Sans Arabic)
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700;800&family=Noto+Kufi+Arabic:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+html, body, .admin-body, .admin-shell, div, p, span, a, li, ul, label, small {
+    font-family: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}
+
+h1, h2, h3, h4, h5, h6, .sidebar-brand-text, .panel-box-title, .modal-title, .kufi {
+    font-family: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif !important;
+}
+
+input, select, textarea, button, .btn, .form-control, table, th, td, .badge, .chip, .badge-subtle {
+    font-family: 'IBM Plex Sans Arabic', sans-serif !important;
+}
+
+code, pre, .mono, .eyebrow, .font-mono {
+    font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace !important;
+}
+
+/* ============================================================
+   نظام التصميم: "بوابة الدخول الآمن" — طراز لوحة تحكم أمنية
+   Palette: navy-950 #070a14 · navy-850 #10152a · offwhite #f5f2ea
+            gold #c9973e · ink #14161f · teal-focus #2fb7a1
+   Fonts: Cairo (عناوين) · Tajawal (نصوص) · IBM Plex Mono (تسميات تقنية)
+   ============================================================ */
+
+:root {
+    --navy-950: #070a14;
+    --navy-850: #10152a;
+    --navy-750: #171d38;
+    --offwhite: #f5f2ea;
+    --offwhite-2: #ece7da;
+    --ink: #14161f;
+    --ink-muted: #6b6f7d;
+    --gold: #c9973e;
+    --gold-dark: #a5762a;
+    --teal: #2fb7a1;
+    --danger: #b23a2e;
+    --danger-bg: #2a1512;
+    --danger-border: #4a231c;
+    --success: #2f9e63;
+    --success-bg: #0f2419;
+    --success-border: #1f4a32;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--navy-950);
+    font-family: 'Tajawal', 'Segoe UI', sans-serif;
+    direction: rtl;
+    color: var(--ink);
+}
+
+.eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+    direction: ltr;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* ---------- تخطيط صفحة الدخول: لوحتان ---------- */
+.auth-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: row;
+}
+.auth-shell .brand-pane,
+.auth-shell .form-pane {
+    flex: 1 1 50%;
+    min-width: 0;
+}
+
+@media (max-width: 860px) {
+    .auth-shell { flex-direction: column; }
+}
+
+/* اللوحة اليسرى: هوية أمنية / رادار */
+.brand-pane {
+    position: relative;
+    background:
+        radial-gradient(circle at 50% 42%, rgba(201,151,62,0.10), transparent 60%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 40px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 40px),
+        var(--navy-950);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 40px;
+    overflow: hidden;
+}
+
+@media (max-width: 860px) {
+    .brand-pane { padding: 40px 24px; }
+}
+
+.radar {
+    position: relative;
+    width: 168px;
+    height: 168px;
+    border-radius: 50%;
+    border: 1px solid rgba(201,151,62,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 34px;
+}
+.radar::before,
+.radar::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(201,151,62,0.18);
+}
+.radar::before { inset: 22px; }
+.radar::after { inset: 44px; }
+
+.radar-sweep {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, rgba(201,151,62,0.55), transparent 28%);
+    animation: sweep 4.5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .radar-sweep { animation: none; }
+}
+@keyframes sweep { to { transform: rotate(360deg); } }
+
+.radar-core {
+    position: relative;
+    z-index: 2;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: var(--navy-850);
+    border: 1px solid rgba(201,151,62,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+}
+
+.brand-pane h1 {
+    color: #f3efe4;
+    font-family: 'Cairo', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    margin: 0 0 10px;
+    text-align: center;
+}
+.brand-pane p {
+    color: #8a90a6;
+    font-size: 14px;
+    line-height: 1.9;
+    text-align: center;
+    max-width: 340px;
+    margin: 0;
+}
+
+.gate-tags {
+    display: flex;
+    gap: 10px;
+    margin-top: 28px;
+}
+.gate-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    direction: ltr;
+    color: #b7bccb;
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 6px 12px;
+    border-radius: 999px;
+}
+.gate-tag.active { border-color: var(--gold); color: var(--gold); }
+
+/* اللوحة اليمنى: النموذج */
+.form-pane {
+    background: var(--offwhite);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+}
+
+.auth-card {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    padding: 8px 4px;
+}
+
+/* زوايا معدنية — تُعطي إحساس "لوحة مؤمّنة" */
+.auth-card::before,
+.auth-card::after {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-color: var(--gold-dark);
+    opacity: 0.6;
+}
+.auth-card::before { top: -8px; right: -8px; border-top: 2px solid; border-right: 2px solid; }
+.auth-card::after { bottom: -8px; left: -8px; border-bottom: 2px solid; border-left: 2px solid; }
+
+.auth-card h2 {
+    font-family: 'Cairo', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ink);
+    margin: 0 0 6px;
+}
+.auth-card .lead {
+    color: var(--ink-muted);
+    font-size: 13.5px;
+    margin: 0 0 28px;
+    line-height: 1.7;
+}
+
+label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: #4a4e5c;
+    margin-bottom: 8px;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+    width: 100%;
+    padding: 13px 16px;
+    margin-bottom: 20px;
+    background: #fffdf9;
+    border: 1px solid #d9d2bf;
+    border-radius: 10px;
+    color: var(--ink);
+    font-size: 14px;
+    font-family: 'Tajawal', sans-serif;
+    transition: border-color .15s, box-shadow .15s;
+}
+input::placeholder { color: #a6a08e; }
+input:focus {
+    outline: none;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(47,183,161,0.15);
+}
+
+.captcha-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.captcha-row img {
+    border-radius: 10px;
+    border: 1px solid #d9d2bf;
+}
+.captcha-refresh {
+    width: 56px;
+    background: #fffdf9;
+    border: 1px solid #d9d2bf;
+    border-radius: 10px;
+    color: var(--ink);
+    font-size: 18px;
+    cursor: pointer;
+}
+.captcha-refresh:hover { border-color: var(--gold); color: var(--gold-dark); }
+
+button.primary {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--gold), var(--gold-dark));
+    color: #241a08;
+    font-size: 15px;
+    font-weight: 800;
+    font-family: 'Cairo', sans-serif;
+    cursor: pointer;
+    margin-bottom: 14px;
+    letter-spacing: 0.3px;
+}
+button.primary:hover { filter: brightness(1.06); }
+button.primary:active { transform: translateY(1px); }
+
+.link-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+    background: transparent;
+    border: 1px dashed #cfc7b0;
+    border-radius: 10px;
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 13px;
+}
+.link-btn:hover { border-color: var(--gold); color: var(--gold-dark); }
+.support-contact-btn {
+    width: 100%;
+    margin: 14px 0;
+    padding: 11px 14px;
+    border: 1px solid #d9d2bf;
+    border-radius: 10px;
+    background: rgba(255, 253, 249, .72);
+    color: var(--gold-dark);
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.support-contact-btn:hover { border-color: var(--gold); background: #fffaf0; }
+.support-modal { display:none; position:fixed; inset:0; z-index:20; padding:20px; align-items:center; justify-content:center; background:rgba(7,10,20,.38); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.support-modal.show { display:flex; }
+.support-modal-card { position:relative; width:min(100%,430px); max-height:92vh; overflow:auto; padding:30px 28px 24px; border:1px solid #e4ddc9; border-radius:18px; background:#fffefb; box-shadow:0 24px 70px rgba(7,10,20,.3); }
+.support-modal-card h2 { margin:0 0 6px; text-align:center; font-family:'Cairo',sans-serif; font-size:20px; color:var(--ink); }
+.support-modal-card p { margin:0 0 20px; text-align:center; color:var(--ink-muted); font-size:13px; line-height:1.7; }
+.support-modal-card label { margin-top:12px; }
+.support-modal-card input, .support-modal-card select, .support-modal-card textarea { width:100%; margin-bottom:8px; padding:11px 13px; border:1px solid #d9d2bf; border-radius:9px; background:#fffdf9; color:var(--ink); font:14px 'Tajawal',sans-serif; }
+.support-modal-card textarea { min-height:92px; resize:vertical; line-height:1.7; }
+.support-icon { width:48px; height:48px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; border-radius:13px; background:var(--navy-950); color:var(--gold); font-size:25px; }
+.support-close { position:absolute; top:12px; left:14px; border:0; background:transparent; color:#8a90a6; font-size:24px; cursor:pointer; }
+.support-whatsapp-btn, .support-cancel-btn { display:block; width:100%; padding:12px; border-radius:10px; text-align:center; font:800 13px 'Cairo',sans-serif; cursor:pointer; }
+.support-whatsapp-btn { margin-top:14px; background:#159447; color:#fff; text-decoration:none; box-shadow:0 8px 18px rgba(21,148,71,.18); }
+.support-whatsapp-btn:hover { background:#117a3b; }
+.support-request-status { margin-top:12px; padding:10px 12px; border:1px solid #b7e4c7; border-radius:9px; background:#edf9f2; color:#237a45; text-align:center; font-size:12px; line-height:1.6; }
+.support-cancel-btn { margin-top:8px; border:1px solid #d9d2bf; background:#fffdf9; color:var(--ink-muted); }
+
+.error-box,
+.info-box,
+.success-box {
+    position: fixed;
+    left: 14px;
+    right: 14px;
+    bottom: 16px;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 18px;
+    min-height: 68px;
+    padding: 16px 20px 16px 24px;
+    border: 1px solid rgba(106, 155, 123, 0.72);
+    border-radius: 28px;
+    background: linear-gradient(90deg, rgba(144, 169, 152, 0.94), rgba(167, 186, 172, 0.9));
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+    color: #0d3f2d;
+    font-size: 15px;
+    font-weight: 800;
+    text-align: right;
+    line-height: 1.5;
+    letter-spacing: 0;
+}
+
+.error-box::before,
+.info-box::before,
+.success-box::before {
+    content: '✕';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+    font-weight: 700;
+    border-radius: 12px;
+    background: rgba(14, 61, 40, 0.08);
+    color: #0f402f;
+    flex-shrink: 0;
+}
+
+.error-box::after,
+.info-box::after,
+.success-box::after {
+    content: '☰';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    font-size: 20px;
+    line-height: 1;
+    color: #0d3f2d;
+    flex-shrink: 0;
+    opacity: 0.95;
+}
+
+@media (max-width: 640px) {
+    .error-box,
+    .info-box,
+    .success-box {
+        left: 10px;
+        right: 10px;
+        bottom: 12px;
+        min-height: 58px;
+        border-radius: 20px;
+        padding: 14px 16px 14px 18px;
+        font-size: 14px;
+    }
+}
+.whatsapp-recovery-btn {
+    display: block;
+    width: 100%;
+    margin: -6px 0 18px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #159447;
+    color: #fff;
+    text-align: center;
+    text-decoration: none;
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    box-shadow: 0 8px 18px rgba(21,148,71,.18);
+}
+.whatsapp-recovery-btn:hover { background: #117a3b; }
+
+/* ---------- صفحات بسيطة (إعداد الحساب / التحقق / اللوحة) ---------- */
+body.simple-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.86);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+}
+.card {
+    width: 100%;
+    max-width: 420px;
+    background: #fffefb;
+    border: 1px solid #e4ddc9;
+    border-radius: 18px;
+    padding: 36px 32px;
+    box-shadow: 0 20px 50px rgba(7,10,20,0.35);
+    position: relative;
+}
+.card::before,
+.card::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: var(--gold-dark);
+    opacity: 0.55;
+}
+.card::before { top: -7px; right: -7px; border-top: 2px solid; border-right: 2px solid; }
+.card::after { bottom: -7px; left: -7px; border-bottom: 2px solid; border-left: 2px solid; }
+
+.icon-wrap {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 18px;
+    border-radius: 14px;
+    background: var(--navy-950);
+    border: 1px solid rgba(201,151,62,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+}
+.card h1 {
+    text-align: center;
+    font-family: 'Cairo', sans-serif;
+    color: var(--ink);
+    font-size: 21px;
+    margin: 0 0 6px;
+}
+.card .subtitle {
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 13px;
+    margin: 0 0 24px;
+}
+.step-badge {
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--gold-dark);
+    font-size: 11px;
+    letter-spacing: 1px;
+    margin-bottom: 18px;
+    direction: ltr;
+}
+
+.qr-wrap { text-align: center; margin-bottom: 20px; }
+.qr-wrap img {
+    background: #fff;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid #e4ddc9;
+}
+.secret-code {
+    text-align: center;
+    direction: ltr;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--gold-dark);
+    background: #fbf8f0;
+    border: 1px dashed #d9c99a;
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+}

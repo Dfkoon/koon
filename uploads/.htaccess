@@ -1,0 +1,16 @@
+# ==============================================================================
+# Security: Block script execution in uploads directory
+# ==============================================================================
+Options -Indexes -ExecCGI
+
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|phps|phar|sh|pl|py|cgi|exe|bat|cmd|vbs|svg)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>

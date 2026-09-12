@@ -1,16 +1,39 @@
-# React + Vite
+# نظام تسجيل دخول بخطوتين (Password + TOTP) — PHP
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## المتطلبات
+- PHP 8.0+ مع تفعيل امتدادي `pdo_sqlite` و `gd`
+- لا يحتاج Composer ولا أي حزمة خارجية (TOTP و SQLite مبنيّان يدوياً)
 
-Currently, two official plugins are available:
+## هيكلية الملفات
+```
+panel/
+├── config.php              # الاتصال بقاعدة البيانات (SQLite) وإعداد الجلسة
+├── includes/totp.php        # تطبيق TOTP (RFC 6238) ذاتي الاحتواء
+├── captcha_image.php        # توليد صورة الكابتشا
+├── login.php                 # البوابة 1: اسم المستخدم + كلمة المرور + Captcha
+├── setup_account.php         # الإعداد الإجباري عند أول دخول (تغيير كلمة المرور + ربط QR)
+├── verify_totp.php           # البوابة 2: رمز Authenticator (لتسجيلات الدخول اللاحقة)
+├── dashboard.php             # الصفحة المحمية بعد اكتمال الدخول
+├── logout.php
+├── create_admin.php          # سكربت CLI لإنشاء مستخدم بكلمة مرور مؤقتة
+├── assets/style.css
+└── database.sqlite           # يُنشأ تلقائياً عند أول تشغيل
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## تدفق العمل
+1. **الأدمن** ينشئ مستخدماً من الطرفية (Terminal)، وليس من المتصفح:
+   ```bash
+   php create_admin.php ahmed "TempPass!2026xy"
+   ```
+2. **أول دخول للمستخدم**: يدخل `login.php` (اسم مستخدم + كود الوصول المؤقت + كابتشا).
+   بما أن `must_change_password = 1`، يُجبر تلقائياً على `setup_account.php`.
+3. **في setup_account.php خطوة 1**: يضع كلمة مرور جديدة (10 أحرف فأكثر، مختلفة عن المؤقتة).
+4. **خطوة 2**: يظهر له QR Code لربط تطبيق Authenticator (Google Authenticator, Authy...)، ويؤكد بإدخال أول رمز صحيح. عندها فقط `totp_enabled = 1` ويدخل مباشرة للوحة التحكم.
+5. **تسجيلات الدخول اللاحقة**: `login.php` (اسم مستخدم + كلمة مرور + كابتشا) ثم تحويل إلزامي إلى `verify_totp.php` لإدخال رمز الـ 6 أرقام من التطبيق.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## ملاحظات أمنية مهمة قبل النشر
+- **فعّل HTTPS إجبارياً** على السيرفر، وفعّل `session.cookie_secure` في `config.php`.
+- **احذف أو انقل `create_admin.php` خارج مجلد الويب** بعد إنشاء المستخدمين، أو قيّد الوصول له عبر `.htaccess` — تركه متاحاً عبر المتصفح يشكل ثغرة.
+- قاعدة البيانات SQLite (`database.sqlite`) تُنشأ داخل مجلد المشروع — تأكد أن صلاحيات الكتابة على المجلد صحيحة، وامنع الوصول المباشر لملف `.sqlite` عبر السيرفر (أضف قاعدة `deny` له في Nginx/Apache).
+- تم تفعيل: تشفير كلمات المرور بـ `password_hash`, حماية CSRF, قفل الحساب بعد 5 محاولات فاشلة (5 دقائق), تجديد معرّف الجلسة (`session_regenerate_id`) بعد كل نجاح دخول لمنع Session Fixation.
+- رمز الكابتشا يُصرف فور استخدامه (لا يمكن إعادة استخدامه)، وصورة QR تُنشأ عبر خدمة خارجية (`api.qrserver.com`) — إذا كان السيرفر بدون اتصال إنترنت من طرف المتصفح، استبدلها بمكتبة QR محلية لاحقاً، أو استخدم حقل السر النصي المعروض تحت QR للإدخال اليدوي.

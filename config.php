@@ -433,6 +433,9 @@ if (!function_exists('get_db')) {
             if (!in_array('avatar_path', $userCols, true)) {
                 $pdo->exec("ALTER TABLE users ADD COLUMN avatar_path TEXT;");
             }
+            if (!in_array('is_official', $userCols, true)) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN is_official INTEGER NOT NULL DEFAULT 1;");
+            }
 
             $materialCols = $pdo->query("PRAGMA table_info(study_materials)")->fetchAll(PDO::FETCH_COLUMN, 1);
             if (!in_array('requirement_category', $materialCols)) {
@@ -1281,6 +1284,43 @@ if (!function_exists('get_db')) {
     }
 }
 
+if (!function_exists('normalize_quiz_question_text')) {
+    function normalize_quiz_question_text(?string $text): string
+    {
+        $text = trim((string) $text);
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+        return function_exists('mb_strtolower') ? mb_strtolower($text, 'UTF-8') : strtolower($text);
+    }
+}
+
+if (!function_exists('find_duplicate_quiz_question_id')) {
+    function find_duplicate_quiz_question_id(PDO $db, string $partSlug, ?string $textAr, ?string $textEn, int $excludeId = 0): ?int
+    {
+        $partSlug = trim($partSlug);
+        $keys = array_values(array_unique(array_filter([
+            normalize_quiz_question_text($textAr),
+            normalize_quiz_question_text($textEn),
+        ])));
+        if ($partSlug === '' || $keys === []) {
+            return null;
+        }
+
+        $stmt = $db->prepare('SELECT id, text_ar, text_en FROM quiz_questions WHERE part_slug = ? AND id != ?');
+        $stmt->execute([$partSlug, $excludeId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $existingKeys = array_values(array_unique(array_filter([
+                normalize_quiz_question_text($row['text_ar'] ?? ''),
+                normalize_quiz_question_text($row['text_en'] ?? ''),
+            ])));
+            if (array_intersect($keys, $existingKeys) !== []) {
+                return (int) $row['id'];
+            }
+        }
+
+        return null;
+    }
+}
+
 if (!function_exists('get_client_device_info')) {
     /** التعرف على اسم الجهاز والمتصفح ونظام التشغيل */
     function get_client_device_info(): string
@@ -1518,6 +1558,35 @@ if (!function_exists('user_has_permission')) {
 
         return in_array($page_key, $perms, true);
     }
+
+    /** التحقق من صلاحية إجراء دقيق داخل صفحة، مثل tasks.create أو materials.upload. */
+    function user_has_capability(string $capability, ?array $user = null): bool
+    {
+        if (empty($user)) {
+            if (empty($_SESSION['user_id'])) {
+                return false;
+            }
+            $db = get_db();
+            $stmt = $db->prepare('SELECT id, username, role, permissions FROM users WHERE id = ?');
+            $stmt->execute([$_SESSION['user_id']]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$user) {
+                return false;
+            }
+        }
+
+        $role = $user['role'] ?? 'coordinator';
+        $uid = (int) ($user['id'] ?? ($_SESSION['user_id'] ?? 0));
+        if ($role === 'admin' || $role === 'super_admin' || $uid === 1 || strtoupper((string) ($user['username'] ?? '')) === 'HUSSIEN') {
+            return true;
+        }
+        if ($role === 'observer') {
+            return false;
+        }
+
+        $permissions = json_decode((string) ($user['permissions'] ?? ''), true);
+        return is_array($permissions) && (in_array($capability, $permissions, true) || in_array('*', $permissions, true) || in_array('all', $permissions, true));
+    }
 }
 
 // دور الزائر/المراقب للقراءة فقط: يمنع كل عمليات POST قبل أن تصل للصفحة.
@@ -1553,7 +1622,7 @@ if (!function_exists('enforce_admin_page_post_permission')) {
         $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
         if (isset($pagePermissions[$script]) && !user_has_permission($pagePermissions[$script])) {
             http_response_code(403);
-            exit('غير مصرح: لا تملك صلاحية تنفيذ هذا الإجراء.');
+            exit('تم تقييد الوصول: لا تملك الصلاحية المطلوبة لتنفيذ هذا الإجراء. يرجى التواصل مع مدير النظام.');
         }
     }
     enforce_admin_page_post_permission();
