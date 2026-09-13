@@ -76,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['role'] = $user['role'];
                 $_SESSION['last_activity_time'] = time();
                 touch_user_activity();
+                check_and_register_user_device((int) $user['id'], $user['username']);
                 log_activity('سجّل دخولاً للنظام', 'auth');
                 redirect('dashboard.php');
             }

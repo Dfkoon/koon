@@ -26,6 +26,8 @@ if (!function_exists('get_menu_svg_icon')) {
             'coordinators' => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
             'tasks' => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>',
             'rewards' => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H7v2h10v-2h-2c-.55 0-1-.45-1-1v-2.34"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
+            'export_center' => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
+            'backup' => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
         ];
         return $icons[$key] ?? '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>';
     }
@@ -33,12 +35,14 @@ if (!function_exists('get_menu_svg_icon')) {
 
 return [
     ['key' => 'stats', 'label' => 'الإحصائيات', 'icon_key' => 'stats', 'file' => 'stats.php', 'ready' => true],
+    ['key' => 'export_center', 'label' => 'مركز التقارير والتصدير', 'icon_key' => 'export_center', 'file' => 'export_center.php', 'ready' => true],
     ['key' => 'tasks', 'label' => 'المهام والتكليفات', 'icon_key' => 'tasks', 'file' => 'tasks.php', 'ready' => true],
     ['key' => 'rewards', 'label' => 'النقاط والمكافآت', 'icon_key' => 'rewards', 'file' => 'rewards.php', 'ready' => true],
     ['key' => 'ads', 'label' => 'الإعلانات', 'icon_key' => 'ads', 'file' => 'ads.php', 'ready' => true],
     ['key' => 'services', 'label' => 'طلبات الخدمات', 'icon_key' => 'services', 'file' => 'service_requests.php', 'ready' => true],
     ['key' => 'membership', 'label' => 'طلبات الانضمام', 'icon_key' => 'membership', 'file' => 'membership_requests.php', 'ready' => true],
     ['key' => 'general', 'label' => 'الإدارة العامة', 'icon_key' => 'general', 'file' => 'general_admin.php', 'ready' => true],
+    ['key' => 'backup', 'label' => 'النسخ والتزامن السحابي', 'icon_key' => 'backup', 'file' => 'backups.php', 'ready' => true],
     ['key' => 'notifications', 'label' => 'الإشعارات', 'icon_key' => 'notifications', 'file' => 'notifications.php', 'ready' => true],
     ['key' => 'donations', 'label' => 'إدارة تبادل المواد', 'icon_key' => 'donations', 'file' => 'donations.php', 'ready' => true],
     ['key' => 'materials', 'label' => 'إدارة المواد الدراسية', 'icon_key' => 'materials', 'file' => 'study_materials.php', 'ready' => true],

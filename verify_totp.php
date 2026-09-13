@@ -27,6 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check($_POST['csrf'] ?? '')) {
         $_SESSION['last_activity_time'] = time();
         unset($_SESSION['pending_user_id'], $_SESSION['pending_username']);
         session_regenerate_id(true);
+        touch_user_activity();
+        check_and_register_user_device((int) $user['id'], $user['username']);
+        log_activity('سجّل دخولاً للنظام (التحقق بخطوتين TOTP)', 'auth');
         redirect('dashboard.php');
     } else {
         $error = 'رمز التحقق غير صحيح أو منتهي، جرّب الرمز الحالي في التطبيق.';

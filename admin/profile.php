@@ -118,9 +118,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = 'تم تغيير كلمة المرور بنجاح!';
                 $messageType = 'success';
             }
+        } elseif ($action === 'remove_device') {
+            $deviceId = (int) ($_POST['device_id'] ?? 0);
+            $delStmt = $db->prepare('DELETE FROM user_known_devices WHERE id = ? AND user_id = ?');
+            $delStmt->execute([$deviceId, $userId]);
+            log_activity('إزالة جهاز موثوق من الحساب', 'security');
+            $message = 'تم حذف الجهاز الموثوق بنجاح.';
+            $messageType = 'success';
         }
     }
 }
+
+// جلب قائمة الأجهزة الموثوقة للمستخدم الحالي
+$devicesStmt = $db->prepare('SELECT * FROM user_known_devices WHERE user_id = ? ORDER BY last_seen_at DESC');
+$devicesStmt->execute([$userId]);
+$knownDevices = $devicesStmt->fetchAll(PDO::FETCH_ASSOC);
 
 require __DIR__ . '/_header.php';
 ?>
@@ -278,6 +290,44 @@ require __DIR__ . '/_header.php';
                     style="font-size: 12.5px; text-decoration: none; display: inline-block;">
                     إدارة وإعادة ضبط تطبيق Authenticator
                 </a>
+            </div>
+
+            <!-- قائمة الأجهزة الموثوقة وتتبع الجلسات -->
+            <div style="margin-top: 28px; padding-top: 18px; border-top: 1px solid #e2e8f0;">
+                <h4 style="font-size: 14px; font-weight: 800; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#0284c7" stroke-width="2"><rect width="18" height="12" x="3" y="4" rx="2"/><line x1="2" x2="22" y1="20" y2="20"/></svg>
+                    الأجهزة المعتمدة وسجل الدخول
+                </h4>
+                <p style="font-size: 12.5px; color: #64748b; margin-bottom: 12px;">
+                    الأجهزة والمتصفحات التي تم تسجيل الدخول منها لهذا الحساب. يتم تنبيه المشرفين تلقائياً عند الدخول من أي جهاز جديد.
+                </p>
+
+                <?php if (empty($knownDevices)): ?>
+                    <p style="font-size: 12px; color: #94a3b8; margin: 0;">لا توجد أجهزة مسجلة بعد.</p>
+                <?php else: ?>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <?php foreach ($knownDevices as $kd): ?>
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 700; color: #0f172a;">
+                                        <?= htmlspecialchars($kd['device_info'] ?: 'متصفح ويب') ?>
+                                    </div>
+                                    <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">
+                                        عنوان IP: <code><?= htmlspecialchars($kd['ip_address']) ?></code> &bull; آخر ظهور: <?= htmlspecialchars($kd['last_seen_at']) ?>
+                                    </div>
+                                </div>
+                                <form method="POST" action="" style="margin: 0;" onsubmit="return confirm('إزالة هذا الجهاز من الأجهزة الموثوقة؟');">
+                                    <input type="hidden" name="csrf" value="<?= csrf_token() ?>">
+                                    <input type="hidden" name="action" value="remove_device">
+                                    <input type="hidden" name="device_id" value="<?= $kd['id'] ?>">
+                                    <button type="submit" title="حذف هذا الجهاز" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 4px;">
+                                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                                    </button>
+                                </form>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>

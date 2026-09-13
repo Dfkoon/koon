@@ -184,6 +184,7 @@ require __DIR__ . '/_header.php';
             'security' => ['label' => 'الأمان وتسجيل الدخول', 'icon' => '🔒'],
             'notifications' => ['label' => 'الإشعارات والتنبيهات', 'icon' => '🔔'],
             'appearance' => ['label' => 'المظهر والتصميم', 'icon' => '🎨'],
+            'backup' => ['label' => 'النسخ الاحتياطي والتزامن', 'icon' => '💾'],
         ];
         foreach ($settingsTabs as $tabKey => $tabMeta):
             ?>
@@ -745,6 +746,41 @@ require __DIR__ . '/_header.php';
                         <button type="submit" class="btn btn-primary">💾 حفظ إعدادات المظهر</button>
                     </div>
                 </form>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($activeTab === 'backup'): ?>
+            <div class="panel-box" style="padding:28px;">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
+                    <div style="width:44px; height:44px; border-radius:12px; background:#e0f2fe; display:flex; align-items:center; justify-content:center; color:#0284c7;">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </div>
+                    <div>
+                        <h3 style="margin:0; font-size:18px; font-weight:900; color:#0f172a;">النسخ الاحتياطي ومراقبة التزامن السحابي</h3>
+                        <p style="margin:2px 0 0; font-size:13px; color:#64748b;">إدارة النسخ الاحتياطية لملف قاعدة البيانات ومراقبة حالة الاتصال مع خوادم Firebase</p>
+                    </div>
+                </div>
+
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:20px; margin-bottom:20px;">
+                    <p style="margin:0 0 14px; font-size:13.5px; color:#334155; line-height:1.6;">
+                        تم نقل وتطوير مركز النسخ الاحتياطي والتزامن في صفحة مخصصة متطورة توفر:
+                    </p>
+                    <ul style="margin:0 0 16px; padding-right:20px; font-size:13px; color:#475569; line-height:1.8;">
+                        <li><strong>تحميل فوري بضغطة زر</strong> لقاعدة البيانات الحالية بصيغة SQLite كاملة.</li>
+                        <li><strong>إنشاء نسخ احتياطية لحظية بالسيرفر</strong> داخل مجلد محفوظ مع إمكانية استعادتها بكلمة مرور المشرف.</li>
+                        <li><strong>فحص الاتصال الحي مع خوادم Firebase</strong> وقياس زمن الاستجابة (Latency) والمزامنة اليدوية الفورية.</li>
+                        <li><strong>سياسات التدوير التلقائي</strong> والاحتفاظ بعدد محدد من النسخ.</li>
+                    </ul>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                        <a href="backups.php" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none; padding:10px 20px; font-weight:800;">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            فتح لوحة النسخ الاحتياطي والتزامن
+                        </a>
+                        <a href="backups.php?action=download_live" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none; padding:10px 18px; font-weight:700; background:#fff; border:1px solid #cbd5e1; border-radius:8px; color:#0f172a; font-size:13px;">
+                            تحميل نسخة حية فوراً (SQLite)
+                        </a>
+                    </div>
+                </div>
             </div>
         <?php endif; ?>
 

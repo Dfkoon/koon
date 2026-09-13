@@ -229,6 +229,17 @@ if (!function_exists('get_db')) {
                 );
                 CREATE INDEX IF NOT EXISTS idx_admin_notifications_unread ON admin_notifications(is_read, created_at);
 
+                CREATE TABLE IF NOT EXISTS user_known_devices (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    ip_address TEXT,
+                    device_info TEXT,
+                    user_agent TEXT,
+                    last_seen_at TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_known_devices_user ON user_known_devices(user_id);
+
                 CREATE TABLE IF NOT EXISTS deleted_records (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     source_table TEXT NOT NULL,
@@ -510,8 +521,19 @@ if (!function_exists('get_db')) {
                 $pdo->exec("ALTER TABLE coordinator_tasks ADD COLUMN attachment_name TEXT;");
             }
 
-            // جداول نظام النقاط والمكافآت
+            // جداول نظام النقاط والمكافآت والأجهزة المعتمدة
             $pdo->exec("
+                CREATE TABLE IF NOT EXISTS user_known_devices (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    ip_address TEXT,
+                    device_info TEXT,
+                    user_agent TEXT,
+                    last_seen_at TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_known_devices_user ON user_known_devices(user_id);
+
                 CREATE TABLE IF NOT EXISTS points_transactions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     coordinator_id INTEGER NOT NULL,
@@ -1439,6 +1461,156 @@ if (!function_exists('create_admin_notification')) {
         $db = get_db();
         $db->prepare('INSERT OR IGNORE INTO admin_notifications (type, title, message, target_url, source_key) VALUES (?, ?, ?, ?, ?)')
             ->execute([$type, $title, $message, $targetUrl, $sourceKey]);
+    }
+}
+
+if (!function_exists('check_and_register_user_device')) {
+    /**
+     * فحص جهاز وعنوان IP المستخدم عند تسجيل الدخول
+     * وتوليد تنبيه أمني إذا تم رصد جهاز جديد أو عنوان IP غير معتاد
+     */
+    function check_and_register_user_device(int $userId, string $username): bool
+    {
+        $db = get_db();
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $device = get_client_device_info();
+        $userAgent = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500);
+        $now = date('Y-m-d H:i:s');
+
+        // جلب الأجهزة السابقة المسجلة لهذا المستخدم
+        $stmt = $db->prepare('SELECT id, ip_address, device_info FROM user_known_devices WHERE user_id = ?');
+        $stmt->execute([$userId]);
+        $knownDevices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $isKnown = false;
+        $matchedId = null;
+
+        foreach ($knownDevices as $d) {
+            // إذا تطابق الجهاز وعنوان IP
+            if ($d['device_info'] === $device && $d['ip_address'] === $ip) {
+                $isKnown = true;
+                $matchedId = $d['id'];
+                break;
+            }
+        }
+
+        if ($isKnown && $matchedId) {
+            $db->prepare('UPDATE user_known_devices SET last_seen_at = ?, user_agent = ? WHERE id = ?')
+                ->execute([$now, $userAgent, $matchedId]);
+            return false; // ليس مشبوهاً
+        }
+
+        // إذا كان لدى المستخدم أجهزة سابقة ولم يتطابق أي منها، فهذا جهاز أو IP جديد
+        $isSuspicious = !empty($knownDevices);
+        if ($isSuspicious) {
+            // تسجيل حدث أمني في سجل النشاط
+            $secMsg = "تسجيل دخول جديد من جهاز أو عنوان غير معتاد: {$device} (IP: {$ip})";
+            $db->prepare('INSERT INTO activity_log (username, action, action_type, ip_address, device_info, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+                ->execute([$username, $secMsg, 'security', $ip, $device, $now]);
+
+            // إرسال تنبيه إداري فوري
+            create_admin_notification(
+                'security',
+                '⚠️ تنبيه أمان: تسجيل دخول غير معتاد',
+                "تم رصد تسجيل دخول لحساب ({$username}) من جهاز ({$device}) وعنوان IP ({$ip}).",
+                'activity_log.php?action_type=security',
+                'suspicious_login:' . $userId . ':' . date('Ymd_His')
+            );
+        }
+
+        // تسجيل الجهاز في قائمة الأجهزة المعروفة
+        $db->prepare('INSERT INTO user_known_devices (user_id, ip_address, device_info, user_agent, last_seen_at, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute([$userId, $ip, $device, $userAgent, $now, $now]);
+
+        return $isSuspicious;
+    }
+}
+
+if (!function_exists('get_sqlite_backup_dir')) {
+    function get_sqlite_backup_dir(): string
+    {
+        $dir = __DIR__ . '/.backups';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        return $dir;
+    }
+}
+
+if (!function_exists('create_sqlite_backup')) {
+    /**
+     * إنشاء نسخة احتياطية لحظية من ملف قاعدة البيانات SQLite
+     */
+    function create_sqlite_backup(string $note = ''): array
+    {
+        $dbPath = DB_PATH;
+        if (!file_exists($dbPath)) {
+            return ['success' => false, 'message' => 'ملف قاعدة البيانات غير موجود!'];
+        }
+
+        $backupDir = get_sqlite_backup_dir();
+        $timestamp = date('Ymd-His');
+        $sanitizedNote = preg_replace('/[^a-zA-Z0-9_\-]/', '_', trim($note));
+        $filename = 'backup_' . $timestamp . ($sanitizedNote ? '_' . $sanitizedNote : '') . '.sqlite';
+        $destPath = $backupDir . '/' . $filename;
+
+        // استخدام الأمر SQLite VACUUM INTO أو النسخ المباشر
+        try {
+            $pdo = get_db();
+            // في SQLite 3.27+ يمكن استخدام VACUUM INTO لنسخ متناسق بدون إيقاف الكتابة
+            $escapedDest = str_replace("'", "''", $destPath);
+            $pdo->exec("VACUUM INTO '{$escapedDest}'");
+        } catch (Throwable $e) {
+            // كبديل إذا لم يكن VACUUM INTO مدعوماً
+            if (!@copy($dbPath, $destPath)) {
+                return ['success' => false, 'message' => 'تعذر نسخ ملف قاعدة البيانات: ' . $e->getMessage()];
+            }
+        }
+
+        if (!file_exists($destPath)) {
+            return ['success' => false, 'message' => 'تعذر إنشاء ملف النسخة الاحتياطية.'];
+        }
+
+        $size = filesize($destPath);
+        log_activity("تم إنشاء نسخة احتياطية لقاعدة البيانات: {$filename} (" . round($size / 1024 / 1024, 2) . " MB)", 'settings');
+
+        return [
+            'success' => true,
+            'filename' => $filename,
+            'path' => $destPath,
+            'size' => $size,
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
+    }
+}
+
+if (!function_exists('get_sqlite_backup_list')) {
+    /**
+     * استعراض قائمة النسخ الاحتياطية المتوفرة
+     */
+    function get_sqlite_backup_list(): array
+    {
+        $backupDir = get_sqlite_backup_dir();
+        $files = glob($backupDir . '/*.sqlite*') ?: [];
+        $list = [];
+
+        foreach ($files as $file) {
+            $basename = basename($file);
+            $size = filesize($file);
+            $mtime = filemtime($file);
+            $list[] = [
+                'filename' => $basename,
+                'path' => $file,
+                'size' => $size,
+                'size_formatted' => round($size / 1024 / 1024, 2) . ' MB',
+                'created_at' => date('Y-m-d H:i:s', $mtime),
+                'timestamp' => $mtime,
+            ];
+        }
+
+        // ترتيب من الأحدث إلى الأقدم
+        usort($list, static fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
+        return $list;
     }
 }
 

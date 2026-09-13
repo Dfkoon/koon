@@ -4,6 +4,9 @@
  * يُضمَّن في بداية كل صفحة داخل admin/.
  */
 require_once __DIR__ . '/../config.php';
+if (!function_exists('liveSyncCollection')) {
+    require_once __DIR__ . '/../sync_official_live.php';
+}
 
 // Allow read-only access with dev_key for testing/demo purposes
 $isReadOnlyMode = false;
