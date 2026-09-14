@@ -78,6 +78,20 @@ $currentCampaignLabel = $currentCampaignLabel === false || trim((string) $curren
     ? 'الفصل الدراسي الأول 2026-2027'
     : (string) $currentCampaignLabel;
 
+/* ---------- استعلام حالة التسليم الفوري بدون تحديث الصفحة (AJAX Live Check) ---------- */
+if (isset($_GET['action']) && $_GET['action'] === 'check_delivery_status') {
+    header('Content-Type: application/json; charset=utf-8');
+    $chkId = (int)($_GET['id'] ?? 0);
+    $chkRow = $db->query("SELECT status, delivery_status, delivered_at FROM material_exchanges WHERE id = $chkId LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    $isDel = $chkRow && ($chkRow['status'] === 'completed' || $chkRow['delivery_status'] === 'completed');
+    echo json_encode([
+        'success' => true,
+        'delivered' => (bool)$isDel,
+        'delivered_at' => $chkRow['delivered_at'] ?? ''
+    ]);
+    exit;
+}
+
 /* ---------- معالجة الإجراءات (إضافة / تعديل / حجز / تسليم / إلغاء / حذف) ---------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_check($_POST['csrf'] ?? '')) {
@@ -190,7 +204,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bookerGender = $_POST['booker_gender'] ?? 'male';
             $notes = trim($_POST['notes'] ?? '');
 
-            if ($donorName === '' || $materialName === '') {
+            // منع المنسقين من تعديل المواد المؤرشفة
+            $archCheckStmt = $db->prepare('SELECT archive_key FROM material_exchanges WHERE id = ? LIMIT 1');
+            $archCheckStmt->execute([$id]);
+            $isArchivedItem = !empty($archCheckStmt->fetchColumn());
+
+            if ($isArchivedItem && !$isDonationsAdmin) {
+                $message = '⛔ المواد المؤرشفة تابعة لفصول سابقة وهي مخصصة للاطلاع فقط ولا يمكن للمنسقين تعديلها.';
+                $messageType = 'error';
+            } elseif ($donorName === '' || $materialName === '') {
                 $message = 'الرجاء إدخال اسم المتبرع واسم المادة / الكتاب.';
                 $messageType = 'error';
             } else {
@@ -338,9 +360,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 6. حذف مادة
         elseif ($action === 'delete') {
             $id = (int) ($_POST['id'] ?? 0);
-            archive_delete('material_exchanges', $id, 'حذف مادة متبادلة');
-            log_activity("حذف المادة المتبادلة #$id نهائياً", 'material_exchange');
-            $message = 'تم حذف المادة بنجاح.';
+            // منع المنسقين من حذف المواد المؤرشفة
+            $archCheckStmt = $db->prepare('SELECT archive_key FROM material_exchanges WHERE id = ? LIMIT 1');
+            $archCheckStmt->execute([$id]);
+            $isArchivedItem = !empty($archCheckStmt->fetchColumn());
+
+            if ($isArchivedItem && !$isDonationsAdmin) {
+                $message = '⛔ المواد المؤرشفة تابعة لفصول سابقة وهي مخصصة للاطلاع فقط ولا يمكن للمنسقين حذفها.';
+                $messageType = 'error';
+            } else {
+                archive_delete('material_exchanges', $id, 'حذف مادة متبادلة');
+                log_activity("حذف المادة المتبادلة #$id نهائياً", 'material_exchange');
+                $message = 'تم حذف المادة بنجاح.';
+            }
         }
 
         // 7. فرز وتعيين يدوي فوري للمنسق المكلف
@@ -941,64 +973,74 @@ require __DIR__ . '/_header.php';
     </div>
 </section>
 
-<!-- أرشيف الحملات حسب الفصل الدراسي -->
+<!-- أرشيف الحملات حسب الفصل الدراسي (قائمة مطوية) -->
 <?php if ($archiveVisibility === '1' && $canViewArchive): ?>
     <?php
     $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveFilter) : '';
+    $isArchiveSelected = (!empty($archiveFilter) && $archiveFilter !== 'current');
     ?>
-    <section class="panel-box semester-archive-panel" style="margin-top:24px;">
-        <div class="panel-box-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-            <div>
-                <h2 class="panel-box-title" style="display:flex;align-items:center;gap:8px;">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#475569" stroke-width="2">
-                        <rect width="20" height="5" x="2" y="3" rx="1" />
-                        <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
-                        <path d="M10 12h4" />
-                    </svg>
-                    <span>أرشيف تبادل المواد حسب الفصل</span>
-                </h2>
-                <div style="font-size:12px;color:#64748b;margin-top:4px;">البيانات المرحّلة من الموقع الرسمي وفصول الحملات السابقة</div>
+    <details class="panel-box semester-archive-panel" style="margin-top:20px; background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;" <?= $isArchiveSelected ? 'open' : '' ?>>
+        <summary style="padding:16px 20px; cursor:pointer; font-weight:800; font-size:15px; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border-bottom:1px solid #e2e8f0; list-style:none; user-select:none;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#475569" stroke-width="2">
+                    <rect width="20" height="5" x="2" y="3" rx="1" />
+                    <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+                    <path d="M10 12h4" />
+                </svg>
+                <span style="color:#1e293b;">📂 أرشيف الفصول والحملات السابقة (قائمة مطوية — اضغط للاستعراض)</span>
+                <?php if ($isArchiveSelected): ?>
+                    <span style="font-size:12px; background:#0284c7; color:#fff; padding:2px 10px; border-radius:999px; font-weight:700;">مستعرض حالياً: <?= htmlspecialchars($campaignBadgeText) ?></span>
+                <?php endif; ?>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <a href="?tab=<?= htmlspecialchars($activeTab) ?>" class="btn <?= (empty($archiveFilter) || $archiveFilter === 'current') ? 'btn-primary' : 'btn-secondary' ?>" style="text-decoration:none;">
-                    الحملة الحالية (<?= htmlspecialchars($currentCampaignLabel) ?>)
-                </a>
-                <a href="?tab=<?= htmlspecialchars($activeTab) ?>&amp;archive=all" class="btn <?= $archiveFilter === 'all' ? 'btn-primary' : 'btn-secondary' ?>" style="text-decoration:none;">
-                    عرض الكل
-                </a>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:12px; color:#64748b;">(<?= count($archiveStats) ?> فصول سابقة)</span>
+                <span style="font-size:14px; color:#94a3b8;">▼</span>
             </div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;padding:18px;">
-            <?php foreach ($archiveStats as $archive): 
-                $isSelected = ($archiveFilter === $archive['archive_key']);
-            ?>
-                <a href="?tab=<?= htmlspecialchars($activeTab) ?>&amp;archive=<?= urlencode($archive['archive_key']) ?>"
-                    style="text-decoration:none;color:inherit;border:2px solid <?= $isSelected ? '#0284c7' : '#dbeafe' ?>;border-radius:12px;padding:16px;background:<?= $isSelected ? '#eff6ff' : 'linear-gradient(135deg,#f8fbff,#fff)' ?>;box-shadow:<?= $isSelected ? '0 0 0 2px rgba(2,132,199,0.2)' : 'none' ?>;transition:all .2s ease;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <div style="font-weight:800;color:#0f172a;font-size:14px;display:flex;align-items:center;gap:6px;">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#0284c7" stroke-width="2">
-                                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
-                            </svg>
-                            <span><?= htmlspecialchars($archive['archive_label']) ?></span>
+        </summary>
+        
+        <div style="padding:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <div style="font-size:13px; color:#64748b;">
+                    يمكنك استعراض بيانات الفصول السابقة كأرشيف تاريخي (متاح للمنسقين للاطلاع فقط دون تعديل أو حذف).
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <a href="?tab=<?= htmlspecialchars($activeTab) ?>" class="btn <?= (empty($archiveFilter) || $archiveFilter === 'current') ? 'btn-primary' : 'btn-secondary' ?>" style="text-decoration:none; font-size:12.5px;">
+                        📌 الحملة الحالية (<?= htmlspecialchars($currentCampaignLabel) ?>)
+                    </a>
+                    <a href="?tab=<?= htmlspecialchars($activeTab) ?>&amp;archive=all" class="btn <?= $archiveFilter === 'all' ? 'btn-primary' : 'btn-secondary' ?>" style="text-decoration:none; font-size:12.5px;">
+                        عرض جميع الفصول
+                    </a>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
+                <?php foreach ($archiveStats as $archive): 
+                    $isSelected = ($archiveFilter === $archive['archive_key']);
+                ?>
+                    <a href="?tab=<?= htmlspecialchars($activeTab) ?>&amp;archive=<?= urlencode($archive['archive_key']) ?>"
+                        style="text-decoration:none;color:inherit;border:2px solid <?= $isSelected ? '#0284c7' : '#e2e8f0' ?>;border-radius:12px;padding:16px;background:<?= $isSelected ? '#eff6ff' : '#ffffff' ?>;box-shadow:<?= $isSelected ? '0 0 0 2px rgba(2,132,199,0.2)' : '0 1px 3px rgba(0,0,0,0.05)' ?>;transition:all .2s ease;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div style="font-weight:800;color:#0f172a;font-size:14px;display:flex;align-items:center;gap:6px;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#0284c7" stroke-width="2">
+                                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+                                </svg>
+                                <span><?= htmlspecialchars($archive['archive_label']) ?></span>
+                            </div>
+                            <?php if ($isSelected): ?>
+                                <span style="font-size:11px;background:#0284c7;color:#fff;padding:2px 8px;border-radius:9999px;font-weight:600;">معروض حالياً</span>
+                            <?php endif; ?>
                         </div>
-                        <?php if ($isSelected): ?>
-                            <span style="font-size:11px;background:#0284c7;color:#fff;padding:2px 8px;border-radius:9999px;font-weight:600;">معروض حالياً</span>
-                        <?php endif; ?>
-                    </div>
-                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;text-align:center;">
-                        <span><b
-                                style="display:block;color:#0284c7;font-size:20px;"><?= (int) $archive['total'] ?></b><small>الإجمالي</small></span>
-                        <span><b
-                                style="display:block;color:#16a34a;font-size:20px;"><?= (int) $archive['available'] ?></b><small>متاحة</small></span>
-                        <span><b
-                                style="display:block;color:#d97706;font-size:20px;"><?= (int) $archive['reserved'] ?></b><small>محجوزة</small></span>
-                        <span><b
-                                style="display:block;color:#9333ea;font-size:20px;"><?= (int) $archive['completed'] ?></b><small>مكتملة</small></span>
-                    </div>
-                </a>
-            <?php endforeach; ?>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;text-align:center;">
+                            <span><b style="display:block;color:#0284c7;font-size:20px;"><?= (int) $archive['total'] ?></b><small style="color:#64748b;">الإجمالي</small></span>
+                            <span><b style="display:block;color:#16a34a;font-size:20px;"><?= (int) $archive['available'] ?></b><small style="color:#64748b;">متاحة</small></span>
+                            <span><b style="display:block;color:#d97706;font-size:20px;"><?= (int) $archive['reserved'] ?></b><small style="color:#64748b;">محجوزة</small></span>
+                            <span><b style="display:block;color:#9333ea;font-size:20px;"><?= (int) $archive['completed'] ?></b><small style="color:#64748b;">مكتملة</small></span>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
         </div>
-    </section>
+    </details>
 <?php endif; ?>
 
 <!-- شريط الإجراءات والتبويبات -->
@@ -1489,7 +1531,7 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                         }
                         $hasMatch = !empty($smartMatches[$m['id']]);
                         ?>
-                        <tr>
+                        <tr id="row_material_<?= $m['id'] ?>">
                             <td style="font-weight:700; color:#64748b;">#<?= $m['id'] ?></td>
 
                             <!-- اسم المادة والكتاب والوصف -->
@@ -1600,7 +1642,7 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
 
                             <!-- الحالة -->
                             <td>
-                                <span class="custom-badge <?= $stBadge['class'] ?>">
+                                <span class="custom-badge <?= $stBadge['class'] ?>" id="badge_status_<?= $m['id'] ?>">
                                     <?= $stBadge['label'] ?>
                                 </span>
                             </td>
@@ -1614,6 +1656,18 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                                         <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                         اطلاع فقط
                                     </span>
+                                    <button type="button" class="btn-action btn-print-slip"
+                                        onclick='openSlipModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
+                                        title="باركود وسند التسليم السريع (QR)"
+                                        style="display:inline-flex; align-items:center; gap:4px; background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; font-weight:700; padding:4px 8px; border-radius:6px;">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
+                                            <rect x="3" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="14" width="7" height="7"></rect>
+                                            <rect x="3" y="14" width="7" height="7"></rect>
+                                        </svg>
+                                        <span style="font-size:11px;">باركود</span>
+                                    </button>
                                     <?php else: ?>
                                     <!-- زر الحجز السريع إن كانت المادة متاحة -->
                                     <?php if ($m['status'] === 'approved'): ?>
@@ -1640,7 +1694,7 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                                             <button type="submit" class="btn-action btn-deliver" title="تأكيد التسليم بنجاح">
                                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
                                                     stroke-width="2">
-                                                    <polyline points="20 6 9 17 4 12" />
+                                                <polyline points="20 6 9 17 4 12" />
                                                 </svg>
                                                 تسليم
                                             </button>
@@ -1663,17 +1717,18 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                                         </form>
                                     <?php endif; ?>
 
-                                    <!-- زر طباعة سند التسليم -->
+                                    <!-- زر باركود وسند التسليم السريع -->
                                     <button type="button" class="btn-action btn-print-slip"
                                         onclick='openSlipModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
-                                        title="طباعة سند التسليم">
-                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                                            stroke-width="2">
-                                            <polyline points="6 9 6 2 18 2 18 9" />
-                                            <path
-                                                d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                                            <rect width="12" height="8" x="6" y="14" />
+                                        title="باركود وسند التسليم السريع (QR)"
+                                        style="display:inline-flex; align-items:center; gap:4px; background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; font-weight:700; padding:4px 8px; border-radius:6px;">
+                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
+                                            <rect x="3" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="3" width="7" height="7"></rect>
+                                            <rect x="14" y="14" width="7" height="7"></rect>
+                                            <rect x="3" y="14" width="7" height="7"></rect>
                                         </svg>
+                                        <span style="font-size:11px;">باركود</span>
                                     </button>
 
                                     <!-- زر التعديل -->
@@ -1823,32 +1878,36 @@ $hideFemaleTable  = ($currentCoordGender === 'male'   && !$isDonationsAdmin);
 // جدول الجنس الآخر للمنسق يظهر للقراءة فقط دون إمكانية التعديل
 $showOtherGenderReadOnly = true;
 
+// وضع الأرشيف: إذا كان المستعرض أرشيفاً والمستخدم ليس أدمن، تكون كافة الجداول للاطلاع فقط
+$isArchiveMode = (!empty($archiveFilter) && $archiveFilter !== 'current');
+$coordArchiveReadOnly = ($isArchiveMode && !$isDonationsAdmin);
+
 if ($coordFilter === 'shared') {
     // فلتر صريح للمشترك
-    renderDonationMaterialsTable('shared', 'جدول التسليم المشترك وبانتظار الفرز اليدوي', 'المواد غير المفرزة أو المشتركة بين المنسقين — يرجى تحديد المنسق المسؤول أو متابعتها مشتركاً', $sharedMaterials, ['badge_bg'=>'#faf5ff', 'badge_color'=>'#7e22ce', 'badge_border'=>'#e9d5ff', 'svg'=>$sharedSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+    renderDonationMaterialsTable('shared', 'جدول التسليم المشترك وبانتظار الفرز اليدوي', 'المواد غير المفرزة أو المشتركة بين المنسقين — يرجى تحديد المنسق المسؤول أو متابعتها مشتركاً', $sharedMaterials, ['badge_bg'=>'#faf5ff', 'badge_color'=>'#7e22ce', 'badge_border'=>'#e9d5ff', 'svg'=>$sharedSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
 
 } elseif ($coordFilter === 'female_all' || (!empty($coordFilter) && isset($coordinatorsList[$coordFilter]) && ($coordinatorsList[$coordFilter]['gender'] ?? '') === 'female')) {
     // فلتر إناث صريح
     if (!$hideFemaleTable) {
-        renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg'=>'#fdf2f8', 'badge_color'=>'#db2777', 'badge_border'=>'#fbcfe8', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+        renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg'=>'#fdf2f8', 'badge_color'=>'#db2777', 'badge_border'=>'#fbcfe8', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
     }
 
 } elseif ($coordFilter === 'male_all' || (!empty($coordFilter) && isset($coordinatorsList[$coordFilter]) && ($coordinatorsList[$coordFilter]['gender'] ?? '') !== 'female')) {
     // فلتر ذكور صريح
     if (!$hideMaleTable) {
-        renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg'=>'#f0f9ff', 'badge_color'=>'#0284c7', 'badge_border'=>'#bae6fd', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+        renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg'=>'#f0f9ff', 'badge_color'=>'#0284c7', 'badge_border'=>'#bae6fd', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
     }
 
 } else {
     // عرض الجداول المناسبة مع مراعاة جنس المنسق
 
     // ١. جدول المشترك — يظهر دائماً لأي مستخدم في كل التبويبات
-    renderDonationMaterialsTable('shared', 'جدول التسليم المشترك وبانتظار الفرز اليدوي', 'المواد غير المفرزة أو المشتركة بين المنسقين — يرجى تحديد المنسق المسؤول أو متابعتها مشتركاً', $sharedMaterials, ['badge_bg'=>'#faf5ff', 'badge_color'=>'#7e22ce', 'badge_border'=>'#e9d5ff', 'svg'=>$sharedSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+    renderDonationMaterialsTable('shared', 'جدول التسليم المشترك وبانتظار الفرز اليدوي', 'المواد غير المفرزة أو المشتركة بين المنسقين — يرجى تحديد المنسق المسؤول أو متابعتها مشتركاً', $sharedMaterials, ['badge_bg'=>'#faf5ff', 'badge_color'=>'#7e22ce', 'badge_border'=>'#e9d5ff', 'svg'=>$sharedSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
 
     // ٢. جدول الذكور
     if (!$hideMaleTable) {
-        // المنسق ذكر أو أدمن → أزرار كاملة
-        renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg'=>'#f0f9ff', 'badge_color'=>'#0284c7', 'badge_border'=>'#bae6fd', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+        // المنسق ذكر أو أدمن → أزرار كاملة (إلا إذا كان في وضع أرشيف لمنسق)
+        renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg'=>'#f0f9ff', 'badge_color'=>'#0284c7', 'badge_border'=>'#bae6fd', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
     } elseif ($showOtherGenderReadOnly) {
         // منسقة أنثى → جدول الذكور بالقراءة فقط
         renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور (اطلاع)', 'هذا الجدول مخصص لمنسقي الذكور — أنتِ في وضع الاطلاع فقط', $maleMaterials, ['badge_bg'=>'#f8fafc', 'badge_color'=>'#94a3b8', 'badge_border'=>'#e2e8f0', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, true);
@@ -1856,8 +1915,8 @@ if ($coordFilter === 'shared') {
 
     // ٣. جدول الإناث
     if (!$hideFemaleTable) {
-        // المنسق أنثى أو أدمن → أزرار كاملة
-        renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg'=>'#fdf2f8', 'badge_color'=>'#db2777', 'badge_border'=>'#fbcfe8', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+        // المنسق أنثى أو أدمن → أزرار كاملة (إلا إذا كان في وضع أرشيف لمنسق)
+        renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg'=>'#fdf2f8', 'badge_color'=>'#db2777', 'badge_border'=>'#fbcfe8', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
     } elseif ($showOtherGenderReadOnly) {
         // منسق ذكر → جدول الإناث بالقراءة فقط
         renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث (اطلاع)', 'هذا الجدول مخصص لمنسقات الإناث — أنت في وضع الاطلاع فقط', $femaleMaterials, ['badge_bg'=>'#fdf8ff', 'badge_color'=>'#94a3b8', 'badge_border'=>'#f3e8ff', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, true);
@@ -2247,6 +2306,10 @@ if ($coordFilter === 'shared') {
             <button type="button" class="close-modal-btn" onclick="closeModal('slipModal')">✕</button>
         </div>
         <div class="custom-modal-body" id="printableSlipArea">
+            <!-- إشعار حي فوري عند مسح الباركود من الهاتف -->
+            <div id="slip_live_delivered_banner" class="no-print" style="display:none; margin-bottom:14px; padding:14px 18px; background:linear-gradient(135deg, #ecfdf5, #d1fae5); border:1.5px solid #10b981; border-radius:12px; color:#065f46; font-weight:800; font-size:14px; text-align:center; box-shadow:0 4px 12px rgba(16,185,129,0.2);">
+                🎉 تم مسح الباركود وتأكيد استلام المادة بنجاح الآن!
+            </div>
             <div class="slip-container">
                 <div class="slip-header">
                     <div style="font-family:'Cairo', sans-serif; font-weight:800; font-size:18px; color:#0f172a;">منصة
@@ -2656,6 +2719,9 @@ if ($coordFilter === 'shared') {
 </div>
 
 <script>
+    let slipPollTimer = null;
+    let slipPollCurrentId = null;
+
     function openModal(id) {
         const modal = document.getElementById(id);
         if (modal) modal.classList.add('show');
@@ -2664,6 +2730,10 @@ if ($coordFilter === 'shared') {
     function closeModal(id) {
         const modal = document.getElementById(id);
         if (modal) modal.classList.remove('show');
+        if (id === 'slipModal') {
+            if (slipPollTimer) { clearInterval(slipPollTimer); slipPollTimer = null; }
+            slipPollCurrentId = null;
+        }
     }
 
     function openApproveDonationModal(item) {
@@ -2807,7 +2877,52 @@ if ($coordFilter === 'shared') {
         document.getElementById('slip_qr_img').src = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(deliveryUrl);
         document.getElementById('slip_qr_link').href = deliveryUrl;
 
+        // إخفاء بانر التسليم عند الفتح
+        const liveBanner = document.getElementById('slip_live_delivered_banner');
+        if (liveBanner) liveBanner.style.display = 'none';
+
         openModal('slipModal');
+
+        // بدء polling مباشر كل 2 ثانية للكشف عن مسح الباركود من الهاتف
+        if (slipPollTimer) clearInterval(slipPollTimer);
+        slipPollCurrentId = item.id;
+
+        // إذا كانت المادة محجوزة نبدأ المراقبة، إذا كانت مكتملة نظهر البانر مباشرة
+        if (item.status === 'completed') {
+            if (liveBanner) liveBanner.style.display = 'block';
+        } else if (item.status === 'reserved') {
+            slipPollTimer = setInterval(function() {
+                if (!slipPollCurrentId) { clearInterval(slipPollTimer); return; }
+                fetch('donations.php?action=check_delivery_status&id=' + slipPollCurrentId)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data.delivered) {
+                            clearInterval(slipPollTimer);
+                            slipPollTimer = null;
+                            // تحديث بانر التسليم الفوري
+                            if (liveBanner) {
+                                liveBanner.style.display = 'block';
+                                liveBanner.innerHTML = '🎉 تم مسح الباركود وتأكيد استلام المادة بنجاح الآن! <span style="font-size:12px; color:#065f46;">' + (data.delivered_at ? '— ' + data.delivered_at : '') + '</span>';
+                            }
+                            // تشغيل صوت إشعار بسيط
+                            try {
+                                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                                const osc = ctx.createOscillator(); osc.connect(ctx.destination);
+                                osc.frequency.value = 880; osc.start(); osc.stop(ctx.currentTime + 0.25);
+                            } catch(e) {}
+                            // تحديث badge الحالة في صف الجدول بدون ريلود
+                            const badgeEl = document.getElementById('badge_status_' + slipPollCurrentId);
+                            if (badgeEl) {
+                                badgeEl.className = 'custom-badge badge-completed';
+                                badgeEl.innerText = 'تم التسليم';
+                            }
+                            // تحديث نص حالة السند
+                            document.getElementById('slip_status').innerText = 'تم التسليم';
+                        }
+                    })
+                    .catch(() => {});
+            }, 2000);
+        }
     }
 
     function printSlip() {

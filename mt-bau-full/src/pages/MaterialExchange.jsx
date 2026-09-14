@@ -107,7 +107,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
     const isAr = language === 'ar';
 
     // ── PUBLIC STATE ─────────────────────────────────────────────
-    const [formData, setFormData] = useState({ studentName: '', phoneNumber: '', confirmPhoneNumber: '', email: '', studentGender: '', deliveryWeek: '', deliveryWeekCustom: '', materials: [] });
+    const [formData, setFormData] = useState({ studentName: '', phoneNumber: '', confirmPhoneNumber: '', email: '', studentGender: '', deliveryWeek: '', deliveryWeekCustom: '', materials: [], hideContactInfo: false });
     const [currentMaterial, setCurrentMaterial] = useState({ name: '', description: '' });
     const [allMaterials, setAllMaterials] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -183,7 +183,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState(null);
-    const [bookingData, setBookingData] = useState({ name: '', phone: '', confirmPhone: '', gender: '' });
+    const [bookingData, setBookingData] = useState({ name: '', phone: '', confirmPhone: '', gender: '', hideContactInfo: false });
     const [preRequestForm, setPreRequestForm] = useState({ type: 'donate', studentName: '', phoneNumber: '', materialName: '', notes: '', agreedToPreRequestTerms: false });
     const [hasViewedTerms, setHasViewedTerms] = useState(false);
     const [preRequests, setPreRequests] = useState([]);
@@ -1339,6 +1339,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 deliveryWeek: finalWeek,
                 deliveryWeekCustom: formData.deliveryWeekCustom?.trim() || '',
                 materials: formData.materials,
+                hideContactInfo: !!formData.hideContactInfo,
                 status: 'pending',
                 createdAt: serverTimestamp()
             };
@@ -1364,7 +1365,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
             ]);
 
             toast.success(isAr ? 'تم نشر المواد بنجاح' : 'Materials published successfully');
-            setFormData({ studentName: '', phoneNumber: '', confirmPhoneNumber: '', email: '', studentGender: '', deliveryWeek: '', deliveryWeekCustom: '', materials: [] });
+            setFormData({ studentName: '', phoneNumber: '', confirmPhoneNumber: '', email: '', studentGender: '', deliveryWeek: '', deliveryWeekCustom: '', materials: [], hideContactInfo: false });
             setAgreedToTerms(false);
             setHasReadDonationTerms(false);
             generateDonationCaptcha();
@@ -1558,11 +1559,16 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 }
                 updatedMaterials[selectedMaterial.originalIndex].takerInfo = {
                     name: bookingData.name.trim(),
+                    studentName: bookingData.name.trim(),
                     phone: normPhone,
+                    phoneNumber: normPhone,
                     confirmPhone: normConfirm,
                     alternatePhone: hasAlternate ? normConfirm : '',
                     email: bookingData.email?.trim() || '',
                     gender: bookingData.gender,
+                    studentGender: bookingData.gender,
+                    hideFromCounterparty: !!bookingData.hideContactInfo,
+                    hideBookerInfo: !!bookingData.hideContactInfo,
                     bookedAt: new Date()
                 };
                 const allReserved = updatedMaterials.every(m => {
@@ -1636,7 +1642,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 donorName: selectedMaterial?.donorName || 'مختبرع',
                 coordinatorName: selectedMaterial?.studentGender === 'male' ? (systemSettings.ahmadNameAr || 'أحمد') : (systemSettings.saraNameAr || 'سار')
             });
-            setBookingData({ name: '', phone: '', confirmPhone: '', gender: '' });
+            setBookingData({ name: '', phone: '', confirmPhone: '', gender: '', hideContactInfo: false });
             generateBookingCaptcha();
             fetchDonations();
         } catch (error) {
@@ -2701,6 +2707,7 @@ Please contact us to coordinate the pickup.Thank you.`;
             const materials = [...(data.materials || [])];
             if (materials[materialIndex]) {
                 materials[materialIndex].status = 'approved';
+                materials[materialIndex].hideFromCounterparty = false;
                 delete materials[materialIndex].takerInfo;
             }
 
@@ -4380,6 +4387,16 @@ Please contact us to coordinate the pickup.Thank you.`;
                                     </div>
                                 </div>
                                 <div className="form-group full-width">
+                                    <label className="terms-label agreement-checkbox" style={{ marginTop: '0' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={!!formData.hideContactInfo}
+                                            onChange={e => setFormData(prev => ({ ...prev, hideContactInfo: e.target.checked }))}
+                                        />
+                                        {isAr ? 'أرغب في إخفاء بياناتي عن الطرف الآخر (المتبرع/الحاجز) عند التسليم' : 'I want to hide my data from the other party (donor/booker) during delivery'}
+                                    </label>
+                                </div>
+                                <div className="form-group full-width">
                                     <label>{isAr ? 'المواد المتوفرة' : 'Available Materials'}</label>
 
                                     <div className="materials-guidance-box">
@@ -4911,6 +4928,16 @@ Please contact us to coordinate the pickup.Thank you.`;
                                         </ul>
                                     )}
                                 </div>
+                                <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                                    <label className="terms-label agreement-checkbox" style={{ margin: '0' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={!!bookingData.hideContactInfo}
+                                            onChange={e => setBookingData(prev => ({ ...prev, hideContactInfo: e.target.checked }))}
+                                        />
+                                        {isAr ? 'أرغب في إخفاء بياناتي عن الطرف الآخر (المتبرع/الحاجز) عند التسليم' : 'I want to hide my data from the other party (donor/booker) during delivery'}
+                                    </label>
+                                </div>
                                 <label className="terms-label agreement-checkbox" style={{ margin: '0.8rem 0' }}>
                                     <input type="checkbox" checked={agreedToBookingTerms} onChange={e => setAgreedToBookingTerms(e.target.checked)} />
                                     {isAr ? 'أوافق على الشروط والأحكام' : 'I agree to the terms and conditions'}
@@ -4977,21 +5004,21 @@ Please contact us to coordinate the pickup.Thank you.`;
                             <div className="campaign-about-grid">
                                 <div className="campaign-about-card">
                                     <div className="campaign-about-card-icon">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                                     </div>
                                     <h3>{isAr ? 'هيكل تنظيمي متكامل' : 'Structured Organization'}</h3>
                                     <p>{isAr ? 'تُدار الحملة من خلال كادر تنظيمي مقسَّم إلى قسمين مستقلين؛ قسم مخصص للطلاب الذكور، وقسم مخصص للطالبات الإناث، لضمان سير العمل بصورة منظمة ومهنية.' : 'The campaign is managed through an organized team divided into two independent divisions: one for male students and one for female students, ensuring a professional and well-structured operation.'}</p>
                                 </div>
                                 <div className="campaign-about-card">
                                     <div className="campaign-about-card-icon">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                                     </div>
                                     <h3>{isAr ? 'آلية عمل واضحة' : 'Clear Working Mechanism'}</h3>
                                     <p>{isAr ? 'تعتمد آلية العمل على مبدأ التجانس؛ إذ تتولى متبرعة تقديم طلبها، يتكفل فريق الطالبات بمتابعته والتنسيق معها لتحديد موعد الاستلام. وبالمقابل، يتولى فريق الطلاب الذكور متابعة طلبات المتبرعين من الذكور وتنسيق مواعيد الاستلام.' : "The process follows a like-for-like principle: a female donor's request is handled by the female team, who coordinate with her directly to set a pickup date. Similarly, male donors are managed by the male team with scheduled pickup appointments."}</p>
                                 </div>
                                 <div className="campaign-about-card">
                                     <div className="campaign-about-card-icon">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
                                     </div>
                                     <h3>{isAr ? 'تسليم منسق ومضمون' : 'Coordinated Delivery'}</h3>
                                     <p>{isAr ? 'عند تقديم الطالب الحاجز لطلبه، يتولى الفريق المختص التواصل معه لتحديد يوم ووقت محددَين للتسليم، مما يضمن انسيابية العملية وراحة جميع الأطراف.' : 'Once a student submits a booking request, the designated team contacts them to arrange a specific day and time for delivery, ensuring a smooth and convenient experience for all parties.'}</p>
@@ -5006,8 +5033,8 @@ Please contact us to coordinate the pickup.Thank you.`;
                     <div className="share-campaign-inner">
                         <div className="share-campaign-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
                             </svg>
                         </div>
                         <div className="share-campaign-text">
@@ -5028,7 +5055,7 @@ Please contact us to coordinate the pickup.Thank you.`;
                                     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                                 }}
                             >
-                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
                                 {isAr ? 'شارك عبر واتساب' : 'Share on WhatsApp'}
                             </button>
                             <button
@@ -5039,7 +5066,7 @@ Please contact us to coordinate the pickup.Thank you.`;
                                     });
                                 }}
                             >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
                                 {isAr ? 'نسخ الرابط' : 'Copy Link'}
                             </button>
                         </div>
@@ -9642,46 +9669,46 @@ Please contact us to coordinate the pickup.Thank you.`;
                                         <input type="text" required value={bookingData.name} onChange={e => setBookingData({ ...bookingData, name: e.target.value })} placeholder={isAr ? 'مثال: محمد أحمد' : 'e.g. Mohammad Ahmad'} className="form-input" />
                                     </div>
                                     <div className="form-group">
-                                         <label>{isAr ? 'رقم الهاتف الأساسي (واتساب)' : 'Primary Contact (WhatsApp)'}</label>
-                                         <div className="phone-input-group">
-                                             <div className="phone-prefix">
-                                                 <span className="country-flag">🇯🇴</span>
-                                                 <span className="country-code" dir="ltr">+962</span>
-                                             </div>
-                                             <input
-                                                 type="tel"
-                                                 required
-                                                 value={bookingData.phone}
-                                                 onChange={e => setBookingData({ ...bookingData, phone: toEnglishNumerals(e.target.value).replace(/\D/g, '').slice(0, 10) })}
-                                                 placeholder="7X XXX XXXX"
-                                                 className="phone-field-input"
-                                                 dir="ltr"
-                                                 maxLength="10"
-                                             />
-                                         </div>
-                                     </div>
-                                     <div className="form-group">
-                                         <label>{isAr ? 'تأكيد رقم الهاتف أو رقم تواصل آخر' : 'Confirm Phone or Alternative Number'}</label>
-                                         <div className="phone-input-group">
-                                             <div className="phone-prefix">
-                                                 <span className="country-flag">🇯🇴</span>
-                                                 <span className="country-code" dir="ltr">+962</span>
-                                             </div>
-                                             <input
-                                                 type="tel"
-                                                 required
-                                                 value={bookingData.confirmPhone}
-                                                 onChange={e => setBookingData({ ...bookingData, confirmPhone: toEnglishNumerals(e.target.value).replace(/\D/g, '').slice(0, 10) })}
-                                                 placeholder="7X XXX XXXX"
-                                                 className="phone-field-input"
-                                                 dir="ltr"
-                                                 maxLength="10"
-                                             />
-                                         </div>
-                                         <small className="phone-field-hint">
-                                             {isAr ? 'أعد كتابة نفس الرقم للتأكيد، أو أدخل رقماً آخر للتواصل' : 'Re-enter same number to confirm, or enter an alternate number'}
-                                         </small>
-                                     </div>
+                                        <label>{isAr ? 'رقم الهاتف الأساسي (واتساب)' : 'Primary Contact (WhatsApp)'}</label>
+                                        <div className="phone-input-group">
+                                            <div className="phone-prefix">
+                                                <span className="country-flag">🇯🇴</span>
+                                                <span className="country-code" dir="ltr">+962</span>
+                                            </div>
+                                            <input
+                                                type="tel"
+                                                required
+                                                value={bookingData.phone}
+                                                onChange={e => setBookingData({ ...bookingData, phone: toEnglishNumerals(e.target.value).replace(/\D/g, '').slice(0, 10) })}
+                                                placeholder="7X XXX XXXX"
+                                                className="phone-field-input"
+                                                dir="ltr"
+                                                maxLength="10"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="form-group">
+                                        <label>{isAr ? 'تأكيد رقم الهاتف أو رقم تواصل آخر' : 'Confirm Phone or Alternative Number'}</label>
+                                        <div className="phone-input-group">
+                                            <div className="phone-prefix">
+                                                <span className="country-flag">🇯🇴</span>
+                                                <span className="country-code" dir="ltr">+962</span>
+                                            </div>
+                                            <input
+                                                type="tel"
+                                                required
+                                                value={bookingData.confirmPhone}
+                                                onChange={e => setBookingData({ ...bookingData, confirmPhone: toEnglishNumerals(e.target.value).replace(/\D/g, '').slice(0, 10) })}
+                                                placeholder="7X XXX XXXX"
+                                                className="phone-field-input"
+                                                dir="ltr"
+                                                maxLength="10"
+                                            />
+                                        </div>
+                                        <small className="phone-field-hint">
+                                            {isAr ? 'أعد كتابة نفس الرقم للتأكيد، أو أدخل رقماً آخر للتواصل' : 'Re-enter same number to confirm, or enter an alternate number'}
+                                        </small>
+                                    </div>
                                     {/* ── Gender Selection ── */}
                                     <div className="form-group">
                                         <label className="gender-field-label">

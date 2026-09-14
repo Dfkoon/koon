@@ -105,6 +105,9 @@ $systemCapabilities = [
     'tasks.create' => ['label' => 'إضافة مهمة', 'page' => 'tasks'],
     'tasks.edit' => ['label' => 'تعديل مهمة', 'page' => 'tasks'],
     'tasks.delete' => ['label' => 'حذف مهمة', 'page' => 'tasks'],
+    'donations.archive_view' => ['label' => 'الاطلاع على أرشيف الحملات السابقة (تبادل المواد)', 'page' => 'donations'],
+    'donations.archive_manage' => ['label' => 'أرشفة الحملة الحالية (تبادل المواد)', 'page' => 'donations'],
+    'donations.create_campaign' => ['label' => 'فتح وبدء حملة جديدة (تبادل المواد)', 'page' => 'donations'],
 ];
 
 /* ================================================================

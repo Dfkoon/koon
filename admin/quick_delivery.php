@@ -44,6 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'confirm_delivery' && !
         log_activity("تأكيد تسليم المادة #$id (\"{$item['material_name']}\") عبر مسح رمز QR", 'material_exchange');
         $alreadyDelivered = true;
         $justDelivered = true;
+
+        // مزامنة فورية مع Firestore
+        if (file_exists(__DIR__ . '/../includes/sync_frontend_live.php')) {
+            require_once __DIR__ . '/../includes/sync_frontend_live.php';
+            if (function_exists('sync_material_exchanges_to_frontend')) {
+                sync_material_exchanges_to_frontend($db);
+            }
+        }
         
         // إعادة جلب البيانات بعد التحديث
         $stmt->execute([$id]);
@@ -238,7 +246,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'confirm_delivery' && !
         <?php endif; ?>
         <div class="info-row">
             <span class="info-label">الطالب المتبرع:</span>
-            <span class="info-val"><?= htmlspecialchars($item['donor_name'] ?: 'فاعل خير') ?></span>
+            <span class="info-val" style="color:#64748b; font-size:12.5px;">
+                <?= (!empty($item['hide_donor_info']) || true) ? 'فاعل خير (محجوب للخصوصية)' : htmlspecialchars($item['donor_name'] ?: 'فاعل خير') ?>
+            </span>
         </div>
         <?php if (!empty($item['delivered_at'])): ?>
         <div class="info-row">
@@ -260,22 +270,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'confirm_delivery' && !
                     </button>
                 </form>
             <?php else: ?>
-                <?php if (!empty($item['donor_phone'])): ?>
-                    <?php
-                    $cleanPhone = preg_replace('/\D/', '', $item['donor_phone']);
-                    if (str_starts_with($cleanPhone, '07') && strlen($cleanPhone) === 10) $cleanPhone = '962' . substr($cleanPhone, 1);
-                    $thanksMsg = "السلام عليكم ورحمة الله {$item['donor_name']} 🌟\n\nنود إعلامك بأنه تم تسليم كتابك ({$item['material_name']}) بنجاح لزميلك الطالب ({$item['booker_name']}) عبر منصة مكانك.\n\nجزاك الله كل خير وجعله في ميزان حسناتك! 💚";
-                    $thanksUrl = 'https://wa.me/' . $cleanPhone . '?text=' . rawurlencode($thanksMsg);
-                    ?>
-                    <a href="<?= $thanksUrl ?>" target="_blank" class="action-btn btn-whatsapp">
-                        <span>💬 إرسال رسالة شكر للمتبرع عبر واتساب</span>
-                    </a>
-                <?php endif; ?>
+                <?php
+                $adminWhatsappPhone = '962782934685';
+                $studentName = !empty($item['booker_name']) ? $item['booker_name'] : 'طالب مستلم';
+                $materialTitle = !empty($item['material_name']) ? $item['material_name'] : 'المادة الدراسية';
+                $thanksMsg = "السلام عليكم ورحمة الله،\nأنا الطالب ({$studentName})، استلمت مادة ({$materialTitle}) بنجاح.\n\nأتوجه بجزيل الشكر والتقدير لإدارة منصة مكانك وفريق التنسيق وللمتبرع الكريم على هذه المبادرة الطيبة وجهودكم المباركة، جزاكم الله كل خير! 🌸";
+                $thanksUrl = 'https://wa.me/' . $adminWhatsappPhone . '?text=' . rawurlencode($thanksMsg);
+                ?>
+                <a href="<?= $thanksUrl ?>" target="_blank" class="action-btn btn-whatsapp">
+                    <span>💬 إرسال رسالة شكر للإدارة وفريق الحملة عبر واتساب</span>
+                </a>
             <?php endif; ?>
 
-            <a href="donations.php" class="action-btn btn-back">
-                العودة لإدارة تبادل المواد
-            </a>
+            <button type="button" onclick="window.close(); if(!window.closed){ window.location.href='about:blank'; }" class="action-btn btn-back">
+                ✕ إغلاق النافذة
+            </button>
         </div>
     </div>
 </div>
