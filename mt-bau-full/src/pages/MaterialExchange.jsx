@@ -7,10 +7,10 @@ import toast from 'react-hot-toast';
 import exchangeHero from '../assets/heros/exchange_hero.png';
 import { sendDonationToSheets, sendBookingToSheets } from '../services/googleSheetsService';
 import { saveCourseDonation, saveCourseBooking } from '../services/courseStatusService';
+import { sendAdminNotification } from '../services/notificationService';
 import emailjs from '@emailjs/browser';
 import QRBookingCard from '../components/QRBookingCard';
 import MaterialStatusChecker from '../components/MaterialStatusChecker';
-import { sendAdminNotification } from '../services/notificationService';
 import './MaterialExchange.css';
 
 
@@ -102,37 +102,25 @@ const STAFF_USERS = {
     sara: { role: 'coordinator', nameAr: 'سار', nameEn: 'Sara', gender: 'female' }
 };
 
-const DEMO_EXCHANGE_MATERIAL_PATTERNS = [
-    /three easy pieces/i,
-    /pfleeger/i,
-    /tanenbaum/i,
-    /artificial intelligence.*modern approach/i,
-    /calculus.*early transcendentals/i,
-    /physics for scientists and engineers/i,
-    /oop.*java/i
-];
-
-function isDemoExchangeMaterial(materialName) {
-    const name = String(materialName || '').trim();
-    return DEMO_EXCHANGE_MATERIAL_PATTERNS.some((pattern) => pattern.test(name));
-}
-
 const MaterialExchange = ({ isEmbedded = false }) => {
     const { language, t } = useLanguage();
     const isAr = language === 'ar';
 
     // ── PUBLIC STATE ─────────────────────────────────────────────
-    const [formData, setFormData] = useState({ studentName: '', phoneNumber: '', email: '', studentGender: '', materials: [] });
+    const [formData, setFormData] = useState({ studentName: '', phoneNumber: '', confirmPhoneNumber: '', email: '', studentGender: '', deliveryWeek: '', deliveryWeekCustom: '', materials: [] });
     const [currentMaterial, setCurrentMaterial] = useState({ name: '', description: '' });
     const [allMaterials, setAllMaterials] = useState([]);
     const [loading, setLoading] = useState(false);
     const [agreedToTerms, setAgreedToTerms] = useState(false);
+    const [agreedToBookingTerms, setAgreedToBookingTerms] = useState(false);
+    const [showTermsConfirmModal, setShowTermsConfirmModal] = useState(null);
 
     const [systemSettings, setSystemSettings] = useState({
         allowRegistration: true,
-        campaignPhase: 'exchange',
+        campaignPhase: 'suspended',
+        requestStatusFormEnabled: true,
         secretGatewayCode: 'makanak2025',
-        exchangeSuspendedMessageAr: 'تفتح الحمل أبوابها مع بداي كل فصل دراسي جديد تزامناً مع فتر السحب والإضاف.',
+        exchangeSuspendedMessageAr: 'تفتح الحملة أبوابها مع بداية كل فصل دراسي جديد تزامنًا مع فترة السحب والإضافة.',
         exchangeSuspendedMessageEn: 'It resumes at the start of each new semester during the add and drop period.',
         adminPassword: 'admin2024',
         ahmadPassword: 'ahmad2024',
@@ -182,12 +170,8 @@ const MaterialExchange = ({ isEmbedded = false }) => {
         workdayEnabled: false,
         workdayStart: '08:00',
         workdayEnd: '16:00',
-        workdayNoticeAr: 'ارج أوقات الشغل اليومي، الطلبات تُراجع لاحقاً.',
-        workdayNoticeEn: 'Outside working hours, requests are reviewed later.',
-        isExchangeActive: true,
-        donationFormFrozen: false,
-        donationEnabled: true
-
+        workdayNoticeAr: 'خارج أوقات العمل اليومية، تُراجع الطلبات لاحقًا.',
+        workdayNoticeEn: 'Outside working hours, requests are reviewed later.'
     });
     const [showMaterialReportModal, setShowMaterialReportModal] = useState(false);
     const [materialReportData, setMaterialReportData] = useState(null);
@@ -199,7 +183,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState(null);
-    const [bookingData, setBookingData] = useState({ name: '', phone: '', gender: '' });
+    const [bookingData, setBookingData] = useState({ name: '', phone: '', confirmPhone: '', gender: '' });
     const [preRequestForm, setPreRequestForm] = useState({ type: 'donate', studentName: '', phoneNumber: '', materialName: '', notes: '', agreedToPreRequestTerms: false });
     const [hasViewedTerms, setHasViewedTerms] = useState(false);
     const [preRequests, setPreRequests] = useState([]);
@@ -356,6 +340,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
     // ── TERMS AND CONDITIONS VISIBILITY STATE ────────────────────
     const [showTermsDetails, setShowTermsDetails] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
+    const [hasReadDonationTerms, setHasReadDonationTerms] = useState(false);
 
     const toggleTermsVisibility = () => {
         const nextState = !showTermsDetails;
@@ -508,25 +493,14 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 const docSnap = await getDoc(settingsRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    let phase = data.campaignPhase || 'exchange';
+                    let phase = data.campaignPhase || 'suspended';
                     if (phase === 'booking') phase = 'exchange';
                     if (phase === 'donation') phase = 'collection';
-                    const campaignEnabled = data.exchange_campaign_enabled !== undefined
-                        ? Boolean(data.exchange_campaign_enabled)
-                        : phase !== 'suspended';
-                    const bookingEnabled = data.exchange_booking_enabled !== undefined
-                        ? Boolean(data.exchange_booking_enabled)
-                        : phase === 'exchange';
-                    const donationEnabled = data.exchange_donation_enabled !== undefined
-                        ? Boolean(data.exchange_donation_enabled)
-                        : !Boolean(data.donationFormFrozen);
-                    const statusCheckerEnabled = data.material_status_checker_enabled === true || data.material_status_checker_enabled === '1' || data.material_status_checker_enabled === 1;
                     setSystemSettings(prev => ({
                         ...prev,
                         campaignPhase: phase,
                         allowRegistration: data.allow_registration !== undefined ? Boolean(data.allow_registration) : true,
-                        isExchangeActive: campaignEnabled,
-                        materialStatusCheckerEnabled: statusCheckerEnabled,
+                        isExchangeActive: phase !== 'suspended',
                         secretGatewayCode: data.secretGatewayCode || 'makanak2025',
                         exchangeSuspendedMessageAr: data.exchangeSuspendedMessageAr || prev.exchangeSuspendedMessageAr,
                         exchangeSuspendedMessageEn: data.exchangeSuspendedMessageEn || prev.exchangeSuspendedMessageEn,
@@ -561,8 +535,10 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                         coordinatorFemaleTasksV2: data.coordinatorFemaleTasksV2 || [],
                         sharedCoordinatorTasksV2: data.sharedCoordinatorTasksV2 || [],
                         taskAutoDeleteHours: data.taskAutoDeleteHours !== undefined ? Number(data.taskAutoDeleteHours) : 24,
-                        donationFormFrozen: !donationEnabled,
-                        donationEnabled,
+                        donationFormFrozen: data.donationFormFrozen !== undefined ? data.donationFormFrozen : false,
+                        requestStatusFormEnabled: data.material_status_checker_enabled !== undefined
+                            ? (data.material_status_checker_enabled === true || data.material_status_checker_enabled === '1' || data.material_status_checker_enabled === 1)
+                            : (data.requestStatusFormEnabled !== undefined ? Boolean(data.requestStatusFormEnabled) : false),
                         donationEndTime: data.donationEndTime || '',
                         bookingStartTime: data.bookingStartTime || '',
                         workdayEnabled: data.workdayEnabled !== undefined ? Boolean(data.workdayEnabled) : false,
@@ -595,7 +571,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                         }
                     }
                     setTaskCompletions(cleaned);
-                    setBookingOpen(campaignEnabled && bookingEnabled);
+                    setBookingOpen(phase === 'exchange');
                     setEditSettings({
                         campaignPhase: phase,
                         secretGatewayCode: data.secretGatewayCode || 'makanak2025',
@@ -668,34 +644,30 @@ const MaterialExchange = ({ isEmbedded = false }) => {
     }, []);
 
     useEffect(() => {
-        const settingsRef = doc(db, 'system_configs', 'global_settings');
-        const unsubscribe = onSnapshot(settingsRef, (snapshot) => {
+        const unsubscribe = onSnapshot(doc(db, 'system_configs', 'global_settings'), (snapshot) => {
             if (!snapshot.exists()) return;
             const data = snapshot.data();
-            let phase = data.campaignPhase || 'exchange';
+            let phase = data.campaignPhase || 'suspended';
             if (phase === 'booking') phase = 'exchange';
             if (phase === 'donation') phase = 'collection';
-            const campaignEnabled = data.exchange_campaign_enabled !== undefined
-                ? Boolean(data.exchange_campaign_enabled)
-                : phase !== 'suspended';
-            const bookingEnabled = data.exchange_booking_enabled !== undefined
-                ? Boolean(data.exchange_booking_enabled)
-                : phase === 'exchange';
-            const donationEnabled = data.exchange_donation_enabled !== undefined
-                ? Boolean(data.exchange_donation_enabled)
-                : !Boolean(data.donationFormFrozen);
+
             setSystemSettings(prev => ({
                 ...prev,
                 campaignPhase: phase,
-                isExchangeActive: campaignEnabled,
-                donationFormFrozen: !donationEnabled,
-                donationEnabled
+                isExchangeActive: phase !== 'suspended',
+                donationFormFrozen: data.donationFormFrozen !== undefined ? Boolean(data.donationFormFrozen) : prev.donationFormFrozen,
+                requestStatusFormEnabled: data.material_status_checker_enabled !== undefined
+                    ? (data.material_status_checker_enabled === true || data.material_status_checker_enabled === '1' || data.material_status_checker_enabled === 1)
+                    : (data.requestStatusFormEnabled !== undefined ? Boolean(data.requestStatusFormEnabled) : false),
+                bookingStartTime: data.bookingStartTime || '',
+                donationEndTime: data.donationEndTime || ''
             }));
-            setBookingOpen(campaignEnabled && bookingEnabled);
+            setBookingOpen(phase === 'exchange');
         }, (error) => {
-            console.error('Error listening to campaign settings:', error);
+            console.warn('Failed to listen for campaign setting changes:', error);
         });
-        return unsubscribe;
+
+        return () => unsubscribe();
     }, []);
 
     // Derived at top level so useEffect hooks can access it
@@ -816,6 +788,12 @@ const MaterialExchange = ({ isEmbedded = false }) => {
             drawBookingCaptcha();
         }
     }, [bookingCaptchaText, showBookingModal]);
+
+    useEffect(() => {
+        if (!loggedInUser && settingsLoaded && systemSettings.isExchangeActive && !systemSettings.donationFormFrozen) {
+            generateDonationCaptcha();
+        }
+    }, [loggedInUser, settingsLoaded, systemSettings.isExchangeActive, systemSettings.donationFormFrozen]);
 
     // Update staff status (online & lastSeen & active tab & idle state) with high precision
     useEffect(() => {
@@ -964,13 +942,13 @@ const MaterialExchange = ({ isEmbedded = false }) => {
         }
 
         const isDonation = type === 'donation';
-        const actionText = isDonation ? 'تبرع جديد بمواد دراسية' : 'حجز جديد لماد دراسي';
+        const actionText = isDonation ? 'تبرع جديد بمواد دراسية' : 'حجز جديد لمادة دراسية';
 
         let detailsText = '';
         if (isDonation) {
-            detailsText = `المواد المختبرع بها:\n` + (data.materials || []).map((m, i) => `${i + 1}. ${typeof m === 'object' ? m.name : m}`).join('\n');
+            detailsText = `المواد المتبرع بها:\n` + (data.materials || []).map((m, i) => `${i + 1}. ${typeof m === 'object' ? m.name : m}`).join('\n');
         } else {
-            detailsText = `المادة المحجوز: ${data.materialName}\nصاحب المادة (المختبرع): ${data.donorName} (${data.donorPhone})`;
+            detailsText = `المادة المحجوزة: ${data.materialName}\nصاحب المادة (المتبرع): ${data.donorName} (${data.donorPhone})`;
         }
 
         const templateParams = {
@@ -994,7 +972,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
 
     // ── PUBLIC FUNCTIONS ──────────────────────────────────────────
     const toEnglishNumerals = (str) => {
-        const ar = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', ''];
+        const ar = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
         const en = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
         let result = str;
         ar.forEach((a, i) => { result = result.replace(new RegExp(a, 'g'), en[i]); });
@@ -1008,22 +986,23 @@ const MaterialExchange = ({ isEmbedded = false }) => {
             const snapshot = await getDocs(q);
             const donationsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             const materialsList = donationsData.flatMap(donation => {
-                const materials = donation.materials || (donation.itemName ? [donation.itemName] : []);
+                const materials = donation.materials || (donation.itemName ? [donation.itemName] : (donation.materialName ? [{ name: donation.materialName, status: donation.status, bookerName: donation.bookerName, bookerPhone: donation.bookerPhone }] : []));
                 return materials.map((m, idx) => {
-                    const materialObj = typeof m === 'object' && m !== null ? { ...m } : { name: m };
-                    const status = materialObj.status || (materialObj.takerInfo ? 'reserved' : donation.status);
-                    materialObj.status = status;
+                    const materialObj = typeof m === 'object' && m !== null ? { ...m } : { name: m, status: donation.status };
+                    const itemStatus = materialObj.status || (materialObj.takerInfo || donation.bookerName ? 'reserved' : (donation.status || 'approved'));
+                    materialObj.status = itemStatus;
+                    const isReserved = itemStatus === 'reserved' || itemStatus === 'completed' || donation.status === 'reserved' || Boolean(materialObj.takerInfo) || Boolean(donation.bookerName);
                     return {
                         ...donation,
                         materialItem: materialObj,
                         originalIndex: idx,
                         uniqueKey: `${donation.id}-${idx}`,
-                        materialName: materialObj.name,
-                        isReserved: status === 'reserved' || status === 'completed'
+                        materialName: materialObj.name || donation.materialName,
+                        isReserved: isReserved
                     };
                 });
             });
-            setAllMaterials(materialsList.filter((material) => !isDemoExchangeMaterial(material.materialName)));
+            setAllMaterials(materialsList);
         } catch (error) {
             console.error('Error fetching donations:', error);
             if (error.code === 'permission-denied') {
@@ -1086,7 +1065,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
     const handleAddDeliverySchedule = async () => {
         const { donorName, materialName, pickupDate, assignedCoordinator } = scheduleFormData;
         if (!donorName.trim() || !materialName.trim() || !pickupDate || !assignedCoordinator) {
-            toast.error(isAr ? '⚠️ يرجى ملء الحقول المطلوب (الاسم، المادة، التاريخ، المنسق)' : '⚠️ Please fill required fields');
+            toast.error(isAr ? '⚠️ يرجى ملء الحقول المطلوبة (الاسم، المادة، التاريخ، المنسق)' : '⚠️ Please fill required fields');
             return;
         }
         setScheduleFormLoading(true);
@@ -1107,13 +1086,13 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 createdBy: loggedInUser?.username || 'unknown',
                 createdAt: serverTimestamp()
             });
-            toast.success(isAr ? '✅ تم إضاف موعد التسليم' : '✅ Delivery schedule added');
+            toast.success(isAr ? '✅ تمت إضافة موعد التسليم' : '✅ Delivery schedule added');
             setScheduleFormData({ donorName: '', donorPhone: '', bookerName: '', bookerPhone: '', materialName: '', pickupDate: '', pickupTime: '', assignedCoordinator: '', finalDeliveryBy: '', reminderMessage: '', notes: '' });
             setActiveAddFormQuadrant(null);
             await fetchDeliverySchedules();
         } catch (error) {
             console.error('Error adding schedule:', error);
-            toast.error(isAr ? '❌ حدث خطأ أثناء الإضاف' : '❌ Error adding schedule');
+            toast.error(isAr ? '❌ حدث خطأ أثناء الإضافة' : '❌ Error adding schedule');
         } finally {
             setScheduleFormLoading(false);
         }
@@ -1240,24 +1219,41 @@ const MaterialExchange = ({ isEmbedded = false }) => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        if (name === 'phoneNumber') {
-            setFormData(prev => ({ ...prev, [name]: toEnglishNumerals(value) }));
+        if (name === 'phoneNumber' || name === 'confirmPhoneNumber') {
+            const clean = toEnglishNumerals(value).replace(/\D/g, '').slice(0, 10);
+            setFormData(prev => ({ ...prev, [name]: clean }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
     };
 
     const handleAddMaterial = () => {
-        if (currentMaterial.name.trim()) {
-            setFormData(prev => ({
-                ...prev,
-                materials: [...prev.materials, {
-                    name: currentMaterial.name.trim(),
-                    description: currentMaterial.description.trim() || ''
-                }]
-            }));
-            setCurrentMaterial({ name: '', description: '' });
+        const rawName = currentMaterial.name ? currentMaterial.name.trim() : '';
+        if (!rawName) {
+            toast.error(isAr ? 'يرجى إدخال اسم المادة أولاً' : 'Please enter material name first');
+            return;
         }
+
+        // ── التحقق من عدم كتابة أكثر من مادة في حقل اسم المادة ──
+        const multipleSeparatorsPattern = /[,،+;&؛\n]|\s+[/\\|]\s+|\s+و\s+|\s+(مع|بالإضافة\s+إلى|إضافة\s+إلى)\s+|\s+و(مادة|مساق|كتاب|سلايدات)\b/i;
+        if (multipleSeparatorsPattern.test(rawName)) {
+            toast.error(
+                isAr
+                    ? 'تنبيه: يُرجى إضافة كل مادة على حدة عبر زر "إضافة"، وعدم جمع أكثر من مادة في سطر واحد لضمان سهولة فرزها وحجزها.'
+                    : 'Notice: Please add each material individually using the "Add" button instead of combining multiple materials in one field.',
+                { duration: 5000 }
+            );
+            return;
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            materials: [...prev.materials, {
+                name: rawName,
+                description: currentMaterial.description.trim() || ''
+            }]
+        }));
+        setCurrentMaterial({ name: '', description: '' });
     };
 
     const handleRemoveMaterial = (index) => {
@@ -1268,7 +1264,117 @@ const MaterialExchange = ({ isEmbedded = false }) => {
         if (request.createdAt?.toDate) {
             return request.createdAt.toDate().toLocaleString(isAr ? 'ar-JO' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' });
         }
-        return isAr ? 'تم الإرسال مؤراً' : 'Submitted recently';
+        return isAr ? 'تم الإرسال مؤخراً' : 'Submitted recently';
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+
+        if (!formData.studentName.trim() || !formData.phoneNumber.trim() || !formData.confirmPhoneNumber?.trim() || !formData.studentGender) {
+            toast.error(isAr ? 'يرجى تعبئة الاسم ورقم الهاتف وتأكيد الرقم واختيار الجنس' : 'Please enter your name, phone number, confirm phone, and gender');
+            return;
+        }
+
+        const phoneClean = formData.phoneNumber.replace(/\D/g, '');
+        if (phoneClean.length !== 10 && phoneClean.length !== 9) {
+            toast.error(isAr ? 'يجب أن يتكون رقم الهاتف الأساسي من رقم أردني صحيح (مثال: 079xxxxxxx أو 79xxxxxxx)' : 'Primary phone number must be a valid Jordanian number');
+            return;
+        }
+
+        const confirmPhoneClean = formData.confirmPhoneNumber.replace(/\D/g, '');
+        if (confirmPhoneClean.length !== 10 && confirmPhoneClean.length !== 9) {
+            toast.error(isAr ? 'يجب أن يتكون رقم التأكيد أو الرقم البديل من رقم أردني صحيح' : 'Confirmation or alternate phone number must be a valid Jordanian number');
+            return;
+        }
+
+        if (formData.materials.length === 0) {
+            if (currentMaterial.name.trim()) {
+                toast.error(isAr ? 'لديك مادة مكتوبة لم يتم إضافتها! يرجى النقر على زر "إضافة" أولاً.' : 'You have a typed material that has not been added. Please click "Add" first.');
+            } else {
+                toast.error(isAr ? 'يرجى إضافة مادة واحدة على الأقل بالضغط على زر "إضافة"' : 'Please add at least one material by clicking "Add"');
+            }
+            return;
+        }
+
+        if (!formData.deliveryWeek) {
+            toast.error(isAr ? 'يرجى اختيار الأسبوع الذي ترغب بإحضار المادة فيه' : 'Please select the week you wish to bring the material');
+            return;
+        }
+
+        if (donationCaptchaInput.trim().toLowerCase() !== donationCaptchaText.toLowerCase()) {
+            setDonationCaptchaError(true);
+            toast.error(isAr ? 'رمز التحقق غير صحيح' : 'Incorrect verification code');
+            return;
+        }
+
+        if (!agreedToTerms) {
+            toast.error(isAr ? 'يرجى الموافقة على الشروط والأحكام أولاً' : 'Please agree to the terms and conditions first');
+            return;
+        }
+
+        setShowTermsConfirmModal('donation');
+    };
+
+    const proceedSubmitDonation = async () => {
+        setLoading(true);
+        try {
+            const pClean = formData.phoneNumber.replace(/\D/g, '');
+            const cClean = formData.confirmPhoneNumber.replace(/\D/g, '');
+            const normPhone = pClean.length === 9 ? ('0' + pClean) : pClean;
+            const normConfirm = cClean.length === 9 ? ('0' + cClean) : cClean;
+            const hasAlternate = normPhone !== normConfirm;
+
+            const isOtherWeek = formData.deliveryWeek === (isAr ? 'غير ذلك (تحديده لاحقاً)' : 'Other (To be decided later)');
+            const finalWeek = isOtherWeek && formData.deliveryWeekCustom?.trim()
+                ? `${formData.deliveryWeek}: ${formData.deliveryWeekCustom.trim()}`
+                : formData.deliveryWeek;
+
+            const donationData = {
+                studentName: formData.studentName.trim(),
+                phoneNumber: normPhone,
+                confirmPhoneNumber: normConfirm,
+                alternatePhone: hasAlternate ? normConfirm : '',
+                email: formData.email.trim(),
+                studentGender: formData.studentGender,
+                deliveryWeek: finalWeek,
+                deliveryWeekCustom: formData.deliveryWeekCustom?.trim() || '',
+                materials: formData.materials,
+                status: 'pending',
+                createdAt: serverTimestamp()
+            };
+
+            await addDoc(collection(db, 'materialDonations'), donationData);
+            // ─── Real-time admin notification ────────────────────────────────────
+            sendAdminNotification(
+                'new_donation',
+                '📦 تبرع مواد جديد',
+                `قدّم ${donationData.studentName} طلب تبرع بـ ${donationData.materials?.length || 1} مادة (${donationData.deliveryWeek || 'موعد غير محدد'}). هاتف: ${donationData.phoneNumber}${hasAlternate ? ` / بديل: ${donationData.alternatePhone}` : ''}`,
+                { studentName: donationData.studentName, phone: donationData.phoneNumber, alternatePhone: donationData.alternatePhone, gender: donationData.studentGender, deliveryWeek: donationData.deliveryWeek }
+            );
+            // ─────────────────────────────────────────────────────────────────────
+            await Promise.allSettled([
+                sendDonationToSheets(donationData),
+                saveCourseDonation({
+                    donorName: donationData.studentName,
+                    phoneNumber: donationData.phoneNumber,
+                    courseNames: donationData.materials.map(material => material.name),
+                    email: donationData.email,
+                    resourcesOffered: donationData.materials
+                })
+            ]);
+
+            toast.success(isAr ? 'تم نشر المواد بنجاح' : 'Materials published successfully');
+            setFormData({ studentName: '', phoneNumber: '', confirmPhoneNumber: '', email: '', studentGender: '', deliveryWeek: '', deliveryWeekCustom: '', materials: [] });
+            setAgreedToTerms(false);
+            setHasReadDonationTerms(false);
+            generateDonationCaptcha();
+            fetchDonations();
+        } catch (error) {
+            console.error('Error submitting donation:', error);
+            toast.error(isAr ? 'حدث خطأ أثناء نشر المواد، حاول مرة أخرى' : 'An error occurred while publishing the materials. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handlePreRequestSubmit = async (e) => {
@@ -1301,18 +1407,6 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 createdAt: serverTimestamp(),
                 status: 'pending'
             });
-
-            // Send real-time admin notification
-            sendAdminNotification(
-                preRequestForm.type === 'need' ? 'new_booking' : 'new_donation',
-                preRequestForm.type === 'need'
-                    ? (isAr ? `طلب مسبق لمادة: ${preRequestForm.materialName.trim()}` : `Pre-Request: ${preRequestForm.materialName.trim()}`)
-                    : (isAr ? `تبرع جديد بكتاب/مادة: ${preRequestForm.materialName.trim()}` : `New Material Donation: ${preRequestForm.materialName.trim()}`),
-                isAr
-                    ? `قدم الطالب ${preRequestForm.studentName.trim()} طلباً (${preRequestForm.type === 'need' ? 'احتياج' : 'تبرع'}) بخصوص ${preRequestForm.materialName.trim()}`
-                    : `Student ${preRequestForm.studentName.trim()} submitted a request for ${preRequestForm.materialName.trim()}`,
-                { phone: preRequestForm.phoneNumber.trim(), studentName: preRequestForm.studentName.trim(), materialName: preRequestForm.materialName.trim() }
-            );
 
             toast.success(isAr ? 'تم حفظ طلبك المسبق بنجاح' : 'Your pre-request was saved successfully');
             setPreRequestForm({ type: 'donate', studentName: '', phoneNumber: '', materialName: '', notes: '', agreedToPreRequestTerms: false });
@@ -1359,14 +1453,14 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 createdAt: serverTimestamp(),
                 status: 'pending'
             });
-
-            // Send real-time admin notification
+            // ─── Real-time admin notification ────────────────────────────────────
             sendAdminNotification(
                 'new_application',
-                isAr ? 'طلب انضمام لمنسق جديد' : 'New Coordinator Application',
-                isAr ? `قدم الطالب ${coordinatorApplicationForm.name.trim()} طلب انضمام لفريق التنسيق` : `Student ${coordinatorApplicationForm.name.trim()} submitted coordinator application`,
-                { phone: coordinatorApplicationForm.phoneNumber.trim(), studentName: coordinatorApplicationForm.name.trim() }
+                '🙋 طلب انضمام جديد',
+                `تقدّم ${coordinatorApplicationForm.name.trim()} بطلب انضمام للفريق.`,
+                { name: coordinatorApplicationForm.name.trim(), phone: coordinatorApplicationForm.phoneNumber.trim(), email: coordinatorApplicationForm.email.trim() }
             );
+            // ─────────────────────────────────────────────────────────────────────
 
             toast.success(isAr ? 'تم إرسال طلب الانضمام بنجاح' : 'Your application was submitted successfully');
             setCoordinatorApplicationForm({ name: '', phoneNumber: '', email: '', motivation: '', agreedToCoordinatorTerms: false });
@@ -1398,8 +1492,12 @@ const MaterialExchange = ({ isEmbedded = false }) => {
         setShowBookingModal(true);
     };
 
-    const handleBookingSubmit = async (e) => {
+    const handleBookingSubmit = (e) => {
         e.preventDefault();
+        if (!selectedMaterial?.id || selectedMaterial.originalIndex === undefined) {
+            toast.error(isAr ? 'تعذر تحديد المادة، أغلق النافذة وافتح الحجز مرة أخرى' : 'Could not identify this material. Close the window and try again.');
+            return;
+        }
         if (bookingCaptchaInput.trim().toUpperCase() !== bookingCaptchaText) {
             setBookingCaptchaError(true);
             toast.error(isAr ? 'رمز التحقق غير صحيح' : 'Incorrect verification code');
@@ -1410,20 +1508,40 @@ const MaterialExchange = ({ isEmbedded = false }) => {
             toast.error(isAr ? 'يرجى إدخال الاسم الثنائي على الأقل' : 'Please enter at least two parts of your name');
             return;
         }
-        const phoneRegex = /^[0-9]{10}$/;
-        if (!phoneRegex.test(bookingData.phone)) {
-            toast.error(isAr ? 'يجب أن يتكون رقم الهاتف من 10 انات بالضبط (مثال: 0790000000)' : 'Phone number must be exactly 10 digits (e.g. 0790000000)');
+        const phoneClean = String(bookingData.phone || '').replace(/\D/g, '');
+        if (phoneClean.length !== 10 && phoneClean.length !== 9) {
+            toast.error(isAr ? 'يجب أن يتكون رقم الهاتف الأساسي من رقم أردني صحيح (مثال: 0790000000 أو 790000000)' : 'Primary phone number must be a valid Jordanian number');
+            return;
+        }
+        const confirmPhoneClean = String(bookingData.confirmPhone || '').replace(/\D/g, '');
+        if (confirmPhoneClean.length !== 10 && confirmPhoneClean.length !== 9) {
+            toast.error(isAr ? 'يجب كتابة رقم التأكيد أو الرقم البديل بشكل صحيح' : 'Please enter a valid confirmation or alternative phone number');
             return;
         }
         if (!bookingData.gender) {
             toast.error(isAr ? 'يرجى اختيار الجنس' : 'Please select gender');
             return;
         }
+        if (!agreedToBookingTerms) {
+            toast.error(isAr ? 'يرجى الموافقة على الشروط والأحكام أولاً' : 'Please agree to the terms and conditions first');
+            return;
+        }
+
+        setShowTermsConfirmModal('booking');
+    };
+
+    const proceedSubmitBooking = async () => {
         setLoading(true);
         try {
+            const pClean = String(bookingData.phone || '').replace(/\D/g, '');
+            const cClean = String(bookingData.confirmPhone || '').replace(/\D/g, '');
+            const normPhone = pClean.length === 9 ? ('0' + pClean) : pClean;
+            const normConfirm = cClean.length === 9 ? ('0' + cClean) : cClean;
+            const hasAlternate = normPhone !== normConfirm;
+
             const { doc: docRef, runTransaction } = await import('firebase/firestore');
             const donationRef = docRef(db, 'materialDonations', selectedMaterial.id);
-            await runTransaction(db, async (transaction) => {
+            const saveBookingTransaction = async () => runTransaction(db, async (transaction) => {
                 const donationDoc = await transaction.get(donationRef);
                 if (!donationDoc.exists()) throw new Error('Document does not exist!');
                 const currentData = donationDoc.data();
@@ -1440,7 +1558,9 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 }
                 updatedMaterials[selectedMaterial.originalIndex].takerInfo = {
                     name: bookingData.name.trim(),
-                    phone: bookingData.phone.trim(),
+                    phone: normPhone,
+                    confirmPhone: normConfirm,
+                    alternatePhone: hasAlternate ? normConfirm : '',
                     email: bookingData.email?.trim() || '',
                     gender: bookingData.gender,
                     bookedAt: new Date()
@@ -1455,9 +1575,21 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                     lastUpdated: new Date()
                 });
             });
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    await saveBookingTransaction();
+                    break;
+                } catch (transactionError) {
+                    const retryable = ['resource-exhausted', 'aborted', 'unavailable'].includes(transactionError.code);
+                    if (!retryable || attempt === 2) throw transactionError;
+                    await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+                }
+            }
             sendBookingToSheets({
                 studentName: bookingData.name.trim(),
-                phoneNumber: bookingData.phone.trim(),
+                phoneNumber: normPhone,
+                confirmPhone: normConfirm,
+                alternatePhone: hasAlternate ? normConfirm : '',
                 email: bookingData.email?.trim() || '',
                 studentGender: bookingData.gender === 'male' ? (isAr ? 'ذكر' : 'Male') : (isAr ? 'أنثى' : 'Female'),
                 materialName: selectedMaterial.materialName,
@@ -1469,7 +1601,8 @@ const MaterialExchange = ({ isEmbedded = false }) => {
             // Send EmailJS Notification to coordinator
             sendCoordinatorEmailNotification('booking', {
                 studentName: bookingData.name.trim(),
-                phone: bookingData.phone.trim(),
+                phone: normPhone,
+                alternatePhone: hasAlternate ? normConfirm : '',
                 email: bookingData.email?.trim() || '',
                 gender: bookingData.gender,
                 materialName: selectedMaterial.materialName,
@@ -1477,26 +1610,24 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 donorPhone: selectedMaterial.donorPhone || 'Unknown'
             }).catch(err => console.warn('Email notification failed:', err));
 
-            // Send Realtime Admin Notification
-            sendAdminNotification(
-                'new_booking',
-                isAr ? `حجز مادة جديدة: ${selectedMaterial?.materialName || 'مادة'}` : `New Booking: ${selectedMaterial?.materialName || 'Material'}`,
-                isAr
-                    ? `قام الطالب ${bookingData.name.trim()} بحجز مادة "${selectedMaterial?.materialName || ''}"`
-                    : `Student ${bookingData.name.trim()} booked "${selectedMaterial?.materialName || ''}"`,
-                { phone: bookingData.phone.trim(), studentName: bookingData.name.trim(), materialName: selectedMaterial?.materialName }
-            );
-
-            await saveCourseBooking({
+            saveCourseBooking({
                 studentName: bookingData.name.trim(),
-                phoneNumber: bookingData.phone.trim(),
+                phoneNumber: normPhone,
                 courseName: selectedMaterial?.materialName || '',
                 courseCode: selectedMaterial?.courseCode || '',
                 faculty: selectedMaterial?.faculty || '',
                 notes: '',
                 email: bookingData.email?.trim() || ''
-            });
+            }).catch(error => console.warn('Course booking backup failed:', error));
             toast.success(isAr ? 'تم حجز المادة بنجاح!' : 'Material booked successfully!', { duration: 5000 });
+            // ─── Real-time admin notification ────────────────────────────────────
+            sendAdminNotification(
+                'new_booking',
+                '🔖 حجز مادة جديد',
+                `حجز ${bookingData.name.trim()} مادة: ${selectedMaterial?.materialName || ''}. هاتف: ${normPhone}${hasAlternate ? ` / بديل: ${normConfirm}` : ''}`,
+                { studentName: bookingData.name.trim(), phone: normPhone, alternatePhone: hasAlternate ? normConfirm : '', materialName: selectedMaterial?.materialName || '', gender: bookingData.gender }
+            );
+            // ─────────────────────────────────────────────────────────────────────
             setShowBookingModal(false);
             setActiveQRModal({
                 bookingId: `BK-${Date.now().toString(36).toUpperCase()}`,
@@ -1505,7 +1636,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 donorName: selectedMaterial?.donorName || 'مختبرع',
                 coordinatorName: selectedMaterial?.studentGender === 'male' ? (systemSettings.ahmadNameAr || 'أحمد') : (systemSettings.saraNameAr || 'سار')
             });
-            setBookingData({ name: '', phone: '', gender: '' });
+            setBookingData({ name: '', phone: '', confirmPhone: '', gender: '' });
             generateBookingCaptcha();
             fetchDonations();
         } catch (error) {
@@ -1513,8 +1644,12 @@ const MaterialExchange = ({ isEmbedded = false }) => {
             if (error.message === 'ALREADY_RESERVED') {
                 toast.error(isAr ? 'عذراً، هذه المادة تم حجزها للتو من قبل شص آر' : 'Sorry, this material was just booked by someone else');
                 fetchDonations();
+            } else if (error.code === 'permission-denied') {
+                toast.error(isAr ? 'لا تملك صلاحية تسجيل الحجز حالياً' : 'You do not have permission to save this booking');
             } else {
-                toast.error(isAr ? 'فشل حجز المادة' : 'Failed to book material');
+                console.error('Booking failure details:', error.code, error.message);
+                const failureMessage = error.code || error.message || 'unknown-error';
+                toast.error(isAr ? `فشل حجز المادة (${failureMessage})` : `Failed to book material (${failureMessage})`);
             }
         } finally {
             setLoading(false);
@@ -4144,7 +4279,7 @@ Please contact us to coordinate the pickup.Thank you.`;
 
     // Derived
     const availableMaterials = allMaterials.filter(m => !m.isReserved && ['approved', 'pending'].includes(m.materialItem.status));
-    const reservedMaterials = allMaterials.filter(m => m.materialItem.status === 'reserved');
+    const reservedMaterials = allMaterials.filter(m => m.isReserved || m.materialItem.status === 'reserved' || m.materialItem.status === 'completed');
 
     if (!loggedInUser) {
         return (
@@ -4152,16 +4287,15 @@ Please contact us to coordinate the pickup.Thank you.`;
                 <section className="exchange-hero" style={{ backgroundImage: `url(${exchangeHero})` }}>
                     <div className="hero-overlay"></div>
                     <div className="hero-content">
-                        <h1>{isAr ? 'تبادل المواد الدراسي' : 'Material Exchange'}</h1>
-                        <p>{isAr ? 'منصة رسمي لتبادل المواد التعليمي بين الطلاب بطريق منظم.' : 'A formal platform for organized academic material exchange among students.'}</p>
+                        <h1>{isAr ? 'تبادل المواد الدراسية' : 'Material Exchange'}</h1>
+                        <p>{isAr ? 'منصة رسمية لتبادل المواد التعليمية بين الطلاب بطريقة منظمة.' : 'A formal platform for organized academic material exchange among students.'}</p>
                     </div>
                 </section>
-
                 <div className="exchange-main-container">
                     <section className="add-material-section glass-card">
                         <div className="section-header">
                             <h2>{isAr ? 'تبرع الآن بالمواد' : 'Donate Materials'}</h2>
-                            <p>{isAr ? 'شارك موادك الدراسي مع زملائك بصور مهني.' : 'Share your academic materials with peers in a professional way.'}</p>
+                            <p>{isAr ? 'شارك موادك الدراسية مع زملائك بصورة مهنية.' : 'Share your academic materials with peers in a professional way.'}</p>
                         </div>
 
                         {!settingsLoaded ? (
@@ -4182,24 +4316,300 @@ Please contact us to coordinate the pickup.Thank you.`;
                                 <p>{isAr ? 'تم إيقاف استقبال التبرعات بالمواد مؤقتاً، مع بقاء إمكاني حجز المواد المتوفر أدناه.' : 'Receiving material donations is temporarily closed, while booking available materials below remains open.'}</p>
                             </div>
                         ) : (
-                            <div className="public-page-placeholder">
-                                <div className="public-exchange-summary">
-                                    <div className="summary-marker"></div>
-                                    <div>
-                                        <h3>{isAr ? 'صفح تبادل المواد مفتوح الآن' : 'Material Exchange Page Is Open'}</h3>
-                                        <p>{isAr ? 'يمكنك التبرع بموادك أو تقديم طلب مسبق بشكل منظم.' : 'You can donate materials or submit a pre-request in an organized manner.'}</p>
+                            <form className="material-form" onSubmit={handleSubmit}>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>{isAr ? 'اسم الطالب' : 'Student Name'}</label>
+                                        <input type="text" name="studentName" value={formData.studentName} onChange={handleInputChange} placeholder={isAr ? 'مثال: أحمد محمد' : 'e.g. Ahmad Mohammad'} className="form-input" required />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>{isAr ? 'رقم التواصل الأساسي (واتساب)' : 'Primary Contact (WhatsApp)'}</label>
+                                        <div className="phone-input-group">
+                                            <div className="phone-prefix">
+                                                <span className="country-flag">🇯🇴</span>
+                                                <span className="country-code" dir="ltr">+962</span>
+                                            </div>
+                                            <input
+                                                type="tel"
+                                                name="phoneNumber"
+                                                value={formData.phoneNumber}
+                                                onChange={handleInputChange}
+                                                placeholder="7X XXX XXXX"
+                                                className="phone-field-input"
+                                                dir="ltr"
+                                                maxLength="10"
+                                                required
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="public-callout-row">
-                                    <span>{isAr ? 'المواد المتاح تُقدّم عن طريق تبرعات الطلاب' : 'Available materials are offered through student donations'}</span>
-                                    <span>{isAr ? 'الطلبات المسبق تضع للمراجع في لوح التحكم' : 'Pre-requests are reviewed in the control panel'}</span>
-                                    <span>{isAr ? 'يتم تأكيد الحجز عبر جه التنسيق الرسمي' : 'Booking is confirmed through the official coordination channel'}</span>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>{isAr ? 'تأكيد رقم الهاتف أو رقم تواصل آخر' : 'Confirm Phone or Alternative Number'}</label>
+                                        <div className="phone-input-group">
+                                            <div className="phone-prefix">
+                                                <span className="country-flag">🇯🇴</span>
+                                                <span className="country-code" dir="ltr">+962</span>
+                                            </div>
+                                            <input
+                                                type="tel"
+                                                name="confirmPhoneNumber"
+                                                value={formData.confirmPhoneNumber}
+                                                onChange={handleInputChange}
+                                                placeholder="7X XXX XXXX"
+                                                className="phone-field-input"
+                                                dir="ltr"
+                                                maxLength="10"
+                                                required
+                                            />
+                                        </div>
+                                        <small className="phone-field-hint">
+                                            {isAr ? 'أعد كتابة نفس الرقم للتأكيد، أو أدخل رقماً آخر للتواصل' : 'Re-enter same number to confirm, or enter an alternate number'}
+                                        </small>
+                                    </div>
+                                    <div className="form-group">
+                                        <label>{isAr ? 'البريد الإلكتروني (اختياري)' : 'Email (Optional)'}</label>
+                                        <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="example@university.edu.jo" className="form-input" dir="ltr" />
+                                    </div>
                                 </div>
-                            </div>
+                                <div className="form-group full-width">
+                                    <label>{isAr ? 'الجنس' : 'Gender'}</label>
+                                    <div className="gender-select-row">
+                                        <button type="button" className={`gender-select-btn ${formData.studentGender === 'male' ? 'gender-active-male' : ''}`} onClick={() => setFormData(prev => ({ ...prev, studentGender: 'male' }))}>{isAr ? 'ذكر' : 'Male'}</button>
+                                        <button type="button" className={`gender-select-btn ${formData.studentGender === 'female' ? 'gender-active-female' : ''}`} onClick={() => setFormData(prev => ({ ...prev, studentGender: 'female' }))}>{isAr ? 'أنثى' : 'Female'}</button>
+                                    </div>
+                                </div>
+                                <div className="form-group full-width">
+                                    <label>{isAr ? 'المواد المتوفرة' : 'Available Materials'}</label>
+
+                                    <div className="materials-guidance-box">
+                                        <div className="guidance-icon">ℹ️</div>
+                                        <div className="guidance-text">
+                                            <strong>{isAr ? 'إرشادات هامة لإضافة المواد:' : 'Important Instructions for Adding Materials:'}</strong>
+                                            <p>
+                                                {isAr
+                                                    ? 'يرجى كتابة كل مادة بشكل مستقل مع توضيح محتوياتها في خانة الوصف (مثل: سلايدات المادة كاملة، سلايدات المد، كتاب ورقي، إلخ)، ثم النقر على زر «إضافة». في حال رغبتك بالتبرع بمواد أخرى يمكنك تكرار الخطوة لكل مادة على حدة. يُرجى تجنّب كتابة عدة مواد معاً في نفس السطر.'
+                                                    : 'Please enter each material individually with details in the description field (e.g., complete slides, midterm slides, printed textbook, etc.), then click "Add". If you wish to donate additional materials, repeat this step for each course separately. Please avoid combining multiple materials in one field.'
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="material-input-container">
+                                        <input
+                                            type="text"
+                                            value={currentMaterial.name}
+                                            onChange={e => setCurrentMaterial(prev => ({ ...prev, name: e.target.value }))}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleAddMaterial();
+                                                }
+                                            }}
+                                            className="form-input"
+                                            placeholder={isAr ? 'اسم المادة (مادة واحدة فقط في كل مرة)' : 'Material name (single course per entry)'}
+                                        />
+                                        <textarea
+                                            value={currentMaterial.description}
+                                            onChange={e => setCurrentMaterial(prev => ({ ...prev, description: e.target.value }))}
+                                            className="form-input material-description"
+                                            rows="2"
+                                            placeholder={isAr ? 'وصف المادة ومحتوياتها (اختياري: مثلاً سلايدات كاملة، سلايدات المد، كتاب، تلخيص...)' : 'Material description & details (optional: e.g. complete slides, midterm slides, textbook...)'}
+                                        />
+                                        <button type="button" onClick={handleAddMaterial} className="add-btn">{isAr ? 'إضافة المادة' : 'Add Material'}</button>
+                                    </div>
+                                    {formData.materials.map((material, index) => (
+                                        <div key={index} className="added-material-item">
+                                            <div className="material-item-details"><strong>{material.name}</strong>{material.description && <p>{material.description}</p>}</div>
+                                            <button type="button" onClick={() => handleRemoveMaterial(index)} className="remove-material-btn" title={isAr ? 'حذف' : 'Remove'}>×</button>
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* ── اختيار الأسبوع المناسب لإحضار المادة (قائمة منسدلة بدون إيموجي) ── */}
+                                <div className="form-group full-width delivery-week-group">
+                                    <label className="delivery-week-label">
+                                        {isAr ? 'اختيار الأسبوع الذي ترغب بإحضار المادة فيه' : 'Select the week you wish to bring the material'}
+                                        <span className="required-star" style={{ color: '#e53935', marginInlineStart: '4px' }}>*</span>
+                                    </label>
+                                    <div className="delivery-week-select-wrapper">
+                                        <select
+                                            className="form-input delivery-week-select"
+                                            value={formData.deliveryWeek}
+                                            onChange={(e) => setFormData(prev => ({
+                                                ...prev,
+                                                deliveryWeek: e.target.value,
+                                                deliveryWeekCustom: e.target.value === (isAr ? 'غير ذلك (تحديده لاحقاً)' : 'Other (To be decided later)') ? prev.deliveryWeekCustom : ''
+                                            }))}
+                                            required
+                                        >
+                                            <option value="" disabled>{isAr ? '-- اختر الأسبوع من القائمة المنسدلة --' : '-- Select preferred week --'}</option>
+                                            <option value={isAr ? 'الأسبوع الأول من الدوام الرسمي' : '1st Week of Official Classes'}>
+                                                {isAr ? 'الأسبوع الأول من الدوام الرسمي' : '1st Week of Official Classes'}
+                                            </option>
+                                            <option value={isAr ? 'الأسبوع الثاني' : '2nd Week'}>
+                                                {isAr ? 'الأسبوع الثاني' : '2nd Week'}
+                                            </option>
+                                            <option value={isAr ? 'الأسبوع الثالث' : '3rd Week'}>
+                                                {isAr ? 'الأسبوع الثالث' : '3rd Week'}
+                                            </option>
+                                            <option value={isAr ? 'غير ذلك (تحديده لاحقاً)' : 'Other (To be decided later)'}>
+                                                {isAr ? 'غير ذلك (تحديده لاحقاً)' : 'Other (To be decided later)'}
+                                            </option>
+                                        </select>
+                                    </div>
+                                    {formData.deliveryWeek === (isAr ? 'غير ذلك (تحديده لاحقاً)' : 'Other (To be decided later)') && (
+                                        <div className="delivery-week-custom-field">
+                                            <label className="custom-field-label">
+                                                {isAr ? 'أخرى (تحديد الموعد أو كتابة ملاحظة):' : 'Other (Specify preferred time or note):'}
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                value={formData.deliveryWeekCustom || ''}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, deliveryWeekCustom: e.target.value }))}
+                                                placeholder={isAr ? 'اكتب الموعد المقترح أو تفاصيل أخرى هنا...' : 'Type preferred timing or details here...'}
+                                            />
+                                        </div>
+                                    )}
+                                    <small className="form-field-hint" style={{ marginTop: '6px', display: 'block' }}>
+                                        {isAr ? 'يرجى تحديد الأسبوع المناسب لتواجدك في الجامعة لتسليم المواد للمنسقين' : 'Please select the week suitable for your campus presence to deliver materials to coordinators'}
+                                    </small>
+                                </div>
+                                <div className="form-group captcha-form-group">
+                                    <label>{isAr ? 'رمز التحقق' : 'Verification Code'}</label>
+                                    <div className="captcha-wrapper">
+                                        <div className="captcha-canvas-container"><canvas ref={donationCanvasRef} width="240" height="70" className="captcha-canvas" /><button type="button" className="captcha-refresh-btn" onClick={generateDonationCaptcha}>{isAr ? 'تحديث' : 'Refresh'}</button></div>
+                                        <input type="text" className="form-input captcha-input-field" value={donationCaptchaInput} onChange={e => { setDonationCaptchaInput(e.target.value); setDonationCaptchaError(false); }} maxLength="6" required />
+                                    </div>
+                                    {donationCaptchaError && <div className="captcha-error-msg">⚠️ {isAr ? 'رمز التحقق غير صحيح' : 'Incorrect code'}</div>}
+                                </div>
+                                <div className="disclaimer-box donation-terms-preview">
+                                    <h4 className="disclaimer-title">{isAr ? 'الشروط والأحكام' : 'Terms and Conditions'}</h4>
+                                    {isAr ? (
+                                        <ul className="disclaimer-content terms-list">
+                                            <li>تبقى المادة المتبرع بها تحت تصرف إدارة الموقع والمنسقين المعتمدين إلى حين إبلاغك بحالتها.</li>
+                                            <li>إذا لم يستلم أحد المادة خلال الفترة المحددة، سيتم التواصل معك لتنسيق الإجراء المناسب.</li>
+                                            <li>يُمنع التصرف بالمادة المتبرع بها بيعًا أو إهداءً أو نقلًا أو سحبًا دون إبلاغ منسقي الحملة وإدارة الموقع والحصول على موافقتهما.</li>
+                                            <li>تلتزم بتقديم معلومات صحيحة ودقيقة، وتتحمل مسؤولية أي بيانات غير صحيحة أو مضللة.</li>
+                                            <li>تقر بأن المادة المقدمة ملكك أو أن لديك الحق النظامي في التبرع بها، وأنها لا تخالف حقوق الآخرين.</li>
+                                            <li>تلتزم بتسليم المادة بالحالة والوصف الموضحين في الطلب، وإبلاغ الفريق فورًا عن أي تغيير يطرأ عليها.</li>
+                                            <li>تلتزم بالتواصل عبر القنوات الرسمية فقط، ولا تعتمد أي طلب أو موعد يصدر من جهة غير الإدارة أو المنسقين المعتمدين.</li>
+                                            <li>يمكنك متابعة حالة المواد المتبرع بها أو المحجوزة من نموذج متابعة حالة الطلب الموجود أسفل الصفحة.</li>
+                                            <li>يحق لإدارة الموقع مراجعة الطلب أو رفضه أو إيقافه عند مخالفة هذه الشروط أو وجود ما يستدعي ذلك.</li>
+                                            <li>تُستخدم بياناتك لأغراض التواصل وتنظيم عملية التبادل، وتُحفظ وفق سياسة الخصوصية المعتمدة في الموقع.</li>
+                                            <li className="terms-highlight-point">
+                                                على كل من يقوم بحجز مادة أو التبرع بها، الالتزام التام والمباشر بالتواصل مع المنسقين المعنيين (سيتم تزويدكم رسمياً عبر الواتساب بأرقام هواتفهم فور إتمام الطلب)، ويتحتم عليك المبادرة بالتواصل وتحديد اليوم والساعة المحددة والمتاحة لديك لتنسيق تسليم أو استلام المادة.
+                                            </li>
+                                            <li className="terms-highlight-point">
+                                                عند الاتفاق على تحديد موعد التسليم أو الاستلام (اليوم والساعة)، يجب العمل والالتزام بكامل المصداقية والصراحة؛ حيث يتم تجهيز وإحضار المادة خصيصاً في ذلك الموعد. وفي حال رغبتك بإلغاء الموعد أو تغييره، يجب عليك إبلاغنا رسمياً قبل الموعد بـ 24 ساعة على الأقل (وليس قبلها بساعات معدودة)، وإلا يُعد طلبك لاغياً بموجب قوانين وشروط الحملة.
+                                            </li>
+                                        </ul>
+                                    ) : (
+                                        <ul className="disclaimer-content terms-list">
+                                            <li>Donated materials remain under the supervision of the site administration and authorized coordinators until you are informed of their status.</li>
+                                            <li>If no one collects the material within the specified period, you will be contacted to coordinate the appropriate action.</li>
+                                            <li>Donated materials may not be sold, gifted, transferred, or withdrawn without notifying the campaign coordinators and site administration and obtaining their approval.</li>
+                                            <li>You must provide accurate information and are responsible for any false or misleading details.</li>
+                                            <li>You confirm that you own the material or have the legal right to donate it and that it does not violate the rights of others.</li>
+                                            <li>You must deliver the material in the condition described in the request and promptly report any change to the team.</li>
+                                            <li>Communication must take place through official channels only; requests or appointments from unauthorized parties are not recognized.</li>
+                                            <li>You can track donated or booked materials using the Request Status Tracking form below this page.</li>
+                                            <li>The site administration may review, reject, or suspend a request if these terms are violated or circumstances require it.</li>
+                                            <li>Your data is used to communicate with you and organize the exchange process and is protected under the site privacy policy.</li>
+                                            <li className="terms-highlight-point">
+                                                Anyone booking or donating a material is strictly obligated to directly contact the designated coordinators (official coordinator WhatsApp numbers will be provided upon submission). You must initiate contact and coordinate the specific day and time available for material handover or pickup.
+                                            </li>
+                                            <li className="terms-highlight-point">
+                                                Once a day and time are scheduled, complete reliability and commitment are required, as materials are specially prepared and brought for delivery. If you wish to cancel or reschedule, you must notify us at least 24 hours in advance (not a few hours before); otherwise, your request will be permanently cancelled under campaign rules.
+                                            </li>
+                                        </ul>
+                                    )}
+                                </div>
+                                <label className="terms-label agreement-checkbox"><input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} />{isAr ? 'أوافق على الشروط والأحكام' : 'I agree to the terms and conditions'}</label>
+                                <button type="submit" className="submit-btn" disabled={loading || !agreedToTerms}>{loading ? (isAr ? 'جارٍ الإرسال...' : 'Submitting...') : (isAr ? 'نشر المواد' : 'Publish Materials')}</button>
+                            </form>
                         )}
                     </section>
 
-                    <section className="pre-request-section glass-card">
+                    {systemSettings.isExchangeActive && (
+                        <section className="materials-section glass-card">
+                            <div className="section-header">
+                                <h2>
+                                    {isAr ? 'المواد المتوفرة' : 'Available Materials'}
+                                    {bookingOpen && <span className="live-badge">● {isAr ? 'الحجز مفتوح' : 'Booking Open'}</span>}
+                                </h2>
+                                <p>{isAr ? 'اختر المادة التي ترغب بحجزها' : 'Choose a material to book'}</p>
+                            </div>
+                            {availableMaterials.length > 0 ? (
+                                <div className="materials-grid">
+                                    {availableMaterials.map(item => (
+                                        <div key={item.uniqueKey} className="donation-card">
+                                            <div className="donation-main">
+                                                <div className="material-icon">📚</div>
+                                                <div className="donation-details"><h3>{item.materialName}</h3></div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className={`btn-book ${!bookingOpen ? 'locked' : ''}`}
+                                                onClick={() => openBookingModal({ ...item, materialName: item.materialName })}
+                                                disabled={!bookingOpen}
+                                            >
+                                                {isAr ? 'حجز المادة' : 'Book Material'}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="no-materials">
+                                    <div className="empty-icon">📦</div>
+                                    <h3>{isAr ? 'لا توجد مواد متاحة للحجز حالياً' : 'No materials available for booking'}</h3>
+                                </div>
+                            )}
+
+                            {/* ── قسم المواد المحجوزة ── */}
+                            {reservedMaterials.length > 0 && (
+                                <div className="reserved-materials-container" style={{ marginTop: '32px', paddingTop: '22px', borderTop: '1px dashed rgba(255, 255, 255, 0.15)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                                        <span style={{ fontSize: '18px' }}>🔒</span>
+                                        <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#94a3b8', margin: 0 }}>
+                                            {isAr ? 'مواد تم حجزها' : 'Reserved Materials'}
+                                        </h3>
+                                        <span style={{ fontSize: '11px', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', padding: '2px 8px', borderRadius: '9999px', fontWeight: '700' }}>
+                                            {reservedMaterials.length}
+                                        </span>
+                                    </div>
+                                    <div className="materials-grid">
+                                        {reservedMaterials.map((item, idx) => (
+                                            <div key={`reserved-${item.uniqueKey || idx}`} className="donation-card reserved-card" style={{ opacity: 0.72, filter: 'grayscale(0.2)' }}>
+                                                <div className="donation-main">
+                                                    <div className="material-icon">📚</div>
+                                                    <div className="donation-details">
+                                                        <h3>{item.materialName}</h3>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn-book disabled"
+                                                    disabled
+                                                    style={{ background: 'rgba(100, 116, 139, 0.45)', cursor: 'not-allowed', color: '#cbd5e1', border: '1px solid rgba(148, 163, 184, 0.2)' }}
+                                                >
+                                                    🔒 {isAr ? 'تم حجز المادة' : 'Material Reserved'}
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </section>
+                    )}
+
+                    {systemSettings.requestStatusFormEnabled && (
+                        <section className="material-status-section">
+                            <MaterialStatusChecker isAr={isAr} />
+                        </section>
+                    )}
+
+                    {false && <section className="pre-request-section glass-card">
                         <div className="section-header">
                             <h2>{isAr ? 'طلبات مسبقة' : 'Pre-Requests'}</h2>
                             <p>{isAr ? 'إذا كنت ترغب في التبرع بمواد أو تحتاج مادة معينة، أرسل طلباً مسبقاً. الطلبات تظهر فقط للطاقم الإداري في لوح التحكم.' : 'If you want to donate a material or need one, submit a pre-request. Requests are visible only to administrative staff in the control panel.'}</p>
@@ -4325,14 +4735,9 @@ Please contact us to coordinate the pickup.Thank you.`;
                                 </button>
                             </div>
                         </form>
-                    </section>
+                    </section>}
 
-                    {/* ─── نموذج معرفة حالة الطلبات — يُخفي نفسه إذا material_status_checker_enabled = false ─── */}
-                    {systemSettings.materialStatusCheckerEnabled && (
-                        <MaterialStatusChecker isAr={isAr} isEnabledProp={systemSettings.materialStatusCheckerEnabled} />
-                    )}
-
-                    <section className="join-coordinator-section glass-card">
+                    {false && <section className="join-coordinator-section glass-card">
                         <div className="section-header">
                             <h2>{isAr ? 'طلب انضمام لفريق التنسيق' : 'Join the Coordination Team'}</h2>
                             <p>{isAr ? 'إذا كنت ترغب في المشارك في ترتيب وتنسيق حمل تبادل المواد، قدّم طلبك هنا.' : 'If you want to help organize and coordinate the material exchange campaign, submit your application here.'}</p>
@@ -4390,8 +4795,256 @@ Please contact us to coordinate the pickup.Thank you.`;
                                 {coordinatorApplicationLoading ? (isAr ? 'جارٍ الإرسال...' : 'Submitting...') : (isAr ? 'إرسال طلب الانضمام' : 'Submit Application')}
                             </button>
                         </form>
-                    </section>
+                    </section>}
                 </div>
+
+                {showBookingModal && (
+                    <div className="modal-overlay" onClick={event => {
+                        if (event.target === event.currentTarget) setShowBookingModal(false);
+                    }}>
+                        <div className="booking-modal glass-card">
+                            <button type="button" className="close-modal" onClick={() => setShowBookingModal(false)}>×</button>
+                            <div className="modal-header">
+                                <h2>{isAr ? 'حجز المادة' : 'Book Material'}</h2>
+                                <p>{isAr ? 'يرجى تعبئة معلوماتك لحجز المادة' : 'Please fill in your details to book this material'}</p>
+                                <div className="material-to-book"><span>📖</span><strong>{selectedMaterial?.materialName}</strong></div>
+                            </div>
+                            <form className="booking-form" onSubmit={handleBookingSubmit}>
+                                <div className="form-group">
+                                    <label>{isAr ? 'الاسم الكامل' : 'Full Name'}</label>
+                                    <input type="text" required value={bookingData.name} onChange={event => setBookingData({ ...bookingData, name: event.target.value })} className="form-input" />
+                                </div>
+                                <div className="form-group">
+                                    <label>{isAr ? 'رقم الهاتف الأساسي (واتساب)' : 'Primary Phone Number (WhatsApp)'}</label>
+                                    <div className="phone-input-group">
+                                        <div className="phone-prefix">
+                                            <span className="country-flag">🇯🇴</span>
+                                            <span className="country-code" dir="ltr">+962</span>
+                                        </div>
+                                        <input
+                                            type="tel"
+                                            required
+                                            value={bookingData.phone}
+                                            onChange={event => setBookingData({ ...bookingData, phone: toEnglishNumerals(event.target.value).replace(/\D/g, '').slice(0, 10) })}
+                                            placeholder="7X XXX XXXX"
+                                            className="phone-field-input"
+                                            dir="ltr"
+                                            maxLength="10"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label>{isAr ? 'تأكيد رقم الهاتف أو رقم تواصل آخر' : 'Confirm Phone or Alternative Number'}</label>
+                                    <div className="phone-input-group">
+                                        <div className="phone-prefix">
+                                            <span className="country-flag">🇯🇴</span>
+                                            <span className="country-code" dir="ltr">+962</span>
+                                        </div>
+                                        <input
+                                            type="tel"
+                                            required
+                                            value={bookingData.confirmPhone}
+                                            onChange={event => setBookingData({ ...bookingData, confirmPhone: toEnglishNumerals(event.target.value).replace(/\D/g, '').slice(0, 10) })}
+                                            placeholder="7X XXX XXXX"
+                                            className="phone-field-input"
+                                            dir="ltr"
+                                            maxLength="10"
+                                        />
+                                    </div>
+                                    <small className="phone-field-hint">
+                                        {isAr ? 'أعد كتابة نفس الرقم للتأكيد، أو أدخل رقماً آخر للتواصل' : 'Re-enter same number to confirm, or enter an alternate number'}
+                                    </small>
+                                </div>
+                                <div className="form-group">
+                                    <label>{isAr ? 'الجنس' : 'Gender'}</label>
+                                    <div className="gender-select-row">
+                                        <button type="button" className={`gender-select-btn ${bookingData.gender === 'male' ? 'gender-active-male' : ''}`} onClick={() => setBookingData(prev => ({ ...prev, gender: 'male' }))}>{isAr ? 'ذكر' : 'Male'}</button>
+                                        <button type="button" className={`gender-select-btn ${bookingData.gender === 'female' ? 'gender-active-female' : ''}`} onClick={() => setBookingData(prev => ({ ...prev, gender: 'female' }))}>{isAr ? 'أنثى' : 'Female'}</button>
+                                    </div>
+                                </div>
+                                <div className="form-group captcha-form-group">
+                                    <label>{isAr ? 'رمز التحقق' : 'Verification Code'}</label>
+                                    <div className="captcha-wrapper">
+                                        <div className="captcha-canvas-container"><canvas ref={bookingCanvasRef} width="240" height="70" className="captcha-canvas" /><button type="button" className="captcha-refresh-btn" onClick={generateBookingCaptcha}>{isAr ? 'تحديث' : 'Refresh'}</button></div>
+                                        <input type="text" className="form-input captcha-input-field" value={bookingCaptchaInput} onChange={event => { setBookingCaptchaInput(event.target.value); setBookingCaptchaError(false); }} maxLength="6" required />
+                                    </div>
+                                </div>
+                                <div className="disclaimer-box donation-terms-preview" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                    <h4 className="disclaimer-title">{isAr ? 'الشروط والأحكام' : 'Terms and Conditions'}</h4>
+                                    {isAr ? (
+                                        <ul className="disclaimer-content terms-list">
+                                            <li>تبقى المادة المتبرع بها تحت تصرف إدارة الموقع والمنسقين المعتمدين إلى حين إبلاغك بحالتها.</li>
+                                            <li>إذا لم يستلم أحد المادة خلال الفترة المحددة، سيتم التواصل معك لتنسيق الإجراء المناسب.</li>
+                                            <li>يُمنع التصرف بالمادة المتبرع بها بيعًا أو إهداءً أو نقلًا أو سحبًا دون إبلاغ منسقي الحملة وإدارة الموقع والحصول على موافقتهما.</li>
+                                            <li>تلتزم بتقديم معلومات صحيحة ودقيقة، وتتحمل مسؤولية أي بيانات غير صحيحة أو مضللة.</li>
+                                            <li>تقر بأن المادة المقدمة ملكك أو أن لديك الحق النظامي في التبرع بها، وأنها لا تخالف حقوق الآخرين.</li>
+                                            <li>تلتزم بتسليم المادة بالحالة والوصف الموضحين في الطلب، وإبلاغ الفريق فورًا عن أي تغيير يطرأ عليها.</li>
+                                            <li>تلتزم بالتواصل عبر القنوات الرسمية فقط، ولا تعتمد أي طلب أو موعد يصدر من جهة غير الإدارة أو المنسقين المعتمدين.</li>
+                                            <li>يمكنك متابعة حالة المواد المتبرع بها أو المحجوزة من نموذج متابعة حالة الطلب الموجود أسفل الصفحة.</li>
+                                            <li>يحق لإدارة الموقع مراجعة الطلب أو رفضه أو إيقافه عند مخالفة هذه الشروط أو وجود ما يستدعي ذلك.</li>
+                                            <li>تُستخدم بياناتك لأغراض التواصل وتنظيم عملية التبادل، وتُحفظ وفق سياسة الخصوصية المعتمدة في الموقع.</li>
+                                            <li className="terms-highlight-point">
+                                                على كل من يقوم بحجز مادة أو التبرع بها، الالتزام التام والمباشر بالتواصل مع المنسقين المعنيين (سيتم تزويدكم رسمياً عبر الواتساب بأرقام هواتفهم فور إتمام الطلب)، ويتحتم عليك المبادرة بالتواصل وتحديد اليوم والساعة المحددة والمتاحة لديك لتنسيق تسليم أو استلام المادة.
+                                            </li>
+                                            <li className="terms-highlight-point">
+                                                عند الاتفاق على تحديد موعد التسليم أو الاستلام (اليوم والساعة)، يجب العمل والالتزام بكامل المصداقية والصراحة؛ حيث يتم تجهيز وإحضار المادة خصيصاً في ذلك الموعد. وفي حال رغبتك بإلغاء الموعد أو تغييره، يجب عليك إبلاغنا رسمياً قبل الموعد بـ 24 ساعة على الأقل (وليس قبلها بساعات معدودة)، وإلا يُعد طلبك لاغياً بموجب قوانين وشروط الحملة.
+                                            </li>
+                                        </ul>
+                                    ) : (
+                                        <ul className="disclaimer-content terms-list">
+                                            <li>Donated materials remain under the supervision of the site administration and authorized coordinators until you are informed of their status.</li>
+                                            <li>If no one collects the material within the specified period, you will be contacted to coordinate the appropriate action.</li>
+                                            <li>Donated materials may not be sold, gifted, transferred, or withdrawn without notifying the campaign coordinators and site administration and obtaining their approval.</li>
+                                            <li>You must provide accurate information and are responsible for any false or misleading details.</li>
+                                            <li>You confirm that you own the material or have the legal right to donate it and that it does not violate the rights of others.</li>
+                                            <li>You must deliver the material in the condition described in the request and promptly report any change to the team.</li>
+                                            <li>Communication must take place through official channels only; requests or appointments from unauthorized parties are not recognized.</li>
+                                            <li>You can track donated or booked materials using the Request Status Tracking form below this page.</li>
+                                            <li>The site administration may review, reject, or suspend a request if these terms are violated or circumstances require it.</li>
+                                            <li>Your data is used to communicate with you and organize the exchange process and is protected under the site privacy policy.</li>
+                                            <li className="terms-highlight-point">
+                                                Anyone booking or donating a material is strictly obligated to directly contact the designated coordinators (official coordinator WhatsApp numbers will be provided upon submission). You must initiate contact and coordinate the specific day and time available for material handover or pickup.
+                                            </li>
+                                            <li className="terms-highlight-point">
+                                                Once a day and time are scheduled, complete reliability and commitment are required, as materials are specially prepared and brought for delivery. If you wish to cancel or reschedule, you must notify us at least 24 hours in advance (not a few hours before); otherwise, your request will be permanently cancelled under campaign rules.
+                                            </li>
+                                        </ul>
+                                    )}
+                                </div>
+                                <label className="terms-label agreement-checkbox" style={{ margin: '0.8rem 0' }}>
+                                    <input type="checkbox" checked={agreedToBookingTerms} onChange={e => setAgreedToBookingTerms(e.target.checked)} />
+                                    {isAr ? 'أوافق على الشروط والأحكام' : 'I agree to the terms and conditions'}
+                                </label>
+                                <button type="submit" className="submit-btn full-width" disabled={loading || !agreedToBookingTerms}>{loading ? (isAr ? 'جاري الحجز...' : 'Booking...') : (isAr ? 'تأكيد الحجز' : 'Confirm Booking')}</button>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {showTermsConfirmModal && (
+                    <div className="terms-confirm-overlay" onClick={() => setShowTermsConfirmModal(null)}>
+                        <div className="terms-confirm-modal" onClick={e => e.stopPropagation()}>
+                            <div className="terms-confirm-icon">📋</div>
+                            <h3 className="terms-confirm-title">
+                                {isAr ? 'تأكيد قراءة الشروط والأحكام' : 'Confirm Terms & Conditions'}
+                            </h3>
+                            <p className="terms-confirm-desc">
+                                {isAr
+                                    ? 'هل أنت متأكد من موافقتك على كافة شروط وأحكام الحملة، وأنك قمت بقراءتها وفهمها جيداً، وتتعهد بالالتزام التام بها وبالمواعيد المحددة مع المنسقين؟'
+                                    : 'Are you sure you agree to all campaign terms and conditions, that you have read and understood them thoroughly, and commit to adhering to scheduled appointments with coordinators?'}
+                            </p>
+                            <div className="terms-confirm-actions">
+                                <button
+                                    type="button"
+                                    className="terms-confirm-btn confirm-yes"
+                                    onClick={() => {
+                                        const target = showTermsConfirmModal;
+                                        setShowTermsConfirmModal(null);
+                                        if (target === 'donation') {
+                                            proceedSubmitDonation();
+                                        } else if (target === 'booking') {
+                                            proceedSubmitBooking();
+                                        }
+                                    }}
+                                >
+                                    {isAr ? 'نعم، قرأتها وأتعهد بالالتزام' : 'Yes, I read & agree'}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="terms-confirm-btn confirm-cancel"
+                                    onClick={() => setShowTermsConfirmModal(null)}
+                                >
+                                    {isAr ? 'مراجعة الشروط' : 'Review Terms'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <section className="campaign-about-section">
+                    <div className="campaign-about-inner">
+                        <div className="campaign-about-header">
+                            <span className="campaign-about-tag">{isAr ? 'نبذة عن الحملة' : 'About the Campaign'}</span>
+                            <h2>{isAr ? 'حملة تبادل المواد الدراسية' : 'Academic Material Exchange Campaign'}</h2>
+                            <div className="campaign-about-divider"></div>
+                        </div>
+                        <div className="campaign-about-body">
+                            <p className="campaign-about-intro">
+                                {isAr
+                                    ? 'تُقام هذه الحملة في بداية كل فصل دراسي، وذلك قبيل انطلاق فترة السحب والإضافة مباشرةً، حيث تُخصَّص هذه المرحلة لجمع المواد الدراسية من المتبرعين. ويُعدّ اليوم الأول من فترة السحب والإضافة هو البداية الرسمية لاستقبال طلبات حجز المواد من قِبَل الطلاب المحتاجين.'
+                                    : 'This campaign is held at the beginning of each semester, just prior to the start of the add/drop period. During this phase, academic materials are collected from donors. The first day of the add/drop period marks the official launch for receiving material booking requests from students in need.'
+                                }
+                            </p>
+                            <div className="campaign-about-grid">
+                                <div className="campaign-about-card">
+                                    <div className="campaign-about-card-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    </div>
+                                    <h3>{isAr ? 'هيكل تنظيمي متكامل' : 'Structured Organization'}</h3>
+                                    <p>{isAr ? 'تُدار الحملة من خلال كادر تنظيمي مقسَّم إلى قسمين مستقلين؛ قسم مخصص للطلاب الذكور، وقسم مخصص للطالبات الإناث، لضمان سير العمل بصورة منظمة ومهنية.' : 'The campaign is managed through an organized team divided into two independent divisions: one for male students and one for female students, ensuring a professional and well-structured operation.'}</p>
+                                </div>
+                                <div className="campaign-about-card">
+                                    <div className="campaign-about-card-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                    </div>
+                                    <h3>{isAr ? 'آلية عمل واضحة' : 'Clear Working Mechanism'}</h3>
+                                    <p>{isAr ? 'تعتمد آلية العمل على مبدأ التجانس؛ إذ تتولى متبرعة تقديم طلبها، يتكفل فريق الطالبات بمتابعته والتنسيق معها لتحديد موعد الاستلام. وبالمقابل، يتولى فريق الطلاب الذكور متابعة طلبات المتبرعين من الذكور وتنسيق مواعيد الاستلام.' : "The process follows a like-for-like principle: a female donor's request is handled by the female team, who coordinate with her directly to set a pickup date. Similarly, male donors are managed by the male team with scheduled pickup appointments."}</p>
+                                </div>
+                                <div className="campaign-about-card">
+                                    <div className="campaign-about-card-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    </div>
+                                    <h3>{isAr ? 'تسليم منسق ومضمون' : 'Coordinated Delivery'}</h3>
+                                    <p>{isAr ? 'عند تقديم الطالب الحاجز لطلبه، يتولى الفريق المختص التواصل معه لتحديد يوم ووقت محددَين للتسليم، مما يضمن انسيابية العملية وراحة جميع الأطراف.' : 'Once a student submits a booking request, the designated team contacts them to arrange a specific day and time for delivery, ensuring a smooth and convenient experience for all parties.'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* ── Share Campaign Banner ── */}
+                <section className="share-campaign-section">
+                    <div className="share-campaign-inner">
+                        <div className="share-campaign-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                            </svg>
+                        </div>
+                        <div className="share-campaign-text">
+                            <h3>{isAr ? 'شارك الحملة مع أصدقائك' : 'Share the Campaign with Your Friends'}</h3>
+                            <p>
+                                {isAr
+                                    ? 'الدال على الخير كفاعله — انشر الرابط بين زملائك لعل عندهم مواد لم يعودوا بحاجة لها'
+                                    : 'Help us reach more students — share the link with those who may have materials they no longer need'}
+                            </p>
+                        </div>
+                        <div className="share-campaign-actions">
+                            <button
+                                className="share-btn share-btn-whatsapp"
+                                onClick={() => {
+                                    const text = isAr
+                                        ? `مبادرة تبادل المواد الدراسية | كُن عوناً لأخيك وخلّد أثرك 🌱\n\nهل أنهيت فصولك الدراسية ولديك كتب أو دوسيات أو مراجع لم تعد بحاجتها؟\n\nتذكر أن ما تتركه خلفك قد ينير طريق غيرك، وصدقة جارية تنفعك.\n\nقال رسول الله ﷺ: «إذا مات ابن آدم انقطع عمله إلا من ثلاث: صدقة جارية، أو علم ينتفع به...»\n\n🔗 رابط المنصة:\nhttps://dfkoon.github.io/mt.bau/#/exchange`
+                                        : `Academic Material Exchange Campaign\n\nDo you have books, notes, or academic tools you no longer need?\n\nDonate them and let them benefit a student in need — it's a continuing charity.\n\n🔗 Platform Link:\nhttps://dfkoon.github.io/mt.bau/#/exchange`;
+                                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                                }}
+                            >
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                {isAr ? 'شارك عبر واتساب' : 'Share on WhatsApp'}
+                            </button>
+                            <button
+                                className="share-btn share-btn-copy"
+                                onClick={() => {
+                                    navigator.clipboard.writeText('https://dfkoon.github.io/mt.bau/#/exchange').then(() => {
+                                        toast.success(isAr ? 'تم نسخ الرابط!' : 'Link copied!');
+                                    });
+                                }}
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                {isAr ? 'نسخ الرابط' : 'Copy Link'}
+                            </button>
+                        </div>
+                    </div>
+                </section>
             </div>
         );
     }
@@ -4454,12 +5107,12 @@ Please contact us to coordinate the pickup.Thank you.`;
                                     </p>
                                 </div>
                             </div>
-                            <div className="dashboard-header-right">
+                            <div className="dashboard-header-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <button className="dashboard-refresh-btn" onClick={handleDashboardRefresh} title={isAr ? 'تحديث' : 'Refresh'}>
                                     🔄
                                 </button>
                                 <button className="dashboard-logout-btn" onClick={handleLogout}>
-                                    🚪 {isAr ? 'روج' : 'Logout'}
+                                    🚪 {isAr ? 'خروج' : 'Logout'}
                                 </button>
                             </div>
                         </div>
@@ -6563,6 +7216,37 @@ Please contact us to coordinate the pickup.Thank you.`;
                                             </div>
                                         </div>
 
+                                        <div className="settings-field live-control-field">
+                                            <label className="permission-toggle-label">
+                                                <span className="permission-icon">📋</span>
+                                                <div className="permission-text-block">
+                                                    <strong>{isAr ? 'فتح نموذج معرفة حالة الطلبات' : 'Enable Request Status Form'}</strong>
+                                                    <small>{isAr ? 'إظهار أو إخفاء نموذج تتبع التبرعات والحجوزات للطلاب.' : 'Show or hide the donation and booking tracking form for students.'}</small>
+                                                </div>
+                                                <div className="toggle-switch-wrapper">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="toggleRequestStatusForm"
+                                                        className="toggle-checkbox"
+                                                        checked={systemSettings.requestStatusFormEnabled !== false}
+                                                        onChange={async () => {
+                                                            const enabled = systemSettings.requestStatusFormEnabled === false;
+                                                            setSystemSettings(prev => ({ ...prev, requestStatusFormEnabled: enabled }));
+                                                            setEditSettings(prev => ({ ...prev, requestStatusFormEnabled: enabled }));
+                                                            try {
+                                                                await setDoc(doc(db, 'system_configs', 'global_settings'), { requestStatusFormEnabled: enabled }, { merge: true });
+                                                                toast.success(isAr ? (enabled ? 'تم فتح نموذج حالة الطلبات' : 'تم إغلاق نموذج حالة الطلبات') : (enabled ? 'Request status form enabled' : 'Request status form disabled'));
+                                                            } catch (error) {
+                                                                setSystemSettings(prev => ({ ...prev, requestStatusFormEnabled: !enabled }));
+                                                                toast.error(isAr ? 'فشل تحديث إعداد النموذج' : 'Failed to update form setting');
+                                                            }
+                                                        }}
+                                                    />
+                                                    <label htmlFor="toggleRequestStatusForm" className="toggle-label-switch"></label>
+                                                </div>
+                                            </label>
+                                        </div>
+
                                         {/* Campaign messages in-place editor */}
                                         <div className="campaign-messages-row">
                                             <div className="settings-field">
@@ -8130,7 +8814,7 @@ Please contact us to coordinate the pickup.Thank you.`;
                                                         onClick={generateCaptcha}
                                                         title={isAr ? 'تحديث الرمز' : 'Refresh code'}
                                                     >
-                                                        🔄
+                                                        {isAr ? 'تحديث' : 'Refresh'}
                                                     </button>
                                                 </div>
                                                 <input
@@ -8424,12 +9108,51 @@ Please contact us to coordinate the pickup.Thank you.`;
                                         <input type="text" name="studentName" value={formData.studentName} onChange={handleInputChange} placeholder={isAr ? 'مثال: أحمد محمد' : 'e.g. Ahmad Mohammad'} className="form-input" required />
                                     </div>
                                     <div className="form-group">
-                                        <label>{isAr ? 'رقم التواصل (واتساب)' : 'Contact Number (WhatsApp)'}</label>
-                                        <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleInputChange} placeholder="07xxxxxxxx" className="form-input" dir="ltr" maxLength="10" required />
+                                        <label>{isAr ? 'رقم التواصل الأساسي (واتساب)' : 'Primary Contact (WhatsApp)'}</label>
+                                        <div className="phone-input-group">
+                                            <div className="phone-prefix">
+                                                <span className="country-flag">🇯🇴</span>
+                                                <span className="country-code" dir="ltr">+962</span>
+                                            </div>
+                                            <input
+                                                type="tel"
+                                                name="phoneNumber"
+                                                value={formData.phoneNumber}
+                                                onChange={handleInputChange}
+                                                placeholder="7X XXX XXXX"
+                                                className="phone-field-input"
+                                                dir="ltr"
+                                                maxLength="10"
+                                                required
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="form-row">
-                                    <div className="form-group full-width">
+                                    <div className="form-group">
+                                        <label>{isAr ? 'تأكيد رقم الهاتف أو رقم تواصل آخر' : 'Confirm Phone or Alternative Number'}</label>
+                                        <div className="phone-input-group">
+                                            <div className="phone-prefix">
+                                                <span className="country-flag">🇯🇴</span>
+                                                <span className="country-code" dir="ltr">+962</span>
+                                            </div>
+                                            <input
+                                                type="tel"
+                                                name="confirmPhoneNumber"
+                                                value={formData.confirmPhoneNumber}
+                                                onChange={handleInputChange}
+                                                placeholder="7X XXX XXXX"
+                                                className="phone-field-input"
+                                                dir="ltr"
+                                                maxLength="10"
+                                                required
+                                            />
+                                        </div>
+                                        <small className="phone-field-hint">
+                                            {isAr ? 'أعد كتابة نفس الرقم للتأكيد، أو أدخل رقماً آخر للتواصل' : 'Re-enter same number to confirm, or enter an alternate number'}
+                                        </small>
+                                    </div>
+                                    <div className="form-group">
                                         <label>{t('exchange.form.email')}</label>
                                         <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="example@university.edu.jo" className="form-input" dir="ltr" />
                                     </div>
@@ -8471,13 +9194,44 @@ Please contact us to coordinate the pickup.Thank you.`;
                                     </small>
                                 </div>
                                 <div className="form-group full-width">
-                                    <label>{isAr ? 'المواد المتوفر' : 'Available Materials'}</label>
-                                    <div className="material-input-container">
-                                        <input type="text" value={currentMaterial.name} onChange={e => setCurrentMaterial(prev => ({ ...prev, name: e.target.value }))} placeholder={isAr ? 'اسم المادة (مثال: كتاب الفيزياء 1)' : 'Material name (e.g. Physics 1 Book)'} className="form-input" />
-                                        <textarea value={currentMaterial.description} onChange={e => setCurrentMaterial(prev => ({ ...prev, description: e.target.value }))} placeholder={isAr ? 'وصف المادة (اختياري): مثال: سلايدات كاملة، سلايدات الميد فقط، كتاب + شرح، إل...' : 'Material description (optional): e.g. Complete slides, Midterm only, Book + notes, etc.'} className="form-input material-description" rows="2" />
-                                        <button type="button" onClick={handleAddMaterial} className="add-btn">{isAr ? 'إضاف' : 'Add'}</button>
+                                    <label>{isAr ? 'المواد المتوفرة' : 'Available Materials'}</label>
+
+                                    <div className="materials-guidance-box">
+                                        <div className="guidance-icon">ℹ️</div>
+                                        <div className="guidance-text">
+                                            <strong>{isAr ? 'إرشادات هامة لإضافة المواد:' : 'Important Instructions for Adding Materials:'}</strong>
+                                            <p>
+                                                {isAr
+                                                    ? 'يرجى كتابة كل مادة بشكل مستقل مع توضيح محتوياتها في خانة الوصف (مثل: سلايدات المادة كاملة، سلايدات المد، كتاب ورقي، إلخ)، ثم النقر على زر «إضافة». في حال رغبتك بالتبرع بمواد أخرى يمكنك تكرار الخطوة لكل مادة على حدة. يُرجى تجنّب كتابة عدة مواد معاً في نفس السطر.'
+                                                    : 'Please enter each material individually with details in the description field (e.g., complete slides, midterm slides, printed textbook, etc.), then click "Add". If you wish to donate additional materials, repeat this step for each course separately. Please avoid combining multiple materials in one field.'
+                                                }
+                                            </p>
+                                        </div>
                                     </div>
-                                    <small className="form-hint">{isAr ? 'يمكنك إضاف أكثر من مادة بالنقر على "إضاف" عد مرات' : 'You can add multiple materials by clicking "Add" multiple times'}</small>
+
+                                    <div className="material-input-container">
+                                        <input
+                                            type="text"
+                                            value={currentMaterial.name}
+                                            onChange={e => setCurrentMaterial(prev => ({ ...prev, name: e.target.value }))}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleAddMaterial();
+                                                }
+                                            }}
+                                            placeholder={isAr ? 'اسم المادة (مادة واحدة فقط في كل مرة)' : 'Material name (single course per entry)'}
+                                            className="form-input"
+                                        />
+                                        <textarea
+                                            value={currentMaterial.description}
+                                            onChange={e => setCurrentMaterial(prev => ({ ...prev, description: e.target.value }))}
+                                            placeholder={isAr ? 'وصف المادة ومحتوياتها (اختياري: مثال: سلايدات كاملة، سلايدات الميد فقط، كتاب + شرح...)' : 'Material description (optional): e.g. Complete slides, Midterm only, Book + notes, etc.'}
+                                            className="form-input material-description"
+                                            rows="2"
+                                        />
+                                        <button type="button" onClick={handleAddMaterial} className="add-btn">{isAr ? 'إضافة المادة' : 'Add Material'}</button>
+                                    </div>
                                     {formData.materials.length > 0 && (
                                         <div className="added-materials-list">
                                             {formData.materials.map((material, index) => (
@@ -8500,14 +9254,76 @@ Please contact us to coordinate the pickup.Thank you.`;
                                     </h4>
                                     <p className="disclaimer-content">
                                         {isAr
-                                            ? 'المواد التي يتم التبرع بها تصبح من ضمن المواد المحجوزة لدى الموقع، وتبقى تحت تصرف مسؤول الموقع أو المنسقين المعتمدين إلى حين انتهاء الحملة. يتم التواصل مع المختبرعين أو الحاجزين من قبل مسؤول الموقع أو المنسقين المعتمدين فقط. الموقع لا يتحمل مسؤولية أي تواصل يتم من قبل أي شخص آخر باسم الموقع.'
-                                            : 'Donated materials become part of the reserved materials managed by the site and remain under the control of the site administrator or approved coordinators until the end of the campaign. Communication is carried out only by authorized coordinators or the site administrator. We disclaim responsibility for any communication by anyone else in the name of the website.'}
+                                            ? 'عند التبرع بأي مادة، تُسلَّم إدارتها إلى إدارة الموقع والمنسقين المعتمدين، وتبقى تحت إشرافهم إلى حين إبلاغك بحالتها. إذا لم يستلم أحد المادة خلال الفترة المحددة، فسيتم التواصل معك لتنسيق الإجراء المناسب. يُمنع منعًا باتًا التصرف بالمادة المتبرع بها بيعًا أو إهداءً أو نقلًا أو سحبًا دون إبلاغ منسقي الحملة وإدارة الموقع والحصول على موافقتهم. ويُعتمد التواصل الرسمي مع إدارة الموقع والمنسقين المعتمدين فقط.'
+                                            : 'When you donate any material, its management is entrusted to the site administration and authorized coordinators and remains under their supervision until you are informed of its status. If no one collects the material within the specified period, you will be contacted to coordinate the appropriate action. Selling, gifting, transferring, or withdrawing donated material without notifying the campaign coordinators and site administration and obtaining their approval is strictly prohibited. Official communication is limited to the site administration and authorized coordinators.'}
                                     </p>
                                     <p className="disclaimer-content" style={{ marginTop: '0.6rem', borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '0.6rem', fontWeight: 600 }}>
                                         {isAr
-                                            ? 'موعد تسليم المواد متوقع أن يكون في الأسبوع الأول أو الثاني من بداية الدوام الرسمي. على كل من يرغب في حجز مادة أن يكون على إدراك تام بأنه بحاجة إليها فعلاً — لا يُقبل إلغاء التسليم بحجة عدم الرغبة في المادة بعد تأكيد الحجز.'
+                                            ? 'من المتوقع تسليم المواد خلال الأسبوع الأول أو الثاني من بداية الدوام الرسمي. ويقرّ من يحجز مادة بحاجته الفعلية إليها، ولا يُقبل إلغاء الاستلام لمجرد العدول عن الرغبة فيها بعد تأكيد الحجز.'
                                             : 'Material delivery is expected during the first or second week of the official semester. Anyone wishing to book a material must be fully aware that they genuinely need it — cancellation of delivery will not be accepted after booking confirmation on the grounds of no longer wanting the material.'}
                                     </p>
+                                    <p className="disclaimer-content" style={{ marginTop: '0.6rem', borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '0.6rem' }}>
+                                        {isAr
+                                            ? 'يمكنك متابعة حالة المواد التي تبرعت بها أو حجزتها من خلال نموذج «متابعة حالة الطلب» الموجود أسفل هذه الصفحة، باستخدام رقم الهاتف المسجل في الطلب.'
+                                            : 'You can track the status of materials you donated or booked through the “Request Status Tracking” form at the bottom of this page, using the phone number registered with your request.'}
+                                    </p>
+                                    <button
+                                        type="button"
+                                        className="terms-view-button"
+                                        onClick={() => setShowTermsModal(true)}
+                                    >
+                                        {isAr ? '📄 عرض الشروط والأحكام كاملة' : '📄 View Full Terms and Conditions'}
+                                    </button>
+                                </div>
+                                {/* ── اختيار الأسبوع المناسب لإحضار المادة (قائمة منسدلة بدون إيموجي) ── */}
+                                <div className="form-group full-width delivery-week-group">
+                                    <label className="delivery-week-label">
+                                        {isAr ? 'اختيار الأسبوع الذي ترغب بإحضار المادة فيه' : 'Select the week you wish to bring the material'}
+                                        <span className="required-star" style={{ color: '#e53935', marginInlineStart: '4px' }}>*</span>
+                                    </label>
+                                    <div className="delivery-week-select-wrapper">
+                                        <select
+                                            className="form-input delivery-week-select"
+                                            value={formData.deliveryWeek}
+                                            onChange={(e) => setFormData(prev => ({
+                                                ...prev,
+                                                deliveryWeek: e.target.value,
+                                                deliveryWeekCustom: e.target.value === (isAr ? 'غير ذلك (تحديده لاحقاً)' : 'Other (To be decided later)') ? prev.deliveryWeekCustom : ''
+                                            }))}
+                                            required
+                                        >
+                                            <option value="" disabled>{isAr ? '-- اختر الأسبوع من القائمة المنسدلة --' : '-- Select preferred week --'}</option>
+                                            <option value={isAr ? 'الأسبوع الأول من الدوام الرسمي' : '1st Week of Official Classes'}>
+                                                {isAr ? 'الأسبوع الأول من الدوام الرسمي' : '1st Week of Official Classes'}
+                                            </option>
+                                            <option value={isAr ? 'الأسبوع الثاني' : '2nd Week'}>
+                                                {isAr ? 'الأسبوع الثاني' : '2nd Week'}
+                                            </option>
+                                            <option value={isAr ? 'الأسبوع الثالث' : '3rd Week'}>
+                                                {isAr ? 'الأسبوع الثالث' : '3rd Week'}
+                                            </option>
+                                            <option value={isAr ? 'غير ذلك (تحديده لاحقاً)' : 'Other (To be decided later)'}>
+                                                {isAr ? 'غير ذلك (تحديده لاحقاً)' : 'Other (To be decided later)'}
+                                            </option>
+                                        </select>
+                                    </div>
+                                    {formData.deliveryWeek === (isAr ? 'غير ذلك (تحديده لاحقاً)' : 'Other (To be decided later)') && (
+                                        <div className="delivery-week-custom-field">
+                                            <label className="custom-field-label">
+                                                {isAr ? 'أخرى (تحديد الموعد أو كتابة ملاحظة):' : 'Other (Specify preferred time or note):'}
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                value={formData.deliveryWeekCustom || ''}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, deliveryWeekCustom: e.target.value }))}
+                                                placeholder={isAr ? 'اكتب الموعد المقترح أو تفاصيل أخرى هنا...' : 'Type preferred timing or details here...'}
+                                            />
+                                        </div>
+                                    )}
+                                    <small className="form-field-hint" style={{ marginTop: '6px', display: 'block' }}>
+                                        {isAr ? 'يرجى تحديد الأسبوع المناسب لتواجدك في الجامعة لتسليم المواد للمنسقين' : 'Please select the week suitable for your campus presence to deliver materials to coordinators'}
+                                    </small>
                                 </div>
                                 {/* ── CAPTCHA — Verification Code ── */}
                                 <div className="form-group captcha-form-group">
@@ -8546,16 +9362,22 @@ Please contact us to coordinate the pickup.Thank you.`;
                                         <div className="captcha-error-msg">⚠️ {isAr ? 'رمز التحقق غير صحيح — حاول مرة أخرى' : 'Incorrect code — please try again'}</div>
                                     )}
                                 </div>
-                                <div className="terms-checkbox-container">
-                                    <input type="checkbox" id="termsCheckbox" className="terms-checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} />
-                                    <label htmlFor="termsCheckbox" className="terms-label">
-                                        {isAr ? 'أقر بأنني قرأت ووافقت على الشروط والأحكام أعلاه' : 'I acknowledge that I have read and agreed to the above terms and conditions'}
-                                    </label>
-                                </div>
-                                <button type="submit" className="submit-btn" disabled={loading || !agreedToTerms}>
-                                    <span>{loading ? (isAr ? 'جاري النشر...' : 'Publishing...') : (isAr ? 'نشر المواد' : 'Publish Materials')}</span>
-                                    <span>{loading ? '⏳' : '🚀'}</span>
-                                </button>
+                                {hasReadDonationTerms && (
+                                    <>
+                                        <div className="terms-checkbox-container">
+                                            <input type="checkbox" id="termsCheckbox" className="terms-checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} />
+                                            <label htmlFor="termsCheckbox" className="terms-label">
+                                                {isAr ? 'أقر بأنني قرأت ووافقت على الشروط والأحكام' : 'I acknowledge that I have read and agreed to the terms and conditions'}
+                                            </label>
+                                        </div>
+                                        {agreedToTerms && (
+                                            <button type="submit" className="submit-btn" disabled={loading}>
+                                                <span>{loading ? (isAr ? 'جاري النشر...' : 'Publishing...') : (isAr ? 'نشر المواد' : 'Publish Materials')}</span>
+                                                <span>{loading ? '⏳' : '🚀'}</span>
+                                            </button>
+                                        )}
+                                    </>
+                                )}
                             </form>
                         )}
                     </div>
@@ -8655,97 +9477,119 @@ Please contact us to coordinate the pickup.Thank you.`;
                             <p>{isAr ? 'تصفح المواد المتاح للتبادل' : 'Browse available materials for exchange'}</p>
                         </div>
 
-                        {
-                            systemSettings.isExchangeActive && !bookingOpen && (
-                                <div className="booking-notice-banner glass-card animate-pulse">
-                                    <span className="notice-icon">⏳</span>
-                                    <div className="notice-text">
-                                        <h3>{isAr ? 'فتر حجز المواد تبدأ 📚' : 'Material Booking Period Starts 📚'}</h3>
-                                        <div className="countdown-timer">
-                                            <div className="countdown-item"><span className="time-val">{timeLeft.days}</span><span className="time-label">{isAr ? 'يوم' : 'Days'}</span></div>
-                                            <div className="countdown-item"><span className="time-val">{timeLeft.hours}</span><span className="time-label">{isAr ? 'ساع' : 'Hrs'}</span></div>
-                                            <div className="countdown-item"><span className="time-val">{timeLeft.minutes}</span><span className="time-label">{isAr ? 'دقيق' : 'Min'}</span></div>
-                                            <div className="countdown-item"><span className="time-val">{timeLeft.seconds}</span><span className="time-label">{isAr ? 'ثاني' : 'Sec'}</span></div>
+                        {systemSettings.isExchangeActive && !bookingOpen && (
+                            <div className="booking-notice-banner glass-card animate-pulse">
+                                <span className="notice-icon">⏳</span>
+                                <div className="notice-text">
+                                    <h3>{isAr ? 'فتر حجز المواد تبدأ 📚' : 'Material Booking Period Starts 📚'}</h3>
+                                    <div className="countdown-timer">
+                                        <div className="countdown-item"><span className="time-val">{timeLeft.days}</span><span className="time-label">{isAr ? 'يوم' : 'Days'}</span></div>
+                                        <div className="countdown-item"><span className="time-val">{timeLeft.hours}</span><span className="time-label">{isAr ? 'ساع' : 'Hrs'}</span></div>
+                                        <div className="countdown-item"><span className="time-val">{timeLeft.minutes}</span><span className="time-label">{isAr ? 'دقيق' : 'Min'}</span></div>
+                                        <div className="countdown-item"><span className="time-val">{timeLeft.seconds}</span><span className="time-label">{isAr ? 'ثاني' : 'Sec'}</span></div>
+                                    </div>
+                                    {systemSettings.bookingStartTime ? (
+                                        <>
+                                            <p className="booking-info-text">
+                                                {isAr
+                                                    ? `الفترة الحالية مخصصة حصراً لجمع وتبرع المواد، على أن يبدأ حجزها بتاريخخ ${new Date(systemSettings.bookingStartTime).toLocaleString('ar-JO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. ⏳`
+                                                    : `This period is exclusively for donations. Booking opens on ${new Date(systemSettings.bookingStartTime).toLocaleString('en-JO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. ⏳`}
+                                            </p>
+                                            <input
+                                                type="text"
+                                                className={`form-input captcha-input-field ${captchaError ? 'input-error-shake' : ''}`}
+                                                value={captchaInput}
+                                                onChange={e => {
+                                                    setCaptchaInput(e.target.value);
+                                                    setCaptchaError(false);
+                                                }}
+                                                placeholder={isAr ? 'أدخل الرمز أعلاه' : 'Enter the code above'}
+                                                autoComplete="off"
+                                                maxLength="6"
+                                            />
+                                            <div className="empty-icon">⏳</div>
+                                            <h3>{isAr ? 'جاري التحميل...' : 'Loading...'}</h3>
+                                        </>
+                                    ) : !systemSettings.isExchangeActive ? (
+                                        <div className="no-materials">
+                                            <div className="empty-icon">🔧</div>
+                                            <h3>{isAr ? 'النظام قيد التطوير' : 'System Under Development'}</h3>
+                                            <p>{isAr ? 'نعمل على إطلاق نظام جديد ومتكامل قريباً' : 'We are launching a new integrated system soon'}</p>
                                         </div>
-                                        {systemSettings.bookingStartTime ? (
-                                            <>
-                                                <p className="booking-info-text">
-                                                    {isAr
-                                                        ? `الفترة الحالية مخصصة حصراً لجمع وتبرع المواد، على أن يبدأ حجزها بتاريخخ ${new Date(systemSettings.bookingStartTime).toLocaleString('ar-JO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. ⏳`
-                                                        : `This period is exclusively for donations. Booking opens on ${new Date(systemSettings.bookingStartTime).toLocaleString('en-JO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. ⏳`}
-                                                </p>
-                                                <input
-                                                    type="text"
-                                                    className={`form-input captcha-input-field ${captchaError ? 'input-error-shake' : ''}`}
-                                                    value={captchaInput}
-                                                    onChange={e => {
-                                                        setCaptchaInput(e.target.value);
-                                                        setCaptchaError(false);
-                                                    }}
-                                                    placeholder={isAr ? 'أدخل الرمز أعلاه' : 'Enter the code above'}
-                                                    autoComplete="off"
-                                                    maxLength="6"
-                                                />
-                                                <div className="empty-icon">⏳</div>
-                                                <h3>{isAr ? 'جاري التحميل...' : 'Loading...'}</h3>
-                                            </>
-                                        ) : !systemSettings.isExchangeActive ? (
-                                            <div className="no-materials">
-                                                <div className="empty-icon">🔧</div>
-                                                <h3>{isAr ? 'النظام قيد التطوير' : 'System Under Development'}</h3>
-                                                <p>{isAr ? 'نعمل على إطلاق نظام جديد ومتكامل قريباً' : 'We are launching a new integrated system soon'}</p>
-                                            </div>
-                                        ) : availableMaterials.length > 0 ? (
-                                            <div className="materials-grid">
-                                                {availableMaterials.map(item => (
-                                                    <div key={item.uniqueKey} className="donation-card">
-                                                        <div className="donation-main">
-                                                            <div className="material-icon">📚</div>
-                                                            <div className="donation-details"><h3>{item.materialItem.name}</h3></div>
-                                                        </div>
-                                                        <button
-                                                            className={`btn-book ${!bookingOpen ? 'locked' : ''}`}
-                                                            onClick={() => { if (bookingOpen) openBookingModal(item); }}
-                                                            disabled={!bookingOpen}
-                                                            title={!bookingOpen ? (isAr ? 'حمل الحجز مغلق حالياً' : 'Booking campaign is currently closed') : ''}
-                                                        >
-                                                            {isAr ? 'حجز المادة' : 'Book Material'}
-                                                        </button>
+                                    ) : availableMaterials.length > 0 ? (
+                                        <div className="materials-grid">
+                                            {availableMaterials.map(item => (
+                                                <div key={item.uniqueKey} className="donation-card">
+                                                    <div className="donation-main">
+                                                        <div className="material-icon">📚</div>
+                                                        <div className="donation-details"><h3>{item.materialItem.name}</h3></div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="no-materials">
-                                                <div className="empty-icon">📦</div>
-                                                <h3>{isAr ? 'لا توجد مواد معروض حالياً' : 'No materials available yet'}</h3>
-                                                <p>{isAr ? 'كن أول المبادرين!' : 'Be the first!'}</p>
+                                                    <button
+                                                        className={`btn-book ${!bookingOpen ? 'locked' : ''}`}
+                                                        onClick={() => { if (bookingOpen) openBookingModal(item); }}
+                                                        disabled={!bookingOpen}
+                                                        title={!bookingOpen ? (isAr ? 'حمل الحجز مغلق حالياً' : 'Booking campaign is currently closed') : ''}
+                                                    >
+                                                        {isAr ? 'حجز المادة' : 'Book Material'}
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="no-materials">
+                                            <div className="empty-icon">📦</div>
+                                            <h3>{isAr ? 'لا توجد مواد معروض حالياً' : 'No materials available yet'}</h3>
+                                            <p>{isAr ? 'كن أول المبادرين!' : 'Be the first!'}</p>
+                                        </div>
+                                    )
+                                    }
+
+                                    {
+                                        systemSettings.isExchangeActive && reservedMaterials.length > 0 && (
+                                            <div className="reserved-materials-container">
+                                                <div className="section-divider-wrapper">
+                                                    <hr className="section-divider" />
+                                                    <span className="divider-text">{isAr ? 'مواد نفذت (غير متاح حالياً)' : 'Out of Stock (Currently Unavailable)'}</span>
+                                                </div>
+                                                <div className="materials-grid">
+                                                    {reservedMaterials.map((item, index) => (
+                                                        <div key={index} className="donation-card reserved-card">
+                                                            <div className="material-icon">📚</div>
+                                                            <div className="donation-details"><h3>{item.materialName}</h3></div>
+                                                            <button className="btn-book disabled" disabled>{isAr ? 'تم الحجز' : 'Reserved'}</button>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )
-                                        }
+                                    }
+                                </div>
+                            </div>
+                        )}
 
-                                        {
-                                            systemSettings.isExchangeActive && reservedMaterials.length > 0 && (
-                                                <div className="reserved-materials-container">
-                                                    <div className="section-divider-wrapper">
-                                                        <hr className="section-divider" />
-                                                        <span className="divider-text">{isAr ? 'مواد نفذت (غير متاح حالياً)' : 'Out of Stock (Currently Unavailable)'}</span>
-                                                    </div>
-                                                    <div className="materials-grid">
-                                                        {reservedMaterials.map((item, index) => (
-                                                            <div key={index} className="donation-card reserved-card">
-                                                                <div className="material-icon">📚</div>
-                                                                <div className="donation-details"><h3>{item.materialName}</h3></div>
-                                                                <button className="btn-book disabled" disabled>{isAr ? 'تم الحجز' : 'Reserved'}</button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )
-                                        }
-                                    </div>
+                        {systemSettings.isExchangeActive && bookingOpen && (
+                            availableMaterials.length > 0 ? (
+                                <div className="materials-grid">
+                                    {availableMaterials.map(item => (
+                                        <div key={item.uniqueKey} className="donation-card">
+                                            <div className="donation-main">
+                                                <div className="material-icon">📚</div>
+                                                <div className="donation-details"><h3>{item.materialItem.name}</h3></div>
+                                            </div>
+                                            <button type="button" className="btn-book" onClick={() => openBookingModal({ ...item, materialName: item.materialItem.name })}>
+                                                {isAr ? 'حجز المادة' : 'Book Material'}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="no-materials">
+                                    <div className="empty-icon">📦</div>
+                                    <h3>{isAr ? 'لا توجد مواد معروضة حالياً' : 'No materials available yet'}</h3>
+                                    <p>{isAr ? 'كن أول المبادرين!' : 'Be the first!'}</p>
                                 </div>
                             )
-                        }
+                        )}
 
                         {/* Team Section */}
                         <section className="coordination-team-section glass-card">
@@ -8798,9 +9642,46 @@ Please contact us to coordinate the pickup.Thank you.`;
                                         <input type="text" required value={bookingData.name} onChange={e => setBookingData({ ...bookingData, name: e.target.value })} placeholder={isAr ? 'مثال: محمد أحمد' : 'e.g. Mohammad Ahmad'} className="form-input" />
                                     </div>
                                     <div className="form-group">
-                                        <label>{isAr ? 'رقم الهاتف للتواصل واستلام المادة' : 'Contact Number'}</label>
-                                        <input type="tel" required value={bookingData.phone} onChange={e => setBookingData({ ...bookingData, phone: toEnglishNumerals(e.target.value) })} placeholder="07xxxxxxxx" className="form-input" dir="ltr" />
-                                    </div>
+                                         <label>{isAr ? 'رقم الهاتف الأساسي (واتساب)' : 'Primary Contact (WhatsApp)'}</label>
+                                         <div className="phone-input-group">
+                                             <div className="phone-prefix">
+                                                 <span className="country-flag">🇯🇴</span>
+                                                 <span className="country-code" dir="ltr">+962</span>
+                                             </div>
+                                             <input
+                                                 type="tel"
+                                                 required
+                                                 value={bookingData.phone}
+                                                 onChange={e => setBookingData({ ...bookingData, phone: toEnglishNumerals(e.target.value).replace(/\D/g, '').slice(0, 10) })}
+                                                 placeholder="7X XXX XXXX"
+                                                 className="phone-field-input"
+                                                 dir="ltr"
+                                                 maxLength="10"
+                                             />
+                                         </div>
+                                     </div>
+                                     <div className="form-group">
+                                         <label>{isAr ? 'تأكيد رقم الهاتف أو رقم تواصل آخر' : 'Confirm Phone or Alternative Number'}</label>
+                                         <div className="phone-input-group">
+                                             <div className="phone-prefix">
+                                                 <span className="country-flag">🇯🇴</span>
+                                                 <span className="country-code" dir="ltr">+962</span>
+                                             </div>
+                                             <input
+                                                 type="tel"
+                                                 required
+                                                 value={bookingData.confirmPhone}
+                                                 onChange={e => setBookingData({ ...bookingData, confirmPhone: toEnglishNumerals(e.target.value).replace(/\D/g, '').slice(0, 10) })}
+                                                 placeholder="7X XXX XXXX"
+                                                 className="phone-field-input"
+                                                 dir="ltr"
+                                                 maxLength="10"
+                                             />
+                                         </div>
+                                         <small className="phone-field-hint">
+                                             {isAr ? 'أعد كتابة نفس الرقم للتأكيد، أو أدخل رقماً آخر للتواصل' : 'Re-enter same number to confirm, or enter an alternate number'}
+                                         </small>
+                                     </div>
                                     {/* ── Gender Selection ── */}
                                     <div className="form-group">
                                         <label className="gender-field-label">
@@ -8854,7 +9735,7 @@ Please contact us to coordinate the pickup.Thank you.`;
                                                     onClick={generateBookingCaptcha}
                                                     title={isAr ? 'تحديث الرمز' : 'Refresh code'}
                                                 >
-                                                    🔄
+                                                    {isAr ? 'تحديث' : 'Refresh'}
                                                 </button>
                                             </div>
                                             <input
@@ -8869,23 +9750,58 @@ Please contact us to coordinate the pickup.Thank you.`;
                                                 autoComplete="off"
                                                 maxLength="6"
                                             />
+                                            {bookingCaptchaError && (
+                                                <div className="captcha-error-msg">⚠️ {isAr ? 'رمز التحقق غير صحيح — حاول مرة أخرى' : 'Incorrect code — please try again'}</div>
+                                            )}
                                         </div>
-                                        {bookingCaptchaError && (
-                                            <div className="captcha-error-msg">⚠️ {isAr ? 'رمز التحقق غير صحيح — حاول مرة أخرى' : 'Incorrect code — please try again'}</div>
-                                        )}
+                                        <div className="disclaimer-box donation-terms-preview" style={{ maxHeight: '200px', overflowY: 'auto', margin: '0.5rem 0 1rem 0' }}>
+                                            <h4 className="disclaimer-title">{isAr ? 'الشروط والأحكام' : 'Terms and Conditions'}</h4>
+                                            {isAr ? (
+                                                <ul className="disclaimer-content terms-list">
+                                                    <li>تبقى المادة المتبرع بها تحت تصرف إدارة الموقع والمنسقين المعتمدين إلى حين إبلاغك بحالتها.</li>
+                                                    <li>إذا لم يستلم أحد المادة خلال الفترة المحددة، سيتم التواصل معك لتنسيق الإجراء المناسب.</li>
+                                                    <li>يُمنع التصرف بالمادة المتبرع بها بيعًا أو إهداءً أو نقلًا أو سحبًا دون إبلاغ منسقي الحملة وإدارة الموقع والحصول على موافقتهما.</li>
+                                                    <li>تلتزم بتقديم معلومات صحيحة ودقيقة، وتتحمل مسؤولية أي بيانات غير صحيحة أو مضللة.</li>
+                                                    <li>تقر بأن المادة المقدمة ملكك أو أن لديك الحق النظامي في التبرع بها، وأنها لا تخالف حقوق الآخرين.</li>
+                                                    <li>تلتزم بتسليم المادة بالحالة والوصف الموضحين في الطلب، وإبلاغ الفريق فورًا عن أي تغيير يطرأ عليها.</li>
+                                                    <li>تلتزم بالتواصل عبر القنوات الرسمية فقط، ولا تعتمد أي طلب أو موعد يصدر من جهة غير الإدارة أو المنسقين المعتمدين.</li>
+                                                    <li>يمكنك متابعة حالة المواد المتبرع بها أو المحجوزة من نموذج متابعة حالة الطلب الموجود أسفل الصفحة.</li>
+                                                    <li>يحق لإدارة الموقع مراجعة الطلب أو رفضه أو إيقافه عند مخالفة هذه الشروط أو وجود ما يستدعي ذلك.</li>
+                                                    <li>تُستخدم بياناتك لأغراض التواصل وتنظيم عملية التبادل، وتُحفظ وفق سياسة الخصوصية المعتمدة في الموقع.</li>
+                                                    <li className="terms-highlight-point">
+                                                        على كل من يقوم بحجز مادة أو التبرع بها، الالتزام التام والمباشر بالتواصل مع المنسقين المعنيين (سيتم تزويدكم رسمياً عبر الواتساب بأرقام هواتفهم فور إتمام الطلب)، ويتحتم عليك المبادرة بالتواصل وتحديد اليوم والساعة المحددة والمتاحة لديك لتنسيق تسليم أو استلام المادة.
+                                                    </li>
+                                                    <li className="terms-highlight-point">
+                                                        عند الاتفاق على تحديد موعد التسليم أو الاستلام (اليوم والساعة)، يجب العمل والالتزام بكامل المصداقية والصراحة؛ حيث يتم تجهيز وإحضار المادة خصيصاً في ذلك الموعد. وفي حال رغبتك بإلغاء الموعد أو تغييره، يجب عليك إبلاغنا رسمياً قبل الموعد بـ 24 ساعة على الأقل (وليس قبلها بساعات معدودة)، وإلا يُعد طلبك لاغياً بموجب قوانين وشروط الحملة.
+                                                    </li>
+                                                </ul>
+                                            ) : (
+                                                <ul className="disclaimer-content terms-list">
+                                                    <li>Donated materials remain under the supervision of the site administration and authorized coordinators until you are informed of their status.</li>
+                                                    <li>If no one collects the material within the specified period, you will be contacted to coordinate the appropriate action.</li>
+                                                    <li>Donated materials may not be sold, gifted, transferred, or withdrawn without notifying the campaign coordinators and site administration and obtaining their approval.</li>
+                                                    <li>You must provide accurate information and are responsible for any false or misleading details.</li>
+                                                    <li>You confirm that you own the material or have the legal right to donate it and that it does not violate the rights of others.</li>
+                                                    <li>You must deliver the material in the condition described in the request and promptly report any change to the team.</li>
+                                                    <li>Communication must take place through official channels only; requests or appointments from unauthorized parties are not recognized.</li>
+                                                    <li>You can track donated or booked materials using the Request Status Tracking form below this page.</li>
+                                                    <li>The site administration may review, reject, or suspend a request if these terms are violated or circumstances require it.</li>
+                                                    <li>Your data is used to communicate with you and organize the exchange process and is protected under the site privacy policy.</li>
+                                                    <li className="terms-highlight-point">
+                                                        Anyone booking or donating a material is strictly obligated to directly contact the designated coordinators (official coordinator WhatsApp numbers will be provided upon submission). You must initiate contact and coordinate the specific day and time available for material handover or pickup.
+                                                    </li>
+                                                    <li className="terms-highlight-point">
+                                                        Once a day and time are scheduled, complete reliability and commitment are required, as materials are specially prepared and brought for delivery. If you wish to cancel or reschedule, you must notify us at least 24 hours in advance (not a few hours before); otherwise, your request will be permanently cancelled under campaign rules.
+                                                    </li>
+                                                </ul>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="disclaimer-box" style={{ margin: '0.5rem 0 1rem 0' }}>
-                                        <h4 className="disclaimer-title">
-                                            <i className="fas fa-exclamation-triangle"></i>
-                                            {isAr ? 'تنويه هام قبل تأكيد الحجز' : 'Important Note Before Confirming'}
-                                        </h4>
-                                        <p className="disclaimer-content">
-                                            {isAr
-                                                ? 'موعد تسليم المواد متوقع يكون لال الأسبوع الأول أو الثاني من بداي الدوام الرسمي. بتأكيدك للحجز أنت تُقر بأنك بحاج فعلي لهذه المادة وعلى إدراك تام بذلك — لا يُقبل إلغاء التسليم بحج عدم الرغب في المادة بعد تأكيد الحجز.'
-                                                : 'Material delivery is expected during the first or second week of the official semester. By confirming your booking, you acknowledge that you genuinely need this material — cancellation of delivery will not be accepted after booking confirmation on the grounds of no longer wanting it.'}
-                                        </p>
-                                    </div>
-                                    <button type="submit" className="submit-btn full-width" disabled={loading}>
+                                    <label className="terms-label agreement-checkbox" style={{ margin: '0.8rem 0' }}>
+                                        <input type="checkbox" checked={agreedToBookingTerms} onChange={e => setAgreedToBookingTerms(e.target.checked)} />
+                                        {isAr ? 'أوافق على الشروط والأحكام' : 'I agree to the terms and conditions'}
+                                    </label>
+                                    <button type="submit" className="submit-btn full-width" disabled={loading || !agreedToBookingTerms}>
                                         {loading ? (isAr ? 'جاري الحجز...' : 'Booking...') : (isAr ? 'تأكيد الحجز' : 'Confirm Booking')}
                                     </button>
                                 </form>
@@ -9592,7 +10508,7 @@ Please contact us to coordinate the pickup.Thank you.`;
                                 <div className="terms-item">
                                     <div className="terms-item-header">
                                         <span className="terms-item-number">5.</span>
-                                        <h3>{isAr ? 'المسؤولية تجاه المادة المختبرع بها' : 'Responsibility Toward Donated Material'}</h3>
+                                        <h3>{isAr ? 'المسؤولية تجاه المادة المتبرع بها' : 'Responsibility Toward Donated Material'}</h3>
                                     </div>
                                     <p className="terms-item-content">
                                         {isAr
@@ -9648,7 +10564,7 @@ Please contact us to coordinate the pickup.Thank you.`;
                                     </div>
                                     <p className="terms-item-content">
                                         {isAr
-                                            ? 'يحتفظ فريق الحمل بالحق الكامل في:\n• رفض أي طلب دون تقديم أسباب واضح إذا رأوا أنه يتعارض مع أهداف الحمل\n• تعديل شروط الحمل أو مواعيد التسليم دون إشعار مسبق\n• إلغاء أي حجز إذا تبين عدم صدق الطلب أو وجود مالفات\n• الاحتفاظ بحق تتبع مسار المواد المختبرع بها'
+                                            ? 'يحتفظ فريق الحملة بالحق الكامل في:\n• رفض أي طلب دون تقديم أسباب واضحة إذا رأى أنه يتعارض مع أهداف الحملة\n• تعديل شروط الحملة أو مواعيد التسليم دون إشعار مسبق\n• إلغاء أي حجز إذا تبين عدم جدية الطلب أو وجود مخالفات\n• الاحتفاظ بحق تتبع مسار المواد المتبرع بها'
                                             : 'The campaign team reserves the right to:\n• Reject any request without clear justification if it conflicts with campaign objectives\n• Modify campaign terms or delivery dates without prior notice\n• Cancel any booking if the request proves to be fraudulent or in violation\n• Track the path of donated materials'}
                                     </p>
                                 </div>
@@ -9709,9 +10625,49 @@ Please contact us to coordinate the pickup.Thank you.`;
                             <div className="terms-modal-footer">
                                 <button
                                     className="close-terms-btn"
-                                    onClick={() => { setShowTermsModal(false); setShowTermsDetails(false); }}
+                                    onClick={() => { setHasReadDonationTerms(true); setShowTermsModal(false); setShowTermsDetails(false); }}
                                 >
-                                    {isAr ? 'إلغاء' : 'Close'}
+                                    {isAr ? 'قرأت الشروط وأوافق على المتابعة' : 'I Have Read the Terms and Agree to Continue'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showTermsConfirmModal && (
+                    <div className="terms-confirm-overlay" onClick={() => setShowTermsConfirmModal(null)}>
+                        <div className="terms-confirm-modal" onClick={e => e.stopPropagation()}>
+                            <div className="terms-confirm-icon">📋</div>
+                            <h3 className="terms-confirm-title">
+                                {isAr ? 'تأكيد قراءة الشروط والأحكام' : 'Confirm Terms & Conditions'}
+                            </h3>
+                            <p className="terms-confirm-desc">
+                                {isAr
+                                    ? 'هل أنت متأكد من موافقتك على كافة شروط وأحكام الحملة، وأنك قمت بقراءتها وفهمها جيداً، وتتعهد بالالتزام التام بها وبالمواعيد المحددة مع المنسقين؟'
+                                    : 'Are you sure you agree to all campaign terms and conditions, that you have read and understood them thoroughly, and commit to adhering to scheduled appointments with coordinators?'}
+                            </p>
+                            <div className="terms-confirm-actions">
+                                <button
+                                    type="button"
+                                    className="terms-confirm-btn confirm-yes"
+                                    onClick={() => {
+                                        const target = showTermsConfirmModal;
+                                        setShowTermsConfirmModal(null);
+                                        if (target === 'donation') {
+                                            proceedSubmitDonation();
+                                        } else if (target === 'booking') {
+                                            proceedSubmitBooking();
+                                        }
+                                    }}
+                                >
+                                    {isAr ? 'نعم، قرأتها وأتعهد بالالتزام' : 'Yes, I read & agree'}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="terms-confirm-btn confirm-cancel"
+                                    onClick={() => setShowTermsConfirmModal(null)}
+                                >
+                                    {isAr ? 'مراجعة الشروط' : 'Review Terms'}
                                 </button>
                             </div>
                         </div>

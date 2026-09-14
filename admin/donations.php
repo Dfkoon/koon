@@ -8,7 +8,14 @@ if (empty($_SESSION['authenticated'])) {
     redirect('../login.php');
 }
 $db = get_db();
-foreach (['archive_key' => 'TEXT', 'archive_label' => 'TEXT'] as $column => $type) {
+foreach ([
+    'archive_key' => 'TEXT',
+    'archive_label' => 'TEXT',
+    'donor_phone_alt' => 'TEXT',
+    'donor_email' => 'TEXT',
+    'delivery_week' => 'TEXT',
+    'firestore_id' => 'TEXT'
+] as $column => $type) {
     $columns = $db->query('PRAGMA table_info(material_exchanges)')->fetchAll(PDO::FETCH_COLUMN, 1);
     if (!in_array($column, $columns, true))
         $db->exec("ALTER TABLE material_exchanges ADD COLUMN $column $type");
@@ -19,11 +26,48 @@ $db->exec("UPDATE material_exchanges SET archive_key = 'summer_2025_2026', archi
 // ترحيل القيم القديمة النصية ('ahmad','sara','admin') إلى 'shared' لأن المنسقين محددون الآن بـ ID
 $db->exec("UPDATE material_exchanges SET assigned_coordinator = 'shared' WHERE assigned_coordinator IN ('ahmad','sara','admin') OR (assigned_coordinator IS NOT NULL AND assigned_coordinator != 'shared' AND assigned_coordinator != '' AND assigned_coordinator NOT GLOB '[0-9]*')");
 
-$db = get_db();
+// جلب وتحديث طلبات التبرع الجديدة من السحابة إن وجدت
+try {
+    if (function_exists('pull_pending_donations_from_firestore')) {
+        pull_pending_donations_from_firestore($db);
+    }
+} catch (Throwable $e) {
+}
 
 // تحميل المنسقين النشطين من قاعدة البيانات ديناميكياً
 $activeCoordinators = $db->query("SELECT id, name, gender, role_type, faculty FROM coordinators WHERE is_active = 1 ORDER BY role_type DESC, name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
+/* ---------- صلاحيات المستخدم الحالي في هذه الصفحة ---------- */
+$_donationsCurrentUserId = (int) ($_SESSION['user_id'] ?? 0);
+$_donationsUserStmt = $db->prepare('SELECT id, username, role FROM users WHERE id = ? LIMIT 1');
+$_donationsUserStmt->execute([$_donationsCurrentUserId]);
+$_donationsCurrentUser = $_donationsUserStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$_donationsRole = $_donationsCurrentUser['role'] ?? 'coordinator';
+
+// الأدمن العام أو المستخدم رقم 1 أو HUSSIEN = صلاحية كاملة
+$isDonationsAdmin = in_array($_donationsRole, ['admin', 'super_admin'], true)
+    || $_donationsCurrentUserId === 1
+    || strtoupper((string) ($_donationsCurrentUser['username'] ?? '')) === 'HUSSIEN';
+
+// الصلاحيات الدقيقة للحملات والأرشيف
+$canArchiveCampaign = $isDonationsAdmin || user_has_capability('donations.archive_manage', $_donationsCurrentUser);
+$canCreateCampaign  = $isDonationsAdmin || user_has_capability('donations.create_campaign', $_donationsCurrentUser);
+$canManageCampaigns = $canArchiveCampaign || $canCreateCampaign;
+// الاطلاع على الأرشيف متاح للأدمن أو لمن يملك صلاحية donations.archive_view أو للمنسق افتراضياً
+$canViewArchive     = $isDonationsAdmin || user_has_capability('donations.archive_view', $_donationsCurrentUser) || empty($_donationsCurrentUser['permissions']);
+
+// جنس المنسق الحالي (للتحكم في إظهار جداول الذكور/الإناث)
+// null = غير محدد (يرى كل الجداول) ، 'male' أو 'female'
+$currentCoordGender = null;
+if (!$isDonationsAdmin && $_donationsCurrentUserId > 0) {
+    $_coordGenderStmt = $db->prepare('SELECT gender FROM coordinators WHERE user_id = ? LIMIT 1');
+    $_coordGenderStmt->execute([$_donationsCurrentUserId]);
+    $_coordGenderVal = $_coordGenderStmt->fetchColumn();
+    if ($_coordGenderVal !== false && $_coordGenderVal !== '') {
+        $currentCoordGender = (string) $_coordGenderVal; // 'male' أو 'female'
+    }
+    // إذا لم يكن له سجل في جدول coordinators يرى كل شيء (null)
+}
 
 $message = null;
 $messageType = 'success';
@@ -43,6 +87,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = $_POST['action'] ?? '';
 
         if ($action === 'archive_current_campaign' || $action === 'start_new_campaign') {
+            // ⛔ التحقق من الصلاحية المطلوبة
+            $hasActionPerm = ($action === 'archive_current_campaign') ? $canArchiveCampaign : $canCreateCampaign;
+            if (!$hasActionPerm) {
+                $permName = ($action === 'archive_current_campaign') ? 'أرشفة الحملة' : 'فتح وبدء حملة جديدة';
+                $message = "⛔ ليس لديك صلاحية ($permName). هذه العملية تتطلب إذناً متقدماً من مدير النظام.";
+                $messageType = 'error';
+            } else {
             $archiveSemesterName = trim($_POST['archive_semester_name'] ?? '');
             if ($archiveSemesterName === '') {
                 $archiveSemesterName = trim($_POST['campaign_label'] ?? $currentCampaignLabel);
@@ -82,6 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = 'تعذر أرشفة الحملة الحالية، يرجى المحاولة مرة أخرى: ' . $exception->getMessage();
                 $messageType = 'error';
             }
+            } // end else (canManageCampaigns)
         } elseif ($action === 'toggle_archive_visibility') {
             $newVisibility = $archiveVisibility === '1' ? '0' : '1';
             $stmt = $db->prepare("INSERT INTO site_settings (setting_key, setting_value, setting_group, updated_at) VALUES ('exchange_archive_visible', ?, 'exchange', CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = CURRENT_TIMESTAMP");
@@ -202,6 +254,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?');
                 $stmt->execute([$bookerName, $bookerPhone, $bookerGender, $pickupDate, $pickupTime, $assignedCoordinator, $notes, $notes, $id]);
                 log_activity("حجز المادة #$id للطالب \"$bookerName\" هاتف: $bookerPhone", 'material_exchange');
+
+                // مزامنة الحجز مع Firestore لإخفاء المادة فوراً من الموقع الرسمي
+                $stmtMat = $db->prepare('SELECT material_name, firestore_id FROM material_exchanges WHERE id = ? LIMIT 1');
+                $stmtMat->execute([$id]);
+                $matRow = $stmtMat->fetch(PDO::FETCH_ASSOC);
+                if ($matRow && !empty($matRow['firestore_id']) && function_exists('mark_donation_reserved_in_firestore')) {
+                    try {
+                        mark_donation_reserved_in_firestore(
+                            $matRow['firestore_id'],
+                            $matRow['material_name'],
+                            [
+                                'name' => $bookerName,
+                                'phone' => $bookerPhone,
+                                'gender' => $bookerGender,
+                                'bookedAt' => date('c'),
+                                'source' => 'admin_panel'
+                            ]
+                        );
+                    } catch (Throwable $e) { /* الفشل في المزامنة لا يوقف العملية */ }
+                }
+
                 sync_material_exchanges_to_frontend($db);
                 $message = "تم حجز المادة بنجاح للطالب ($bookerName).";
             }
@@ -227,6 +300,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 5. إلغاء الحجز وإعادة المادة للمستودع لتكون متاحة
         elseif ($action === 'cancel_booking') {
             $id = (int) ($_POST['id'] ?? 0);
+
+            // جلب تفاصيل المادة ومعرف Firestore لإلغاء الحجز سحابياً
+            $stmtM = $db->prepare('SELECT id, material_name, firestore_id FROM material_exchanges WHERE id = ? LIMIT 1');
+            $stmtM->execute([$id]);
+            $matRow = $stmtM->fetch(PDO::FETCH_ASSOC);
+
             $stmt = $db->prepare('UPDATE material_exchanges SET 
                 status = "approved", 
                 booker_name = NULL, 
@@ -240,8 +319,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE id = ?');
             $stmt->execute([$id]);
             log_activity("إلغاء حجز المادة #$id وإعادتها لمستودع المواد المتاحة", 'material_exchange');
+
+            // مزامنة إلغاء الحجز سحابياً مع Firestore فوراً لإعادة المادة كمتاحة للطلاب على الموقع
+            if ($matRow && !empty($matRow['firestore_id']) && function_exists('mark_donation_unreserved_in_firestore')) {
+                try {
+                    mark_donation_unreserved_in_firestore($matRow['firestore_id'], $matRow['material_name']);
+                } catch (Throwable $e) {}
+            }
+
+            if (function_exists('sync_material_exchanges_to_frontend')) {
+                sync_material_exchanges_to_frontend($db);
+            }
+
             $message = 'تم إلغاء الحجز بنجاح وأصبحت المادة متاحة مجدداً لباقي الطلاب.';
         }
+
 
         // 6. حذف مادة
         elseif ($action === 'delete') {
@@ -342,6 +434,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtDelW->execute([$wId]);
             $message = 'تم حذف الطلب من قائمة الانتظار بنجاح.';
         }
+
+        // 11. موافقة الإدارة وتوجيه طلب التبرع المعلق
+        elseif ($action === 'approve_donation') {
+            if (!$isDonationsAdmin) {
+                $message = '⛔ عذراً، اعتماد وتوجيه طلبات التبرع مخصص للإدارة العامة فقط.';
+                $messageType = 'error';
+            } else {
+                $id = (int) ($_POST['id'] ?? 0);
+                $assignedCoord = trim($_POST['assigned_coordinator'] ?? 'shared');
+                $faculty = trim($_POST['faculty'] ?? '');
+                $courseCode = trim($_POST['course_code'] ?? '');
+                $adminNotes = trim($_POST['notes'] ?? '');
+
+                $stmtM = $db->prepare('SELECT id, material_name, firestore_id, donor_name FROM material_exchanges WHERE id = ? LIMIT 1');
+                $stmtM->execute([$id]);
+                $mRow = $stmtM->fetch(PDO::FETCH_ASSOC);
+
+                if ($mRow) {
+                    $upd = $db->prepare('UPDATE material_exchanges SET 
+                        status = "approved",
+                        assigned_coordinator = ?,
+                        faculty = CASE WHEN ? != "" THEN ? ELSE faculty END,
+                        course_code = CASE WHEN ? != "" THEN ? ELSE course_code END,
+                        notes = CASE WHEN ? != "" THEN (CASE WHEN notes != "" THEN notes || " | " || ? ELSE ? END) ELSE notes END,
+                        updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?');
+                    $upd->execute([$assignedCoord, $faculty, $faculty, $courseCode, $courseCode, $adminNotes, $adminNotes, $adminNotes, $id]);
+
+                    if (!empty($mRow['firestore_id']) && function_exists('mark_donation_approved_in_firestore')) {
+                        try {
+                            mark_donation_approved_in_firestore($mRow['firestore_id'], $mRow['material_name']);
+                        } catch (Throwable $e) {}
+                    }
+
+                    if (function_exists('sync_material_exchanges_to_frontend')) {
+                        sync_material_exchanges_to_frontend($db);
+                    }
+
+                    log_activity("موافقة وتوجيه طلب التبرع بالمادة #$id (\"{$mRow['material_name']}\") إلى " . ($assignedCoord === 'shared' ? 'جدول المشترك' : "المنسق #$assignedCoord"), 'material_exchange');
+                    $message = "✅ تمت الموافقة على طلب التبرع بالمادة ({$mRow['material_name']}) وتوجيهها بنجاح إلى جدول المواد المتاحة.";
+                } else {
+                    $message = 'لم يتم العثور على طلب التبرع المحدد.';
+                    $messageType = 'error';
+                }
+            }
+        }
+
+        // 12. رفض وحذف طلب التبرع المعلق
+        elseif ($action === 'reject_donation') {
+            if (!$isDonationsAdmin) {
+                $message = '⛔ عذراً، رفض طلبات التبرع مخصص للإدارة العامة فقط.';
+                $messageType = 'error';
+            } else {
+                $id = (int) ($_POST['id'] ?? 0);
+                $stmtDel = $db->prepare('DELETE FROM material_exchanges WHERE id = ? AND status = "pending"');
+                $stmtDel->execute([$id]);
+                $message = 'تم رفض وحذف طلب التبرع بنجاح.';
+            }
+        }
     }
 }
 
@@ -358,16 +509,20 @@ $editId = isset($_GET['edit']) ? (int) $_GET['edit'] : null;
 $sql = 'SELECT * FROM material_exchanges WHERE 1=1';
 $params = [];
 
-if ($activeTab === 'available') {
+if ($activeTab === 'all' && $statusFilter === '') {
+    $sql .= " AND status != 'pending'";
+} elseif ($activeTab === 'available') {
     $sql .= " AND status = 'approved'";
 } elseif ($activeTab === 'reserved') {
     $sql .= " AND status = 'reserved'";
+} elseif ($activeTab === 'shared') {
+    $sql .= " AND (assigned_coordinator = 'shared' OR assigned_coordinator = 'admin' OR assigned_coordinator = '' OR assigned_coordinator IS NULL) AND status != 'pending'";
 } elseif ($activeTab === 'completed') {
     $sql .= " AND status = 'completed'";
 } elseif ($activeTab === 'pending') {
     $sql .= " AND status = 'pending'";
 } elseif ($activeTab === 'schedule') {
-    $sql .= " AND (status = 'reserved' OR pickup_date IS NOT NULL)";
+    $sql .= " AND (status = 'reserved' OR pickup_date IS NOT NULL) AND status != 'pending'";
 }
 
 if ($statusFilter !== '') {
@@ -487,9 +642,10 @@ if ($archiveFilter === 'all') {
     $archiveWhere = "archive_key IS NULL";
 }
 
-$totalMaterials = (int) $db->query("SELECT COUNT(*) FROM material_exchanges WHERE $archiveWhere")->fetchColumn();
+$totalMaterials = (int) $db->query("SELECT COUNT(*) FROM material_exchanges WHERE $archiveWhere AND status != 'pending'")->fetchColumn();
 $availableCount = (int) $db->query("SELECT COUNT(*) FROM material_exchanges WHERE $archiveWhere AND status = 'approved'")->fetchColumn();
 $reservedCount = (int) $db->query("SELECT COUNT(*) FROM material_exchanges WHERE $archiveWhere AND status = 'reserved'")->fetchColumn();
+$sharedCount = (int) $db->query("SELECT COUNT(*) FROM material_exchanges WHERE $archiveWhere AND status != 'pending' AND (assigned_coordinator = 'shared' OR assigned_coordinator = 'admin' OR assigned_coordinator = '' OR assigned_coordinator IS NULL)")->fetchColumn();
 $completedCount = (int) $db->query("SELECT COUNT(*) FROM material_exchanges WHERE $archiveWhere AND status = 'completed'")->fetchColumn();
 $pendingCount = (int) $db->query("SELECT COUNT(*) FROM material_exchanges WHERE $archiveWhere AND status = 'pending'")->fetchColumn();
 $archiveStats = $db->query("SELECT archive_key, archive_label, COUNT(*) AS total, SUM(status = 'completed') AS completed, SUM(status = 'reserved') AS reserved, SUM(status = 'approved') AS available FROM material_exchanges WHERE archive_key IS NOT NULL GROUP BY archive_key, archive_label ORDER BY CASE archive_key WHEN 'second_2025_2026' THEN 1 WHEN 'summer_2025_2026' THEN 2 ELSE 3 END")->fetchAll(PDO::FETCH_ASSOC);
@@ -754,6 +910,7 @@ require __DIR__ . '/_header.php';
             <div style="font-size:12px;color:#64748b;margin-top:4px;"><?= htmlspecialchars($currentCampaignLabel) ?> · الطلبات الجديدة من الموقع تظهر هنا</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <?php if ($canArchiveCampaign): ?>
             <button type="button" class="btn" style="background:#f59e0b;color:#fff;border:1px solid #d97706;" onclick="openArchiveCampaignModal()">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
                     <rect width="20" height="5" x="2" y="3" rx="1" />
@@ -762,6 +919,9 @@ require __DIR__ . '/_header.php';
                 </svg>
                 أرشفة الحملة الحالية
             </button>
+            <?php endif; ?>
+
+            <?php if ($canCreateCampaign): ?>
             <form method="post" style="margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
                 <input type="hidden" name="action" value="start_new_campaign">
@@ -769,12 +929,20 @@ require __DIR__ . '/_header.php';
                     style="min-width:180px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">
                 <button type="submit" class="btn btn-primary" style="padding:8px 14px;">فتح حملة جديدة</button>
             </form>
+            <?php endif; ?>
+
+            <?php if (!$canArchiveCampaign && !$canCreateCampaign): ?>
+            <span style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                إدارة الحملات والأرشفة مخصصة للإدارة
+            </span>
+            <?php endif; ?>
         </div>
     </div>
 </section>
 
 <!-- أرشيف الحملات حسب الفصل الدراسي -->
-<?php if ($archiveVisibility === '1'): ?>
+<?php if ($archiveVisibility === '1' && $canViewArchive): ?>
     <?php
     $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveFilter) : '';
     ?>
@@ -848,6 +1016,16 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
             </svg>
             كافة المواد (<?= $totalMaterials ?>)
         </a>
+        <a href="?tab=pending<?= $archiveUrlParam ?>" class="tab-btn <?= $activeTab === 'pending' ? 'active' : '' ?>" style="<?= $pendingCount > 0 ? 'background:#fffbeb;border-color:#f59e0b;color:#b45309;' : '' ?>">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+            </svg>
+            الطلبات المنتظرة (<?= $pendingCount ?>)
+            <?php if ($pendingCount > 0): ?>
+                <span style="font-size:10px;font-weight:900;background:#f59e0b;color:#fff;padding:2px 7px;border-radius:999px;margin-right:2px;">جديد</span>
+            <?php endif; ?>
+        </a>
         <a href="?tab=available<?= $archiveUrlParam ?>" class="tab-btn <?= $activeTab === 'available' ? 'active' : '' ?>">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10" />
@@ -861,6 +1039,15 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
                 <circle cx="9" cy="7" r="4" />
             </svg>
             الحجوزات والتسليم (<?= $reservedCount ?>)
+        </a>
+        <a href="?tab=shared<?= $archiveUrlParam ?>" class="tab-btn <?= $activeTab === 'shared' ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            جدول مشترك (<?= $sharedCount ?>)
         </a>
         <a href="?tab=schedule<?= $archiveUrlParam ?>" class="tab-btn <?= $activeTab === 'schedule' ? 'active' : '' ?>">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -895,6 +1082,7 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
             </svg>
             إضافة كتاب / مادة متبادلة
         </button>
+        <?php if ($canArchiveCampaign): ?>
         <button type="button" class="btn" style="background:#f59e0b; color:#fff; border:1px solid #d97706;" onclick="openArchiveCampaignModal()">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <rect width="20" height="5" x="2" y="3" rx="1" />
@@ -903,6 +1091,7 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
             </svg>
             أرشفة الحملة الحالية
         </button>
+        <?php endif; ?>
         <button type="button" class="btn btn-secondary" onclick="window.print()">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 6 2 18 2 18 9" />
@@ -1015,8 +1204,12 @@ foreach ($materials as $mItem) {
 $currentViewTitle = 'سجل تبادل المواد والكتب الدراسية';
 if ($activeTab === 'schedule') {
     $currentViewTitle = 'جدول مواعيد التسليم للمنسقين';
+} elseif ($activeTab === 'pending') {
+    $currentViewTitle = 'طلبات التبرع المنتظرة (بانتظار موافقة وتوجيه الإدارة)';
 } elseif ($activeTab === 'reserved') {
     $currentViewTitle = 'قائمة المواد المحجوزة وجاهزة للتسليم';
+} elseif ($activeTab === 'shared') {
+    $currentViewTitle = 'جدول التسليم المشترك وبانتظار الفرز';
 } elseif ($activeTab === 'available') {
     $currentViewTitle = 'المواد المتاحة بالمستودع';
 } elseif ($activeTab === 'completed') {
@@ -1040,7 +1233,192 @@ if ($archiveFilter === 'all') {
     $campaignBadgeText = 'الحملة الحالية (' . $currentCampaignLabel . ')';
 }
 
-function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $theme, $coordinatorsList, $statusLabels, $csrfToken, $smartMatches = []) {
+/**
+ * جدول طلبات التبرع المنتظرة (بانتظار موافقة الإدارة)
+ * يطابق تماماً خانات النموذج الواردة من الموقع:
+ * (اسم الطالب، هاتف واتساب، هاتف التأكيد/البديل، البريد، الجنس، المادة والمحتويات، أسبوع التسليم)
+ * الصلاحيات: موافقة وتوجيه ورفض للأدمن فقط | اطلاع فقط للمنسقين
+ */
+function renderPendingDonationsTable(array $pendingItems, array $coordinatorsList, bool $isDonationsAdmin, string $csrfToken, array $facultiesList): void
+{
+?>
+<div class="custom-table-card" id="section-pending" style="margin-bottom: 24px; border: 2px solid #fef3c7; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 4px 16px rgba(217,119,6,0.08);">
+    <div class="table-card-header" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border-bottom: 1.5px solid #fde68a; padding: 16px 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 44px; height: 44px; border-radius: 12px; background: #fef3c7; display: flex; align-items: center; justify-content: center; color: #d97706; border: 1px solid #fcd34d;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #92400e; display: flex; align-items: center; gap: 8px;">
+                        <span>طلبات التبرع بالمواد المنتظرة</span>
+                        <span style="font-size: 12px; background: #d97706; color: #fff; padding: 2px 10px; border-radius: 9999px;"><?= count($pendingItems) ?></span>
+                    </h3>
+                    <div style="font-size: 12px; color: #b45309; margin-top: 3px;">
+                        الطلبات الواردة مباشرة من نموذج التبرع بالمواد على الموقع — تعتمد وتوجّه من الإدارة فقط، وللمنسقين حق الاطلاع
+                    </div>
+                </div>
+            </div>
+            <div>
+                <?php if ($isDonationsAdmin): ?>
+                    <span style="font-size: 12px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 6px 12px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        صلاحية الاعتماد والتوجيه: مفعلة للأدمن
+                    </span>
+                <?php else: ?>
+                    <span style="font-size: 12px; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        اطلاع فقط — الاعتماد والتوجيه مخصص للمشرف العام
+                    </span>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-card-body" style="padding: 0; overflow-x: auto;">
+        <table class="custom-table" style="width: 100%; border-collapse: collapse; min-width: 960px;">
+            <thead>
+                <tr style="background: #fffdf5; border-bottom: 2px solid #fef3c7;">
+                    <th style="width: 45px; text-align: center;">#</th>
+                    <th>اسم الطالب المتبرع</th>
+                    <th>أرقام وبيانات التواصل</th>
+                    <th>المادة المتبرع بها والمحتويات</th>
+                    <th>أسبوع التسليم المقترح</th>
+                    <th style="width: 130px;">تاريخ الإرسال</th>
+                    <th style="width: 120px; text-align: center;">الحالة</th>
+                    <th style="width: 180px; text-align: center;">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($pendingItems)): ?>
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 45px 20px; color: #94a3b8;">
+                            <div style="font-size: 34px; margin-bottom: 8px;">🎉</div>
+                            <div style="font-weight: 700; font-size: 14.5px; color: #475569;">لا توجد أي طلبات تبرع معلقة حالياً</div>
+                            <div style="font-size: 12px; margin-top: 4px;">كافة طلبات التبرع الواردة من الموقع تم اعتمادها أو توجيهها بنجاح</div>
+                        </td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($pendingItems as $idx => $item): 
+                        $phone = preg_replace('/[^0-9]/', '', (string)($item['donor_phone'] ?? ''));
+                        $waUrl = '';
+                        if ($phone !== '') {
+                            $waNum = str_starts_with($phone, '0') ? '962' . substr($phone, 1) : $phone;
+                            $waMsg = urlencode("مرحباً بك زميلنا {$item['donor_name']}، نتواصل معك من فريق مكانك بخصوص طلب التبرع بالمادة ({$item['material_name']}).");
+                            $waUrl = "https://wa.me/{$waNum}?text={$waMsg}";
+                        }
+                    ?>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="text-align: center; font-weight: 700; color: #94a3b8;">
+                                <?= $idx + 1 ?>
+                            </td>
+                            <td>
+                                <div style="font-weight: 800; font-size: 14px; color: #0f172a;">
+                                    <?= htmlspecialchars($item['donor_name'] ?: 'طالب') ?>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                                    <?php if (($item['donor_gender'] ?? '') === 'female'): ?>
+                                        <span style="font-size: 11px; background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; padding: 2px 7px; border-radius: 6px; font-weight: 700;">
+                                            أنثى
+                                        </span>
+                                    <?php else: ?>
+                                        <span style="font-size: 11px; background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; padding: 2px 7px; border-radius: 6px; font-weight: 700;">
+                                            ذكر
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td>
+                                <!-- رقم التواصل الأساسي (واتساب) -->
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-weight: 700; font-size: 13px; color: #1e293b; font-family: monospace;" dir="ltr">
+                                        <?= htmlspecialchars($item['donor_phone'] ?: '-') ?>
+                                    </span>
+                                    <?php if ($waUrl !== ''): ?>
+                                        <a href="<?= $waUrl ?>" target="_blank" rel="noopener" title="مراسلة سريعة عبر واتساب" style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: #25d366; color: #fff; border-radius: 50%; text-decoration: none;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 14.99 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.67 12.05 3.67Z"/></svg>
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                                <!-- رقم التأكيد أو البديل -->
+                                <?php if (!empty($item['donor_phone_alt']) && $item['donor_phone_alt'] !== $item['donor_phone']): ?>
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 3px;" dir="ltr">
+                                        بديل: <?= htmlspecialchars($item['donor_phone_alt']) ?>
+                                    </div>
+                                <?php endif; ?>
+                                <!-- البريد الإلكتروني -->
+                                <?php if (!empty($item['donor_email'])): ?>
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                                        <?= htmlspecialchars($item['donor_email']) ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div style="font-weight: 800; font-size: 14px; color: #0f172a;">
+                                    <?= htmlspecialchars($item['material_name']) ?>
+                                </div>
+                                <?php if (!empty($item['description'])): ?>
+                                    <div style="font-size: 12px; color: #475569; margin-top: 4px; line-height: 1.4; background: #f8fafc; padding: 4px 8px; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                                        <?= htmlspecialchars($item['description']) ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if (!empty($item['delivery_week'])): ?>
+                                    <span style="font-size: 12px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 3px 8px; border-radius: 6px; font-weight: 600; display: inline-block;">
+                                        📅 <?= htmlspecialchars($item['delivery_week']) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span style="color: #94a3b8; font-size: 12px;">غير محدد</span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="font-size: 11.5px; color: #64748b;">
+                                <?= htmlspecialchars(substr((string)($item['created_at'] ?? ''), 0, 16)) ?>
+                            </td>
+                            <td style="text-align: center;">
+                                <span style="font-size: 11.5px; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 4px 8px; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    بانتظار الموافقة
+                                </span>
+                            </td>
+                            <td style="text-align: center;">
+                                <?php if ($isDonationsAdmin): ?>
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                        <button type="button" class="btn btn-sm" style="background: #10b981; color: #fff; border: 1px solid #059669; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;"
+                                            onclick='openApproveDonationModal(<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'>
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                            اعتماد وتوجيه
+                                        </button>
+                                        <form method="post" style="display: inline;" onsubmit="return confirm('تأكيد رفض وحذف طلب التبرع بالمادة (<?= htmlspecialchars($item['material_name']) ?>)؟');">
+                                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                                            <input type="hidden" name="action" value="reject_donation">
+                                            <input type="hidden" name="id" value="<?= $item['id'] ?>">
+                                            <button type="submit" class="btn btn-sm" style="background: #ef4444; color: #fff; border: 1px solid #dc2626; padding: 5px 8px; border-radius: 6px;" title="رفض الطلب">
+                                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                <?php else: ?>
+                                    <span style="font-size: 11px; color: #94a3b8; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        اطلاع فقط
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php
+}
+
+function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $theme, $coordinatorsList, $statusLabels, $csrfToken, $smartMatches = [], $readOnly = false) {
     $badgeBg = $theme['badge_bg'];
     $badgeColor = $theme['badge_color'];
     $badgeBorder = $theme['badge_border'];
@@ -1066,6 +1444,12 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                 إشراف منسقات الإناث
             <?php endif; ?>
         </div>
+        <?php if ($readOnly): ?>
+        <div style="font-size:11px;font-weight:700;color:#64748b;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:4px 10px;display:flex;align-items:center;gap:5px;">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            اطلاع فقط
+        </div>
+        <?php endif; ?>
     </div>
 
     <div style="overflow-x: auto;">
@@ -1224,6 +1608,13 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                             <!-- أزرار الإجراءات السريعة -->
                             <td style="text-align:center;">
                                 <div class="table-action-btns">
+                                    <?php if ($readOnly): ?>
+                                    <!-- وضع الاطلاع فقط — لا يمكن تعديل هذا الجدول -->
+                                    <span style="font-size:11px;color:#94a3b8;display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;">
+                                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        اطلاع فقط
+                                    </span>
+                                    <?php else: ?>
                                     <!-- زر الحجز السريع إن كانت المادة متاحة -->
                                     <?php if ($m['status'] === 'approved'): ?>
                                         <button type="button" class="btn-action btn-reserve"
@@ -1311,6 +1702,7 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                                             </svg>
                                         </button>
                                     </form>
+                                    <?php endif; // end readOnly check ?>
                                 </div>
                             </td>
                         </tr>
@@ -1323,6 +1715,27 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
 <?php
 }
 ?>
+
+<?php if ($activeTab === 'pending'): ?>
+    <?php renderPendingDonationsTable($materials, $coordinatorsList, $isDonationsAdmin, csrf_token(), $facultiesList); ?>
+<?php else: ?>
+    <?php if ($pendingCount > 0): ?>
+    <div style="background:linear-gradient(135deg, #fffbeb, #fef3c7); border:1.5px solid #fde68a; border-radius:14px; padding:14px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 2px 8px rgba(245,158,11,0.08);">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:40px; height:40px; border-radius:10px; background:#fde68a; display:flex; align-items:center; justify-content:center; color:#92400e;">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div>
+                <strong style="color:#92400e; font-size:14.5px;">يوجد <?= $pendingCount ?> طلب تبرع جديد بانتظار اعتماد الإدارة وتوجيهها للفرق</strong>
+                <div style="color:#b45309; font-size:12px; margin-top:2px;">تم إرسالها حديثاً عبر نموذج الموقع الرسمي — يمكنك مراجعتها واعتمادها وتوجيهها إلى جدول الذكور أو الإناث أو المشترك.</div>
+            </div>
+        </div>
+        <a href="?tab=pending<?= $archiveUrlParam ?>" class="btn" style="background:#d97706; color:#fff; border:none; font-size:12.5px; font-weight:800; padding:9px 18px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(217,119,6,0.2);">
+            <span>عرض طلبات التبرع المنتظرة (<?= $pendingCount ?>)</span>
+            <span>←</span>
+        </a>
+    </div>
+    <?php endif; ?>
 
 <!-- بطاقات الانتقال السريع وملخص الأقسام الثلاثة -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 24px;">
@@ -1344,58 +1757,114 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
         <span style="font-size:20px; font-weight:900; background:#7e22ce; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($sharedMaterials) ?></span>
     </a>
 
-    <a href="#section-male" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-radius:14px; background:linear-gradient(135deg, #f0f9ff, #e0f2fe); border:2px solid #bae6fd; color:#0369a1; box-shadow:0 2px 8px rgba(3,105,161,0.06); transition:transform .15s ease;">
+    <?php 
+    $maleCardReadOnly = ($currentCoordGender === 'female' && !$isDonationsAdmin);
+    ?>
+    <a href="#section-male" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-radius:14px; background:<?= $maleCardReadOnly ? '#f8fafc' : 'linear-gradient(135deg, #f0f9ff, #e0f2fe)' ?>; border:2px solid <?= $maleCardReadOnly ? '#cbd5e1' : '#bae6fd' ?>; color:<?= $maleCardReadOnly ? '#64748b' : '#0369a1' ?>; box-shadow:0 2px 8px rgba(3,105,161,0.06); transition:transform .15s ease;">
         <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:40px; height:40px; border-radius:10px; background:#e0f2fe; display:flex; align-items:center; justify-content:center; color:#0284c7;">
+            <div style="width:40px; height:40px; border-radius:10px; background:<?= $maleCardReadOnly ? '#f1f5f9' : '#e0f2fe' ?>; display:flex; align-items:center; justify-content:center; color:<?= $maleCardReadOnly ? '#64748b' : '#0284c7' ?>;">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                 </svg>
             </div>
             <div>
-                <div style="font-weight:800; font-size:15px; color:#0c4a6e;">جدول منسقي الذكور</div>
-                <div style="font-size:12px; color:#0369a1; margin-top:2px;">فريق منسقي الذكور</div>
+                <div style="font-weight:800; font-size:15px; color:<?= $maleCardReadOnly ? '#334155' : '#0c4a6e' ?>;">
+                    جدول منسقي الذكور <?= $maleCardReadOnly ? '<span style="font-size:11px;background:#e2e8f0;color:#475569;padding:2px 6px;border-radius:4px;font-weight:700;">اطلاع فقط</span>' : '' ?>
+                </div>
+                <div style="font-size:12px; color:<?= $maleCardReadOnly ? '#64748b' : '#0369a1' ?>; margin-top:2px;">
+                    <?= $maleCardReadOnly ? 'مخصص للذكور — متاح لكِ كقراءة واطلاع فقط' : 'فريق منسقي الذكور' ?>
+                </div>
             </div>
         </div>
-        <span style="font-size:20px; font-weight:900; background:#0284c7; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($maleMaterials) ?></span>
+        <span style="font-size:20px; font-weight:900; background:<?= $maleCardReadOnly ? '#64748b' : '#0284c7' ?>; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($maleMaterials) ?></span>
     </a>
 
-    <a href="#section-female" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-radius:14px; background:linear-gradient(135deg, #fdf2f8, #fce7f3); border:2px solid #fbcfe8; color:#be185d; box-shadow:0 2px 8px rgba(190,24,93,0.06); transition:transform .15s ease;">
+    <?php 
+    $femaleCardReadOnly = ($currentCoordGender === 'male' && !$isDonationsAdmin);
+    ?>
+    <a href="#section-female" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-radius:14px; background:<?= $femaleCardReadOnly ? '#f8fafc' : 'linear-gradient(135deg, #fdf2f8, #fce7f3)' ?>; border:2px solid <?= $femaleCardReadOnly ? '#cbd5e1' : '#fbcfe8' ?>; color:<?= $femaleCardReadOnly ? '#64748b' : '#be185d' ?>; box-shadow:0 2px 8px rgba(190,24,93,0.06); transition:transform .15s ease;">
         <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:40px; height:40px; border-radius:10px; background:#fce7f3; display:flex; align-items:center; justify-content:center; color:#db2777;">
+            <div style="width:40px; height:40px; border-radius:10px; background:<?= $femaleCardReadOnly ? '#f1f5f9' : '#fce7f3' ?>; display:flex; align-items:center; justify-content:center; color:<?= $femaleCardReadOnly ? '#64748b' : '#db2777' ?>;">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                 </svg>
             </div>
             <div>
-                <div style="font-weight:800; font-size:15px; color:#831843;">جدول منسقات الإناث</div>
-                <div style="font-size:12px; color:#be185d; margin-top:2px;">فريق منسقات الإناث</div>
+                <div style="font-weight:800; font-size:15px; color:<?= $femaleCardReadOnly ? '#334155' : '#831843' ?>;">
+                    جدول منسقات الإناث <?= $femaleCardReadOnly ? '<span style="font-size:11px;background:#e2e8f0;color:#475569;padding:2px 6px;border-radius:4px;font-weight:700;">اطلاع فقط</span>' : '' ?>
+                </div>
+                <div style="font-size:12px; color:<?= $femaleCardReadOnly ? '#64748b' : '#be185d' ?>; margin-top:2px;">
+                    <?= $femaleCardReadOnly ? 'مخصص للإناث — متاح لك كقراءة واطلاع فقط' : 'فريق منسقات الإناث' ?>
+                </div>
             </div>
         </div>
-        <span style="font-size:20px; font-weight:900; background:#db2777; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($femaleMaterials) ?></span>
+        <span style="font-size:20px; font-weight:900; background:<?= $femaleCardReadOnly ? '#64748b' : '#db2777' ?>; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($femaleMaterials) ?></span>
     </a>
 </div>
 
 <!-- عرض الجداول الثلاثة مقسمة (المشترك أولاً، ثم الذكور، ثم الإناث) -->
 <?php
+/*
+ * منطق عرض الجداول مع مراعاة:
+ * - جنس المنسق الحالي ($currentCoordGender)
+ * - فلتر المنسق من URL ($coordFilter)
+ * - إظهار جدول المشترك في كل التبويبات
+ */
 $sharedSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>';
-$maleSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>';
+$maleSvg   = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>';
 $femaleSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>';
 
+// تحديد ما إذا كان يجب إخفاء جدول الذكور أو الإناث بالنسبة للمنسق الحالي
+// null = يرى الكل | 'male' = لا يرى جدول الإناث | 'female' = لا يرى جدول الذكور
+$hideMaleTable    = ($currentCoordGender === 'female' && !$isDonationsAdmin);
+$hideFemaleTable  = ($currentCoordGender === 'male'   && !$isDonationsAdmin);
+// جدول الجنس الآخر للمنسق يظهر للقراءة فقط دون إمكانية التعديل
+$showOtherGenderReadOnly = true;
+
 if ($coordFilter === 'shared') {
+    // فلتر صريح للمشترك
     renderDonationMaterialsTable('shared', 'جدول التسليم المشترك وبانتظار الفرز اليدوي', 'المواد غير المفرزة أو المشتركة بين المنسقين — يرجى تحديد المنسق المسؤول أو متابعتها مشتركاً', $sharedMaterials, ['badge_bg'=>'#faf5ff', 'badge_color'=>'#7e22ce', 'badge_border'=>'#e9d5ff', 'svg'=>$sharedSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+
 } elseif ($coordFilter === 'female_all' || (!empty($coordFilter) && isset($coordinatorsList[$coordFilter]) && ($coordinatorsList[$coordFilter]['gender'] ?? '') === 'female')) {
-    renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg'=>'#fdf2f8', 'badge_color'=>'#db2777', 'badge_border'=>'#fbcfe8', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+    // فلتر إناث صريح
+    if (!$hideFemaleTable) {
+        renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg'=>'#fdf2f8', 'badge_color'=>'#db2777', 'badge_border'=>'#fbcfe8', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+    }
+
 } elseif ($coordFilter === 'male_all' || (!empty($coordFilter) && isset($coordinatorsList[$coordFilter]) && ($coordinatorsList[$coordFilter]['gender'] ?? '') !== 'female')) {
-    renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg'=>'#f0f9ff', 'badge_color'=>'#0284c7', 'badge_border'=>'#bae6fd', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+    // فلتر ذكور صريح
+    if (!$hideMaleTable) {
+        renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg'=>'#f0f9ff', 'badge_color'=>'#0284c7', 'badge_border'=>'#bae6fd', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+    }
+
 } else {
-    // عرض الجداول الثلاثة معاً حيث يظهر جدول التسليم المشترك أولاً
+    // عرض الجداول المناسبة مع مراعاة جنس المنسق
+
+    // ١. جدول المشترك — يظهر دائماً لأي مستخدم في كل التبويبات
     renderDonationMaterialsTable('shared', 'جدول التسليم المشترك وبانتظار الفرز اليدوي', 'المواد غير المفرزة أو المشتركة بين المنسقين — يرجى تحديد المنسق المسؤول أو متابعتها مشتركاً', $sharedMaterials, ['badge_bg'=>'#faf5ff', 'badge_color'=>'#7e22ce', 'badge_border'=>'#e9d5ff', 'svg'=>$sharedSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
-    renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg'=>'#f0f9ff', 'badge_color'=>'#0284c7', 'badge_border'=>'#bae6fd', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
-    renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg'=>'#fdf2f8', 'badge_color'=>'#db2777', 'badge_border'=>'#fbcfe8', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+
+    // ٢. جدول الذكور
+    if (!$hideMaleTable) {
+        // المنسق ذكر أو أدمن → أزرار كاملة
+        renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg'=>'#f0f9ff', 'badge_color'=>'#0284c7', 'badge_border'=>'#bae6fd', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+    } elseif ($showOtherGenderReadOnly) {
+        // منسقة أنثى → جدول الذكور بالقراءة فقط
+        renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور (اطلاع)', 'هذا الجدول مخصص لمنسقي الذكور — أنتِ في وضع الاطلاع فقط', $maleMaterials, ['badge_bg'=>'#f8fafc', 'badge_color'=>'#94a3b8', 'badge_border'=>'#e2e8f0', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, true);
+    }
+
+    // ٣. جدول الإناث
+    if (!$hideFemaleTable) {
+        // المنسق أنثى أو أدمن → أزرار كاملة
+        renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg'=>'#fdf2f8', 'badge_color'=>'#db2777', 'badge_border'=>'#fbcfe8', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches);
+    } elseif ($showOtherGenderReadOnly) {
+        // منسق ذكر → جدول الإناث بالقراءة فقط
+        renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث (اطلاع)', 'هذا الجدول مخصص لمنسقات الإناث — أنت في وضع الاطلاع فقط', $femaleMaterials, ['badge_bg'=>'#fdf8ff', 'badge_color'=>'#94a3b8', 'badge_border'=>'#f3e8ff', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, true);
+    }
 }
 ?>
+<?php endif; // end of if activeTab === pending ?>
 
 <!-- ============================================================
      المودالات والنوافذ المنبثقة التفاعلية (Modals)
@@ -2090,6 +2559,102 @@ if ($coordFilter === 'shared') {
     </div>
 </div>
 
+<!-- 8. مودال اعتماد وتوجيه طلب التبرع (Approve & Assign Modal) -->
+<div class="custom-modal-overlay" id="approveDonationModal">
+    <div class="custom-modal-box" style="max-width: 620px;">
+        <div class="custom-modal-header" style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-bottom: 1px solid #a7f3d0;">
+            <h3 style="color: #065f46; display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span>اعتماد وتوجيه طلب التبرع بالمادة</span>
+            </h3>
+            <button type="button" class="close-modal-btn" onclick="closeModal('approveDonationModal')">✕</button>
+        </div>
+        <form method="post" class="custom-modal-body">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
+            <input type="hidden" name="action" value="approve_donation">
+            <input type="hidden" name="id" id="approve_donation_id">
+
+            <!-- بطاقة تفاصيل المتبرع والمادة القادمة من نموذج الموقع -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div>
+                        <div style="font-size: 11px; color: #64748b; font-weight: 600;">اسم المادة / الكتاب</div>
+                        <div id="approve_mat_name" style="font-size: 16px; font-weight: 800; color: #0f172a;"></div>
+                    </div>
+                    <span id="approve_donor_gender_badge"></span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
+                    <div><strong style="color: #475569;">المتبرع:</strong> <span id="approve_donor_name" style="font-weight: 700; color: #0f172a;"></span></div>
+                    <div><strong style="color: #475569;">الهاتف الأساسي:</strong> <span id="approve_donor_phone" dir="ltr" style="font-weight: 700; color: #059669;"></span></div>
+                    <div><strong style="color: #475569;">هاتف إضافي:</strong> <span id="approve_donor_phone_alt" dir="ltr" style="color: #64748b;"></span></div>
+                    <div><strong style="color: #475569;">البريد الإلكتروني:</strong> <span id="approve_donor_email" style="color: #64748b;"></span></div>
+                    <div style="grid-column: span 2;"><strong style="color: #475569;">أسبوع التسليم المقترح:</strong> <span id="approve_delivery_week" style="color: #d97706; font-weight: 700;"></span></div>
+                    <div style="grid-column: span 2;" id="approve_desc_wrapper"><strong style="color: #475569;">الوصف / الملاحظات:</strong> <span id="approve_material_desc" style="color: #334155;"></span></div>
+                </div>
+            </div>
+
+            <!-- خيارات التوجيه والفرز -->
+            <div class="modal-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
+                        توجيه المادة إلى (القسم أو المنسق المسؤول) *
+                    </label>
+                    <select name="assigned_coordinator" id="approve_assigned_coordinator" required class="form-control" style="border: 2px solid #10b981; font-weight: 700; font-size: 13.5px; padding: 10px;">
+                        <optgroup label="تسليم عام / غير مفرز">
+                            <option value="shared">🤝 جدول التسليم المشترك (بانتظار الفرز أو مشترك)</option>
+                        </optgroup>
+                        <optgroup label="فريق منسقي الذكور">
+                            <?php foreach ($coordinatorsList as $cKey => $cVal): ?>
+                                <?php if ($cKey !== 'shared' && ($cVal['gender'] ?? '') !== 'female'): ?>
+                                    <option value="<?= $cKey ?>">👨‍💼 <?= htmlspecialchars($cVal['name']) ?> (<?= htmlspecialchars($cVal['role'] ?? 'منسق') ?>)</option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </optgroup>
+                        <optgroup label="فريق منسقات الإناث">
+                            <?php foreach ($coordinatorsList as $cKey => $cVal): ?>
+                                <?php if ($cKey !== 'shared' && ($cVal['gender'] ?? '') === 'female'): ?>
+                                    <option value="<?= $cKey ?>">👩‍💼 <?= htmlspecialchars($cVal['name']) ?> (<?= htmlspecialchars($cVal['role'] ?? 'منسقة') ?>)</option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    </select>
+                    <span style="font-size: 11.5px; color: #64748b; margin-top: 5px; display: block;">
+                        بناءً على جنس المتبرع ونوع المادة، يمكنك إسنادها فوراً للمنسق المسؤول أو وضعها في الجدول المشترك.
+                    </span>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">الكلية التابعة لها المادة</label>
+                    <select name="faculty" id="approve_faculty" class="form-control">
+                        <option value="">— اختر الكلية (اختياري) —</option>
+                        <?php foreach ($facultiesList as $fac): ?>
+                            <option value="<?= htmlspecialchars($fac) ?>"><?= htmlspecialchars($fac) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">رمز المساق (اختياري)</label>
+                    <input type="text" name="course_code" id="approve_course_code" class="form-control" placeholder="مثال: ECON101">
+                </div>
+
+                <div class="form-group" style="grid-column: span 2;">
+                    <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">ملاحظات إدارية إضافية (اختياري)</label>
+                    <input type="text" name="notes" id="approve_notes" class="form-control" placeholder="مثال: تم التنسيق مع الطالب للتسليم عند مدخل الكلية">
+                </div>
+            </div>
+
+            <div class="custom-modal-footer" style="margin-top: 20px; padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('approveDonationModal')">إلغاء</button>
+                <button type="submit" class="btn" style="background: #10b981; color: #fff; font-weight: 700; border: 1px solid #059669; padding: 9px 22px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    تأكيد الاعتماد والتوجيه للجدول
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     function openModal(id) {
         const modal = document.getElementById(id);
@@ -2099,6 +2664,52 @@ if ($coordFilter === 'shared') {
     function closeModal(id) {
         const modal = document.getElementById(id);
         if (modal) modal.classList.remove('show');
+    }
+
+    function openApproveDonationModal(item) {
+        if (!item) return;
+        document.getElementById('approve_donation_id').value = item.id || '';
+        document.getElementById('approve_mat_name').textContent = item.material_name || 'بدون اسم';
+        document.getElementById('approve_donor_name').textContent = item.donor_name || 'غير معروف';
+        document.getElementById('approve_donor_phone').textContent = item.donor_phone || '-';
+        document.getElementById('approve_donor_phone_alt').textContent = item.donor_phone_alt || '-';
+        document.getElementById('approve_donor_email').textContent = item.donor_email || '-';
+        document.getElementById('approve_delivery_week').textContent = item.delivery_week || 'غير محدد';
+        
+        const desc = item.material_description || item.notes || '';
+        const descWrap = document.getElementById('approve_desc_wrapper');
+        if (desc) {
+            document.getElementById('approve_material_desc').textContent = desc;
+            if (descWrap) descWrap.style.display = '';
+        } else {
+            if (descWrap) descWrap.style.display = 'none';
+        }
+
+        const genderBadge = document.getElementById('approve_donor_gender_badge');
+        const gender = (item.donor_gender || '').toLowerCase();
+        if (gender === 'female' || gender === 'أنثى') {
+            genderBadge.innerHTML = '<span style="background:#fdf2f8;color:#db2777;border:1px solid #fbcfe8;font-size:11px;font-weight:700;padding:3px 10px;border-radius:9999px;">أنثى 👩</span>';
+        } else {
+            genderBadge.innerHTML = '<span style="background:#f0f9ff;color:#0284c7;border:1px solid #bae6fd;font-size:11px;font-weight:700;padding:3px 10px;border-radius:9999px;">ذكر 👨</span>';
+        }
+
+        const coordSelect = document.getElementById('approve_assigned_coordinator');
+        if (coordSelect) {
+            // Default: if female, pick female or shared; if male, pick shared or male
+            coordSelect.value = 'shared';
+        }
+
+        if (document.getElementById('approve_faculty')) {
+            document.getElementById('approve_faculty').value = item.faculty || '';
+        }
+        if (document.getElementById('approve_course_code')) {
+            document.getElementById('approve_course_code').value = item.course_code || '';
+        }
+        if (document.getElementById('approve_notes')) {
+            document.getElementById('approve_notes').value = '';
+        }
+
+        openModal('approveDonationModal');
     }
 
     function openArchiveCampaignModal() {

@@ -968,3 +968,351 @@ function sync_all_quizzes_to_firestore(?PDO $db = null, ?string $partSlugFilter 
     ];
 }
 
+/**
+ * جلب طلبات التبرع بالمواد من Firestore إلى SQLite
+ * تُحفظ بحالة 'pending' لتظهر في جدول الطلبات المنتظرة بانتظار موافقة الإدارة
+ */
+function pull_pending_donations_from_firestore(?PDO $db = null): int
+{
+    if ($db === null) {
+        $db = get_db();
+    }
+
+    $token = firestoreServiceToken();
+    $url = FS_API_BASE . 'materialDonations?pageSize=300' . ($token ? '' : '?key=' . urlencode(FS_API_KEY));
+    $headers = firestoreRequestHeaders();
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'header' => $headers,
+            'timeout' => 4,
+            'ignore_errors' => true,
+        ]
+    ]);
+
+    $response = @file_get_contents($url, false, $context);
+    if ($response === false) {
+        return 0;
+    }
+
+    $payload = json_decode($response, true);
+    if (!is_array($payload) || empty($payload['documents'])) {
+        return 0;
+    }
+
+    foreach ([
+        'donor_phone_alt' => 'TEXT',
+        'donor_email' => 'TEXT',
+        'delivery_week' => 'TEXT',
+        'firestore_id' => 'TEXT'
+    ] as $col => $type) {
+        $cols = $db->query('PRAGMA table_info(material_exchanges)')->fetchAll(PDO::FETCH_COLUMN, 1);
+        if (!in_array($col, $cols, true)) {
+            $db->exec("ALTER TABLE material_exchanges ADD COLUMN $col $type");
+        }
+    }
+
+    $stmtCheck = $db->prepare('SELECT id, status FROM material_exchanges WHERE firestore_id = ? AND material_name = ? LIMIT 1');
+    $stmtCheckFallback = $db->prepare('SELECT id, status FROM material_exchanges WHERE donor_phone = ? AND material_name = ? AND created_at = ? LIMIT 1');
+
+    $stmtInsert = $db->prepare('INSERT INTO material_exchanges (
+        donor_name, donor_phone, donor_phone_alt, donor_email, donor_gender,
+        material_name, description, delivery_week, status,
+        assigned_coordinator, delivery_status, firestore_id, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+
+    $stmtUpdate = $db->prepare('UPDATE material_exchanges SET 
+        donor_name = ?, donor_phone_alt = ?, donor_email = ?, delivery_week = ?, description = ?
+        WHERE id = ?');
+
+    $importedCount = 0;
+
+    foreach ($payload['documents'] as $doc) {
+        $docId = basename($doc['name']);
+        // تجاهل المواد المعكوسة من لوحة التحكم التي تبدأ بـ donation_
+        if (str_starts_with($docId, 'donation_')) {
+            continue;
+        }
+
+        $fields = $doc['fields'] ?? [];
+        // تجاهل المحذوفة
+        if (!empty($fields['deleted']['booleanValue'])) {
+            continue;
+        }
+
+        $studentName = trim((string) ($fields['studentName']['stringValue'] ?? 'طالب'));
+        $phoneNumber = trim((string) ($fields['phoneNumber']['stringValue'] ?? ''));
+        $confirmPhone = trim((string) ($fields['confirmPhoneNumber']['stringValue'] ?? ($fields['alternatePhone']['stringValue'] ?? '')));
+        $email = trim((string) ($fields['email']['stringValue'] ?? ''));
+        $gender = trim((string) ($fields['studentGender']['stringValue'] ?? 'male'));
+        $gender = in_array($gender, ['male', 'female'], true) ? $gender : 'male';
+
+        $deliveryWeek = trim((string) ($fields['deliveryWeek']['stringValue'] ?? ''));
+        $deliveryWeekCustom = trim((string) ($fields['deliveryWeekCustom']['stringValue'] ?? ''));
+        if ($deliveryWeekCustom !== '' && $deliveryWeek !== $deliveryWeekCustom) {
+            $deliveryWeek = $deliveryWeek !== '' ? $deliveryWeek . ' (' . $deliveryWeekCustom . ')' : $deliveryWeekCustom;
+        }
+
+        $docStatus = trim((string) ($fields['status']['stringValue'] ?? 'pending'));
+        if (!in_array($docStatus, ['pending', 'approved', 'reserved', 'completed'], true)) {
+            $docStatus = 'pending';
+        }
+
+        $createdAtRaw = $fields['createdAt']['timestampValue'] ?? ($doc['createTime'] ?? date('c'));
+        try {
+            $createdAt = (new DateTimeImmutable((string) $createdAtRaw))->format('Y-m-d H:i:s');
+        } catch (Throwable) {
+            $createdAt = date('Y-m-d H:i:s');
+        }
+
+        $materialsList = $fields['materials']['arrayValue']['values'] ?? [];
+        if (empty($materialsList)) {
+            continue;
+        }
+
+        foreach ($materialsList as $mItem) {
+            $mFields = $mItem['mapValue']['fields'] ?? [];
+            $matName = trim((string) ($mFields['name']['stringValue'] ?? ''));
+            if ($matName === '') {
+                continue;
+            }
+            $matDesc = trim((string) ($mFields['description']['stringValue'] ?? ''));
+            $matStatus = trim((string) ($mFields['status']['stringValue'] ?? ''));
+            $finalStatus = in_array($matStatus, ['pending', 'approved', 'reserved', 'completed'], true) ? $matStatus : $docStatus;
+
+            // التحقق من وجود السجل مسبقاً
+            $stmtCheck->execute([$docId, $matName]);
+            $existing = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+            if (!$existing && $phoneNumber !== '') {
+                $stmtCheckFallback->execute([$phoneNumber, $matName, $createdAt]);
+                $existing = $stmtCheckFallback->fetch(PDO::FETCH_ASSOC);
+            }
+
+            if ($existing) {
+                // تحديث الخانات الإضافية إن لم تكن مسجلة
+                $stmtUpdate->execute([$studentName, $confirmPhone, $email, $deliveryWeek, $matDesc, (int) $existing['id']]);
+            } else {
+                // إدراج طلب جديد بحالة pending
+                $stmtInsert->execute([
+                    $studentName,
+                    $phoneNumber,
+                    $confirmPhone,
+                    $email,
+                    $gender,
+                    $matName,
+                    $matDesc,
+                    $deliveryWeek,
+                    $finalStatus,
+                    'shared', // افتراضياً في المشترك لحين موافقة وتوجيه الأدمن
+                    'pending_contact',
+                    $docId,
+                    $createdAt,
+                    $createdAt
+                ]);
+                $importedCount++;
+            }
+        }
+    }
+
+    return $importedCount;
+}
+
+/**
+ * تحديث حالة المادة المتبرع بها إلى approved في Firestore عند موافقة الأدمن
+ */
+function mark_donation_approved_in_firestore(string $firestoreId, string $materialName): bool
+{
+    if ($firestoreId === '' || str_starts_with($firestoreId, 'donation_')) {
+        return false;
+    }
+    $url = FS_API_BASE . 'materialDonations/' . rawurlencode($firestoreId);
+    $headers = firestoreRequestHeaders();
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'header' => $headers,
+            'timeout' => 4,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $res = @file_get_contents($url, false, $context);
+    if (!$res) return false;
+    $doc = json_decode($res, true);
+    if (!is_array($doc) || empty($doc['fields'])) return false;
+
+    $fields = $doc['fields'];
+    $fields['status'] = ['stringValue' => 'approved'];
+    if (!empty($fields['materials']['arrayValue']['values'])) {
+        foreach ($fields['materials']['arrayValue']['values'] as &$mVal) {
+            $mFields = &$mVal['mapValue']['fields'];
+            if (trim((string)($mFields['name']['stringValue'] ?? '')) === $materialName) {
+                $mFields['status'] = ['stringValue' => 'approved'];
+            }
+        }
+        unset($mVal);
+    }
+
+    $patchContext = stream_context_create([
+        'http' => [
+            'method' => 'PATCH',
+            'header' => $headers,
+            'content' => json_encode(['fields' => $fields], JSON_UNESCAPED_UNICODE),
+            'timeout' => 4,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $patchRes = @file_get_contents($url, false, $patchContext);
+    return $patchRes !== false;
+}
+
+/**
+ * تحديث حالة المادة المتبرع بها إلى reserved في Firestore عند حجزها داخلياً من لوحة التحكم
+ * هذا يحل مشكلة ظهور المادة كمتاحة على الموقع بعد حجزها من الأدمن
+ */
+function mark_donation_reserved_in_firestore(string $firestoreId, string $materialName, array $bookerInfo = []): bool
+{
+    if ($firestoreId === '' || str_starts_with($firestoreId, 'donation_')) {
+        return false;
+    }
+
+    $url = FS_API_BASE . 'materialDonations/' . rawurlencode($firestoreId);
+    $headers = firestoreRequestHeaders();
+
+    // جلب المستند الأصلي أولاً
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'header' => $headers,
+            'timeout' => 4,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $res = @file_get_contents($url, false, $context);
+    if (!$res) return false;
+    $doc = json_decode($res, true);
+    if (!is_array($doc) || empty($doc['fields'])) return false;
+
+    $fields = $doc['fields'];
+    $foundMaterial = false;
+
+    // تحديث حالة المادة المحددة داخل مصفوفة materials
+    if (!empty($fields['materials']['arrayValue']['values'])) {
+        foreach ($fields['materials']['arrayValue']['values'] as &$mVal) {
+            $mFields = &$mVal['mapValue']['fields'];
+            $mName = trim((string)($mFields['name']['stringValue'] ?? ''));
+            if ($mName === $materialName) {
+                $mFields['status'] = ['stringValue' => 'reserved'];
+                // إضافة بيانات الحاجز إلى takerInfo
+                if (!empty($bookerInfo)) {
+                    $takerFields = [];
+                    foreach ($bookerInfo as $k => $v) {
+                        $takerFields[$k] = ['stringValue' => (string)$v];
+                    }
+                    $mFields['takerInfo'] = ['mapValue' => ['fields' => $takerFields]];
+                }
+                $foundMaterial = true;
+            }
+        }
+        unset($mVal);
+    }
+
+    if (!$foundMaterial) {
+        return false; // لم نجد المادة في المصفوفة
+    }
+
+    // التحقق إذا كانت كل المواد محجوزة أو مكتملة → تحديث حالة المستند الكلي
+    $allReserved = true;
+    foreach ($fields['materials']['arrayValue']['values'] as $mVal) {
+        $mStatus = $mVal['mapValue']['fields']['status']['stringValue'] ?? 'pending';
+        if (!in_array($mStatus, ['reserved', 'completed'], true)) {
+            $allReserved = false;
+            break;
+        }
+    }
+    if ($allReserved) {
+        $fields['status'] = ['stringValue' => 'reserved'];
+    }
+
+    $fields['lastUpdated'] = ['timestampValue' => date('c')];
+
+    // إرسال التحديث إلى Firestore
+    $patchContext = stream_context_create([
+        'http' => [
+            'method' => 'PATCH',
+            'header' => $headers,
+            'content' => json_encode(['fields' => $fields], JSON_UNESCAPED_UNICODE),
+            'timeout' => 5,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $patchRes = @file_get_contents($url, false, $patchContext);
+    return $patchRes !== false;
+}
+
+/**
+ * إلغاء حجز المادة وإعادتها كمتاحة (approved) في Firestore
+ * يحذف takerInfo ويعيد حالة المادة إلى approved
+ */
+function mark_donation_unreserved_in_firestore(string $firestoreId, string $materialName): bool
+{
+    if ($firestoreId === '' || str_starts_with($firestoreId, 'donation_')) {
+        return false;
+    }
+
+    $url = FS_API_BASE . 'materialDonations/' . rawurlencode($firestoreId);
+    $headers = firestoreRequestHeaders();
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'header' => $headers,
+            'timeout' => 4,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $res = @file_get_contents($url, false, $context);
+    if (!$res) return false;
+    $doc = json_decode($res, true);
+    if (!is_array($doc) || empty($doc['fields'])) return false;
+
+    $fields = $doc['fields'];
+    $foundMaterial = false;
+
+    if (!empty($fields['materials']['arrayValue']['values'])) {
+        foreach ($fields['materials']['arrayValue']['values'] as &$mVal) {
+            $mFields = &$mVal['mapValue']['fields'];
+            $mName = trim((string)($mFields['name']['stringValue'] ?? ''));
+            if ($mName === $materialName) {
+                $mFields['status'] = ['stringValue' => 'approved'];
+                unset($mFields['takerInfo']); // حذف معلومات الحاجز
+                $foundMaterial = true;
+            }
+        }
+        unset($mVal);
+    }
+
+    if (!$foundMaterial) {
+        return false;
+    }
+
+    // إعادة حالة المستند الرئيسي إلى approved
+    $fields['status'] = ['stringValue' => 'approved'];
+    $fields['lastUpdated'] = ['timestampValue' => date('c')];
+
+    $patchContext = stream_context_create([
+        'http' => [
+            'method' => 'PATCH',
+            'header' => $headers,
+            'content' => json_encode(['fields' => $fields], JSON_UNESCAPED_UNICODE),
+            'timeout' => 5,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $patchRes = @file_get_contents($url, false, $patchContext);
+    return $patchRes !== false;
+}
+
+
