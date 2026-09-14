@@ -163,7 +163,9 @@ if (!function_exists('get_db')) {
             $pdo = new PDO('sqlite:' . DB_PATH);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $pdo->exec('PRAGMA foreign_keys = ON');
-            $pdo->exec('PRAGMA busy_timeout = 5000');
+            $pdo->exec('PRAGMA busy_timeout = 10000');
+            $pdo->exec('PRAGMA journal_mode = WAL');
+            $pdo->exec('PRAGMA synchronous = NORMAL');
 
             // إنشاء الجداول الأساسية
             $pdo->exec("
