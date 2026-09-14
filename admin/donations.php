@@ -682,6 +682,24 @@ $completedCount = (int) $db->query("SELECT COUNT(*) FROM material_exchanges WHER
 $pendingCount = (int) $db->query("SELECT COUNT(*) FROM material_exchanges WHERE $archiveWhere AND status = 'pending'")->fetchColumn();
 $archiveStats = $db->query("SELECT archive_key, archive_label, COUNT(*) AS total, SUM(status = 'completed') AS completed, SUM(status = 'reserved') AS reserved, SUM(status = 'approved') AS available FROM material_exchanges WHERE archive_key IS NOT NULL GROUP BY archive_key, archive_label ORDER BY CASE archive_key WHEN 'second_2025_2026' THEN 1 WHEN 'summer_2025_2026' THEN 2 ELSE 3 END")->fetchAll(PDO::FETCH_ASSOC);
 
+// حساب التسمية النصية للشارة المعروضة للحملة أو الأرشيف مبكراً لمنع أي تحذيرات
+$campaignBadgeText = '';
+if ($archiveFilter === 'all') {
+    $campaignBadgeText = 'كافة الحملات والأرشيف';
+} elseif ($archiveFilter !== '' && $archiveFilter !== 'current') {
+    foreach ($archiveStats as $arch) {
+        if ($arch['archive_key'] === $archiveFilter) {
+            $campaignBadgeText = $arch['archive_label'];
+            break;
+        }
+    }
+    if ($campaignBadgeText === '') {
+        $campaignBadgeText = 'أرشيف: ' . $archiveFilter;
+    }
+} else {
+    $campaignBadgeText = 'الحملة الحالية (' . $currentCampaignLabel . ')';
+}
+
 // قائمة الكليات — مأخوذة من مشروع مكانك الرسمي (faculties في coursesData.js + MaterialExchange.jsx)
 $facultiesList = [
     'كلية الذكاء الاصطناعي',
@@ -807,8 +825,223 @@ function buildWhatsAppLink($phone, $message)
     return 'https://wa.me/' . $cleanPhone . '?text=' . rawurlencode($message);
 }
 
+/* ---------- طباعة كشف المواد الرسمي المنسق للطباعة و PDF ---------- */
+if (isset($_GET['action']) && $_GET['action'] === 'print_sheet') {
+    $sheetTitle = 'كشف تبادل وتسليم المواد الدراسية';
+    if ($activeTab === 'available') $sheetTitle = 'كشف المواد المتاحة للاستلام بالمستودع';
+    elseif ($activeTab === 'reserved') $sheetTitle = 'كشف المواد المحجوزة وجداول مواعيد التسليم';
+    elseif ($activeTab === 'completed') $sheetTitle = 'كشف المواد المسلّمة رسمياً للطلبة';
+    elseif ($activeTab === 'pending') $sheetTitle = 'كشف طلبات التبرع المنتظرة للمراجعة والاعتماد';
+    elseif ($activeTab === 'shared') $sheetTitle = 'كشف جدول التسليم المشترك وغير المفرز';
+    ?>
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><?= htmlspecialchars($sheetTitle) ?> — منصة مكانك</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
+        <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: 'Cairo', sans-serif; padding: 25px 30px; color: #0f172a; background: #fff; line-height: 1.5; font-size: 12px; }
+            .no-print-bar { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; background: #f0f9ff; border: 1.5px solid #bae6fd; padding: 12px 18px; border-radius: 10px; box-shadow: 0 2px 8px rgba(2,132,199,0.08); }
+            .btn-prt { background: #0284c7; color: #fff; border: none; border-radius: 8px; padding: 9px 20px; font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(2,132,199,0.3); }
+            .btn-prt:hover { background: #0369a1; }
+            .btn-cls { background: #fff; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 16px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none; }
+            .btn-cls:hover { background: #f8fafc; color: #0f172a; }
+            
+            .print-header { border-bottom: 2.5px solid #0284c7; padding-bottom: 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .brand-title { font-size: 21px; font-weight: 900; color: #0284c7; }
+            .sheet-sub { font-size: 13.5px; font-weight: 800; color: #1e293b; margin-top: 3px; }
+            .meta-box { font-size: 11.5px; color: #64748b; text-align: left; }
+            
+            .summary-bar { display: flex; gap: 14px; margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 14px; font-size: 12px; }
+            .summary-bar span { font-weight: 800; color: #0284c7; }
+            
+            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 12px; }
+            th, td { border: 1px solid #cbd5e1; padding: 7px 9px; text-align: right; vertical-align: middle; }
+            th { background: #f1f5f9; color: #0f172a; font-weight: 800; font-size: 12px; }
+            tr:nth-child(even) { background: #fafbfc; }
+            
+            .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+            .badge-completed { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+            .badge-reserved { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+            .badge-approved { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+            .badge-pending { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+            
+            .signatures-block { display: flex; justify-content: space-between; margin-top: 36px; padding-top: 10px; page-break-inside: avoid; }
+            .sig-box { text-align: center; width: 200px; }
+            .sig-title { font-weight: 800; color: #334155; font-size: 12px; }
+            .sig-line { border-bottom: 1.5px dotted #94a3b8; height: 40px; margin-top: 6px; }
+            
+            @media print {
+                .no-print-bar { display: none !important; }
+                body { padding: 0 !important; }
+                table { page-break-inside: auto; }
+                tr { page-break-inside: avoid; page-break-after: auto; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="no-print-bar">
+            <div style="font-weight: 800; color: #0369a1; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                <span>📄 كشف المواد والكتب الدراسية — جاهز للطباعة أو التصدير PDF</span>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-prt" onclick="window.print()">🖨️ بدء الطباعة الآن</button>
+                <button class="btn-cls" onclick="window.close()">✕ إغلاق النافذة</button>
+            </div>
+        </div>
+
+        <div class="print-header">
+            <div>
+                <div class="brand-title">منصة مكانك — مبادرة تبادل المواد والكتب الدراسية</div>
+                <div class="sheet-sub"><?= htmlspecialchars($sheetTitle) ?></div>
+            </div>
+            <div class="meta-box">
+                <div>تاريخ الطباعة: <strong><?= date('Y-m-d H:i') ?></strong></div>
+                <div>المشرف المنفذ: <strong><?= htmlspecialchars($_donationsCurrentUser['full_name'] ?? $_donationsCurrentUser['username'] ?? 'الإدارة') ?></strong></div>
+            </div>
+        </div>
+
+        <div class="summary-bar">
+            <div>الحملة المعتمدة: <span><?= htmlspecialchars($campaignBadgeText) ?></span></div>
+            <div>إجمالي السجلات: <span><?= count($materials) ?> مادة</span></div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 40px; text-align: center;">#</th>
+                    <th>اسم المادة / الكتاب</th>
+                    <th>الكلية والرمز</th>
+                    <th>الطالب المتبرع</th>
+                    <th>الطالب المستلم</th>
+                    <th>المنسق المشرف</th>
+                    <th>موعد الاستلام</th>
+                    <th style="width: 85px; text-align: center;">الحالة</th>
+                    <th style="width: 110px;">توقيع الاستلام</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($materials)): ?>
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 30px; color: #94a3b8;">لا توجد مواد في هذا الكشف حالياً.</td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($materials as $idx => $m): 
+                        $statusTxt = $m['status'] === 'completed' ? 'تم التسليم' : ($m['status'] === 'reserved' ? 'محجوز' : ($m['status'] === 'pending' ? 'بانتظار الموافقة' : 'متاح'));
+                        $badgeCls = 'badge-' . $m['status'];
+                    ?>
+                        <tr>
+                            <td style="text-align: center; font-weight: 700; color: #64748b;"><?= $idx + 1 ?></td>
+                            <td>
+                                <strong><?= htmlspecialchars($m['material_name']) ?></strong>
+                                <?php if (!empty($m['description'])): ?>
+                                    <div style="font-size: 11px; color: #64748b;"><?= htmlspecialchars($m['description']) ?></div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div><?= htmlspecialchars($m['faculty'] ?: 'متطلب عام') ?></div>
+                                <?php if (!empty($m['course_code'])): ?>
+                                    <small style="color: #64748b;"><?= htmlspecialchars($m['course_code']) ?></small>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div><?= htmlspecialchars($m['donor_name'] ?: '—') ?></div>
+                                <?php if (!empty($m['donor_phone'])): ?>
+                                    <small dir="ltr" style="color: #64748b;"><?= htmlspecialchars($m['donor_phone']) ?></small>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div><?= htmlspecialchars($m['booker_name'] ?: '—') ?></div>
+                                <?php if (!empty($m['booker_phone'])): ?>
+                                    <small dir="ltr" style="color: #64748b;"><?= htmlspecialchars($m['booker_phone']) ?></small>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= htmlspecialchars($coordinatorsList[$m['assigned_coordinator']]['name'] ?? ($m['assigned_coordinator'] ?: 'مشترك')) ?></td>
+                            <td><?= htmlspecialchars(trim(($m['pickup_date'] ?? '') . ' ' . ($m['pickup_time'] ?? '')) ?: '—') ?></td>
+                            <td style="text-align: center;"><span class="badge <?= $badgeCls ?>"><?= $statusTxt ?></span></td>
+                            <td></td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+
+        <div class="signatures-block">
+            <div class="sig-box">
+                <div class="sig-title">توقيع المنسق المشرف</div>
+                <div class="sig-line"></div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-title">اعتماد إدارة الحملة</div>
+                <div class="sig-line"></div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-title">ختم منصة مكانك</div>
+                <div class="sig-line"></div>
+            </div>
+        </div>
+
+        <script>
+            window.onload = function() {
+                window.print();
+            };
+        </script>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
 require __DIR__ . '/_header.php';
 ?>
+
+<style>
+@media print {
+    .sidebar,
+    .top-header,
+    .stats-grid,
+    .semester-archive-panel,
+    .tabs-header-wrapper,
+    .panel-box,
+    .alert-msg,
+    .custom-modal-overlay:not(#slipModal),
+    .no-print,
+    .table-action-btns,
+    .whatsapp-quick-btn {
+        display: none !important;
+    }
+    body {
+        background: #fff !important;
+        color: #000 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+    #slipModal {
+        position: static !important;
+        display: block !important;
+        background: transparent !important;
+        padding: 0 !important;
+        width: 100% !important;
+        box-shadow: none !important;
+    }
+    #slipModal .custom-modal-box {
+        box-shadow: none !important;
+        border: none !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+}
+</style>
 
 <!-- تنبيه الرسائل الإجرائية -->
 <?php if ($message): ?>
@@ -942,7 +1175,7 @@ require __DIR__ . '/_header.php';
             <div style="font-size:12px;color:#64748b;margin-top:4px;"><?= htmlspecialchars($currentCampaignLabel) ?> · الطلبات الجديدة من الموقع تظهر هنا</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <?php if ($canArchiveCampaign): ?>
+            <?php if ($isDonationsAdmin): ?>
             <button type="button" class="btn" style="background:#f59e0b;color:#fff;border:1px solid #d97706;" onclick="openArchiveCampaignModal()">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
                     <rect width="20" height="5" x="2" y="3" rx="1" />
@@ -951,9 +1184,7 @@ require __DIR__ . '/_header.php';
                 </svg>
                 أرشفة الحملة الحالية
             </button>
-            <?php endif; ?>
 
-            <?php if ($canCreateCampaign): ?>
             <form method="post" style="margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
                 <input type="hidden" name="action" value="start_new_campaign">
@@ -961,12 +1192,10 @@ require __DIR__ . '/_header.php';
                     style="min-width:180px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">
                 <button type="submit" class="btn btn-primary" style="padding:8px 14px;">فتح حملة جديدة</button>
             </form>
-            <?php endif; ?>
-
-            <?php if (!$canArchiveCampaign && !$canCreateCampaign): ?>
+            <?php else: ?>
             <span style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                إدارة الحملات والأرشفة مخصصة للإدارة
+                إدارة الحملات والأرشفة مخصصة للإدارة فقط
             </span>
             <?php endif; ?>
         </div>
@@ -1124,7 +1353,7 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
             </svg>
             إضافة كتاب / مادة متبادلة
         </button>
-        <?php if ($canArchiveCampaign): ?>
+        <?php if ($isDonationsAdmin): ?>
         <button type="button" class="btn" style="background:#f59e0b; color:#fff; border:1px solid #d97706;" onclick="openArchiveCampaignModal()">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <rect width="20" height="5" x="2" y="3" rx="1" />
@@ -1134,14 +1363,14 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
             أرشفة الحملة الحالية
         </button>
         <?php endif; ?>
-        <button type="button" class="btn btn-secondary" onclick="window.print()">
+        <a href="?action=print_sheet&tab=<?= urlencode($activeTab) ?>&archive=<?= urlencode($archiveFilter) ?>&status=<?= urlencode($statusFilter) ?>&faculty=<?= urlencode($facultyFilter) ?>&coord=<?= urlencode($coordFilter) ?>&q=<?= urlencode($search) ?>" target="_blank" class="btn btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;" title="طباعة كشف المواد والكتب المتبادلة رسمياً">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 6 2 18 2 18 9" />
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                 <rect width="12" height="8" x="6" y="14" />
             </svg>
-            طباعة الكشف
-        </button>
+            <span>طباعة الكشف</span>
+        </a>
     </div>
 </div>
 
