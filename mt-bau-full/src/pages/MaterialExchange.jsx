@@ -986,8 +986,14 @@ const MaterialExchange = ({ isEmbedded = false }) => {
             const snapshot = await getDocs(q);
             const donationsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             const materialsList = donationsData.flatMap(donation => {
+                if (donation.deleted || donation.status === 'deleted' || donation.status === 'cancelled') {
+                    return [];
+                }
                 const materials = donation.materials || (donation.itemName ? [donation.itemName] : (donation.materialName ? [{ name: donation.materialName, status: donation.status, bookerName: donation.bookerName, bookerPhone: donation.bookerPhone }] : []));
-                return materials.map((m, idx) => {
+                return materials.filter(m => {
+                    const st = typeof m === 'object' && m !== null ? m.status : donation.status;
+                    return st !== 'deleted' && st !== 'cancelled';
+                }).map((m, idx) => {
                     const materialObj = typeof m === 'object' && m !== null ? { ...m } : { name: m, status: donation.status };
                     const itemStatus = materialObj.status || (materialObj.takerInfo || donation.bookerName ? 'reserved' : (donation.status || 'approved'));
                     materialObj.status = itemStatus;

@@ -1316,3 +1316,179 @@ function mark_donation_unreserved_in_firestore(string $firestoreId, string $mate
 }
 
 
+
+/**
+ * حذف مادة من Firestore فوراً وإخفائها من الموقع
+ * إذا كانت المادة هي الوحيدة في مستند التبرع، يتم حذف المستند كاملاً
+ * وإذا كان المستند يحتوي مواد أخرى، يتم إزالة المادة المحددة منه
+ */
+function delete_material_from_firestore(?string $firestoreId, string $materialName, int $localId, ?PDO $db = null): bool
+{
+    // حذف المستند المنعكس donation_{id} إن وجد
+    if ($localId > 0) {
+        firestoreDeleteDoc('materialDonations', 'donation_' . $localId);
+    }
+
+    if (empty($firestoreId) || str_starts_with($firestoreId, 'donation_')) {
+        return true;
+    }
+
+    // فحص ما إذا كانت هناك مواد أخرى تشارك نفس مستند Firestore في قاعدة البيانات
+    $hasOtherMaterials = false;
+    if ($db instanceof PDO) {
+        $stmtCheck = $db->prepare('SELECT COUNT(*) FROM material_exchanges WHERE firestore_id = ? AND id != ?');
+        $stmtCheck->execute([$firestoreId, $localId]);
+        $hasOtherMaterials = ((int) $stmtCheck->fetchColumn()) > 0;
+    }
+
+    // إذا لم تكن هناك مواد أخرى، نحذف المستند كاملاً من Firestore فوراً
+    if (!$hasOtherMaterials) {
+        return firestoreDeleteDoc('materialDonations', $firestoreId);
+    }
+
+    // إذا كانت هناك مواد أخرى في نفس التبرع، نفتح المستند ونحذف المادة من مصفوفة materials
+    $url = firestoreRequestUrl('materialDonations/' . rawurlencode($firestoreId));
+    $headers = firestoreRequestHeaders();
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'header' => $headers,
+            'timeout' => 5,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $res = @file_get_contents($url, false, $context);
+    if (!$res) return false;
+    $doc = json_decode($res, true);
+    if (!is_array($doc) || empty($doc['fields'])) return false;
+
+    $fields = $doc['fields'];
+    if (!empty($fields['materials']['arrayValue']['values'])) {
+        $newVals = [];
+        foreach ($fields['materials']['arrayValue']['values'] as $mVal) {
+            $mFields = $mVal['mapValue']['fields'] ?? [];
+            $mName = trim((string)($mFields['name']['stringValue'] ?? ''));
+            if ($mName !== $materialName) {
+                $newVals[] = $mVal;
+            }
+        }
+        $fields['materials']['arrayValue']['values'] = $newVals;
+    }
+
+    $fields['lastUpdated'] = ['timestampValue' => date('c')];
+    $patchContext = stream_context_create([
+        'http' => [
+            'method' => 'PATCH',
+            'header' => $headers,
+            'content' => json_encode(['fields' => $fields], JSON_UNESCAPED_UNICODE),
+            'timeout' => 5,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $patchRes = @file_get_contents($url, false, $patchContext);
+    return $patchRes !== false;
+}
+
+
+/**
+ * مزامنة تعديل بيانات وحالة المادة مع Firestore فوراً
+ * يعكس أي تغيير في الحالة (approved, reserved, completed, cancelled) على الموقع مباشرة
+ */
+function sync_material_update_to_firestore(int $exchangeId, array $data, ?PDO $db = null): bool
+{
+    $firestoreId = trim((string)($data['firestore_id'] ?? ''));
+    $materialName = trim((string)($data['material_name'] ?? ''));
+    $status = trim((string)($data['status'] ?? 'approved'));
+
+    // 1. تحديث المستند المنعكس donation_{id}
+    if ($exchangeId > 0) {
+        $docId = 'donation_' . $exchangeId;
+        if ($status === 'cancelled' || $status === 'deleted') {
+            firestoreDeleteDoc('materialDonations', $docId);
+        } else {
+            firestoreUpsertDoc('materialDonations', $docId, [
+                'id' => $docId,
+                'donorName' => (string) ($data['donor_name'] ?? ''),
+                'materialName' => $materialName,
+                'courseCode' => (string) ($data['course_code'] ?? ''),
+                'faculty' => (string) ($data['faculty'] ?? 'عام'),
+                'status' => $status,
+                'bookerName' => (string) ($data['booker_name'] ?? ''),
+                'bookerPhone' => (string) ($data['booker_phone'] ?? ''),
+                'pickupDate' => (string) ($data['pickup_date'] ?? ''),
+                'pickupTime' => (string) ($data['pickup_time'] ?? ''),
+                'notes' => (string) ($data['notes'] ?? ''),
+                'updatedAt' => date('c'),
+            ]);
+        }
+    }
+
+    // 2. تحديث المستند الأصلي في Firestore إن وجد
+    if ($firestoreId === '' || str_starts_with($firestoreId, 'donation_')) {
+        return true;
+    }
+
+    // إذا كانت الحالة ملغية، نحذف أو نخفي المادة من المستند الأصلي
+    if ($status === 'cancelled' || $status === 'deleted') {
+        return delete_material_from_firestore($firestoreId, $materialName, $exchangeId, $db);
+    }
+
+    $url = firestoreRequestUrl('materialDonations/' . rawurlencode($firestoreId));
+    $headers = firestoreRequestHeaders();
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'header' => $headers,
+            'timeout' => 5,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $res = @file_get_contents($url, false, $context);
+    if (!$res) return false;
+    $doc = json_decode($res, true);
+    if (!is_array($doc) || empty($doc['fields'])) return false;
+
+    $fields = $doc['fields'];
+
+    if (!empty($fields['materials']['arrayValue']['values'])) {
+        foreach ($fields['materials']['arrayValue']['values'] as &$mVal) {
+            $mFields = &$mVal['mapValue']['fields'];
+            $mName = trim((string)($mFields['name']['stringValue'] ?? ''));
+            if ($mName === $materialName) {
+                $mFields['status'] = ['stringValue' => $status];
+                if ($status === 'reserved') {
+                    $mFields['takerInfo'] = [
+                        'mapValue' => [
+                            'fields' => [
+                                'name' => ['stringValue' => (string)($data['booker_name'] ?? '')],
+                                'phone' => ['stringValue' => (string)($data['booker_phone'] ?? '')],
+                                'gender' => ['stringValue' => (string)($data['booker_gender'] ?? 'male')],
+                                'bookedAt' => ['timestampValue' => date('c')],
+                                'source' => ['stringValue' => 'admin_panel'],
+                            ]
+                        ]
+                    ];
+                } elseif ($status === 'approved') {
+                    unset($mFields['takerInfo']);
+                }
+            }
+        }
+        unset($mVal);
+    }
+
+    // تحديث حالة المستند الرئيسي
+    $fields['status'] = ['stringValue' => $status];
+    $fields['lastUpdated'] = ['timestampValue' => date('c')];
+
+    $patchContext = stream_context_create([
+        'http' => [
+            'method' => 'PATCH',
+            'header' => $headers,
+            'content' => json_encode(['fields' => $fields], JSON_UNESCAPED_UNICODE),
+            'timeout' => 5,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $patchRes = @file_get_contents($url, false, $patchContext);
+    return $patchRes !== false;
+}

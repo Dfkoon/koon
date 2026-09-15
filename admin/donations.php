@@ -80,6 +80,7 @@ $currentCampaignLabel = $currentCampaignLabel === false || trim((string) $curren
 
 /* ---------- استعلام حالة التسليم الفوري بدون تحديث الصفحة (AJAX Live Check) ---------- */
 if (isset($_GET['action']) && $_GET['action'] === 'check_delivery_status') {
+    session_write_close();
     header('Content-Type: application/json; charset=utf-8');
     $chkId = (int)($_GET['id'] ?? 0);
     $chkRow = $db->query("SELECT status, delivery_status, delivered_at FROM material_exchanges WHERE id = $chkId LIMIT 1")->fetch(PDO::FETCH_ASSOC);
@@ -241,6 +242,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $id
                 ]);
                 log_activity("تعديل بيانات المادة المتبادلة #$id (\"$materialName\")", 'material_exchange');
+
+                // مزامنة التعديل والحالة مع Firestore فوراً ليتحدث الموقع مباشرة
+                if (function_exists('sync_material_update_to_firestore')) {
+                    $stmtM = $db->prepare('SELECT firestore_id FROM material_exchanges WHERE id = ? LIMIT 1');
+                    $stmtM->execute([$id]);
+                    $fsId = $stmtM->fetchColumn() ?: '';
+                    try {
+                        sync_material_update_to_firestore($id, [
+                            'firestore_id' => $fsId,
+                            'material_name' => $materialName,
+                            'status' => $status,
+                            'donor_name' => $donorName,
+                            'course_code' => $courseCode,
+                            'faculty' => $faculty,
+                            'booker_name' => $bookerName,
+                            'booker_phone' => $bookerPhone,
+                            'booker_gender' => $bookerGender,
+                            'pickup_date' => $pickupDate,
+                            'pickup_time' => $pickupTime,
+                            'notes' => $notes,
+                        ], $db);
+                    } catch (Throwable $e) {}
+                }
+
                 sync_material_exchanges_to_frontend($db);
                 $message = 'تم حفظ التعديلات بنجاح.';
             }
@@ -315,6 +340,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE id = ?');
             $stmt->execute([$deliveryNotes, $deliveryNotes, $id]);
             log_activity("تأكيد تسليم المادة المتبادلة #$id للطالب المستفيد", 'material_exchange');
+
+            // مزامنة تأكيد التسليم مع Firestore
+            $stmtM = $db->prepare('SELECT firestore_id, material_name FROM material_exchanges WHERE id = ? LIMIT 1');
+            $stmtM->execute([$id]);
+            $matRow = $stmtM->fetch(PDO::FETCH_ASSOC);
+            if ($matRow && function_exists('sync_material_update_to_firestore')) {
+                try {
+                    sync_material_update_to_firestore($id, [
+                        'firestore_id' => $matRow['firestore_id'] ?? '',
+                        'material_name' => $matRow['material_name'] ?? '',
+                        'status' => 'completed',
+                        'notes' => $deliveryNotes,
+                    ], $db);
+                } catch (Throwable $e) {}
+            }
+
             sync_material_exchanges_to_frontend($db);
             $message = '✅ تم تأكيد تسليم المادة بنجاح وأرشفتها كعملية مكتملة.';
         }
@@ -361,16 +402,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         elseif ($action === 'delete') {
             $id = (int) ($_POST['id'] ?? 0);
             // منع المنسقين من حذف المواد المؤرشفة
-            $archCheckStmt = $db->prepare('SELECT archive_key FROM material_exchanges WHERE id = ? LIMIT 1');
+            $archCheckStmt = $db->prepare('SELECT archive_key, firestore_id, material_name, status FROM material_exchanges WHERE id = ? LIMIT 1');
             $archCheckStmt->execute([$id]);
-            $isArchivedItem = !empty($archCheckStmt->fetchColumn());
+            $delRow = $archCheckStmt->fetch(PDO::FETCH_ASSOC);
+            $isArchivedItem = !empty($delRow['archive_key']);
 
             if ($isArchivedItem && !$isDonationsAdmin) {
                 $message = '⛔ المواد المؤرشفة تابعة لفصول سابقة وهي مخصصة للاطلاع فقط ولا يمكن للمنسقين حذفها.';
                 $messageType = 'error';
             } else {
+                // مزامنة الحذف مع Firestore فوراً لإخفائها/حذفها من الموقع بالكامل
+                if (function_exists('delete_material_from_firestore')) {
+                    try {
+                        delete_material_from_firestore($delRow['firestore_id'] ?? null, $delRow['material_name'] ?? '', $id, $db);
+                    } catch (Throwable $e) {}
+                }
+
                 archive_delete('material_exchanges', $id, 'حذف مادة متبادلة');
                 log_activity("حذف المادة المتبادلة #$id نهائياً", 'material_exchange');
+                if (function_exists('sync_material_exchanges_to_frontend')) {
+                    sync_material_exchanges_to_frontend($db);
+                }
                 $message = 'تم حذف المادة بنجاح.';
             }
         }

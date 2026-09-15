@@ -7,14 +7,18 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../config.php';
 
 if (empty($_SESSION['authenticated'])) {
+    session_write_close();
     http_response_code(401);
     echo json_encode(['error' => 'Unauthorized']);
     exit;
 }
 
+$currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+session_write_close();
+
 $db = get_db();
 $userStmt = $db->prepare('SELECT id, username, role FROM users WHERE id = ? LIMIT 1');
-$userStmt->execute([(int) ($_SESSION['user_id'] ?? 0)]);
+$userStmt->execute([$currentUserId]);
 $apiUser = $userStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 $isAdminApiUser = in_array($apiUser['role'] ?? '', ['admin', 'super_admin'], true)
     || (int) ($apiUser['id'] ?? 0) === 1
