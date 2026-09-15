@@ -19,6 +19,8 @@ $isAdmin = in_array($currentUser['role'] ?? '', ['admin', 'super_admin'], true)
     || ($currentUser['username'] ?? '') === 'HUSSIEN';
 
 $db->exec('CREATE TABLE IF NOT EXISTS dashboard_metrics (metric_key TEXT PRIMARY KEY, metric_value INTEGER NOT NULL, source TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)');
+$db->exec('CREATE TABLE IF NOT EXISTS analytics_events (id INTEGER PRIMARY KEY AUTOINCREMENT, source_id TEXT UNIQUE NOT NULL, path TEXT NOT NULL, event_type TEXT NOT NULL DEFAULT "visit", visitor_key TEXT, user_agent TEXT, occurred_at TEXT NOT NULL)');
+$db->exec('CREATE TABLE IF NOT EXISTS quiz_subjects (id TEXT PRIMARY KEY, name TEXT NOT NULL, name_en TEXT, icon TEXT DEFAULT "book", sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
 $metricRows = $db->query('SELECT metric_key, metric_value FROM dashboard_metrics')->fetchAll(PDO::FETCH_KEY_PAIR);
 $officialMetrics = [
     'total_visits' => max((int) ($metricRows['total_visits'] ?? 0), (int) $db->query("SELECT COALESCE(SUM(views_count), 0) FROM page_views")->fetchColumn()),

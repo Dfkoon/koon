@@ -687,6 +687,58 @@ if (!function_exists('get_db')) {
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
+
+                CREATE TABLE IF NOT EXISTS analytics_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_id TEXT UNIQUE NOT NULL,
+                    path TEXT NOT NULL,
+                    event_type TEXT NOT NULL DEFAULT 'visit',
+                    visitor_key TEXT,
+                    user_agent TEXT,
+                    occurred_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS dashboard_metrics (
+                    metric_key TEXT PRIMARY KEY,
+                    metric_value INTEGER NOT NULL,
+                    source TEXT NOT NULL,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS material_wishlist (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    student_name TEXT NOT NULL,
+                    student_phone TEXT NOT NULL,
+                    student_gender TEXT DEFAULT 'male',
+                    material_name TEXT NOT NULL,
+                    course_code TEXT,
+                    faculty TEXT,
+                    notes TEXT,
+                    status TEXT DEFAULT 'waiting',
+                    matched_exchange_id INTEGER,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS quiz_subjects (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    name_en TEXT,
+                    icon TEXT DEFAULT 'book',
+                    sort_order INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS quiz_admin_guides (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    title TEXT NOT NULL DEFAULT 'ملاحظات وتعليمات بنك الأسئلة',
+                    content TEXT NOT NULL DEFAULT '',
+                    attachment_url TEXT,
+                    attachment_type TEXT,
+                    attachment_name TEXT,
+                    updated_by INTEGER,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
             ");
 
             // البيانات التجريبية معطّلة؛ يجب أن تبدأ صفحات الموقع فارغة.
