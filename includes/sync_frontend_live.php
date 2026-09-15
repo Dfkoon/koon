@@ -1023,7 +1023,10 @@ function pull_pending_donations_from_firestore(?PDO $db = null): int
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 
     $stmtUpdate = $db->prepare('UPDATE material_exchanges SET 
-        donor_name = ?, donor_phone_alt = ?, donor_email = ?, delivery_week = ?, description = ?
+        donor_name = ?, donor_phone_alt = ?, donor_email = ?, delivery_week = ?, description = ?,
+        status = ?, booker_name = ?, booker_phone = ?, booker_gender = ?, booked_at = ?,
+        delivery_status = CASE WHEN ? = \'completed\' THEN \'completed\' WHEN ? = \'reserved\' THEN \'scheduled\' ELSE delivery_status END,
+        updated_at = CURRENT_TIMESTAMP
         WHERE id = ?');
 
     $importedCount = 0;
@@ -1091,8 +1094,30 @@ function pull_pending_donations_from_firestore(?PDO $db = null): int
             }
 
             if ($existing) {
-                // تحديث الخانات الإضافية إن لم تكن مسجلة
-                $stmtUpdate->execute([$studentName, $confirmPhone, $email, $deliveryWeek, $matDesc, (int) $existing['id']]);
+                // تحديث الحالة وبيانات الحاجز أيضاً، لأن الحجز قد يتم من الموقع مباشرة.
+                $takerFields = $mFields['takerInfo']['mapValue']['fields'] ?? [];
+                $takerValue = static function (string $key) use ($takerFields): string {
+                    return trim((string) ($takerFields[$key]['stringValue'] ?? ''));
+                };
+                $bookerName = $takerValue('name') ?: $takerValue('studentName');
+                $bookerPhone = $takerValue('phone') ?: $takerValue('studentPhone');
+                $bookerGender = $takerValue('gender') ?: $gender;
+                $bookedAt = $takerValue('bookedAt');
+                $stmtUpdate->execute([
+                    $studentName,
+                    $confirmPhone,
+                    $email,
+                    $deliveryWeek,
+                    $matDesc,
+                    $finalStatus,
+                    $bookerName !== '' ? $bookerName : null,
+                    $bookerPhone !== '' ? $bookerPhone : null,
+                    $bookerGender,
+                    $bookedAt !== '' ? $bookedAt : null,
+                    $finalStatus,
+                    $finalStatus,
+                    (int) $existing['id']
+                ]);
             } else {
                 // إدراج طلب جديد بحالة pending
                 $stmtInsert->execute([
@@ -1139,16 +1164,18 @@ function mark_donation_approved_in_firestore(string $firestoreId, string $materi
         ]
     ]);
     $res = @file_get_contents($url, false, $context);
-    if (!$res) return false;
+    if (!$res)
+        return false;
     $doc = json_decode($res, true);
-    if (!is_array($doc) || empty($doc['fields'])) return false;
+    if (!is_array($doc) || empty($doc['fields']))
+        return false;
 
     $fields = $doc['fields'];
     $fields['status'] = ['stringValue' => 'approved'];
     if (!empty($fields['materials']['arrayValue']['values'])) {
         foreach ($fields['materials']['arrayValue']['values'] as &$mVal) {
             $mFields = &$mVal['mapValue']['fields'];
-            if (trim((string)($mFields['name']['stringValue'] ?? '')) === $materialName) {
+            if (trim((string) ($mFields['name']['stringValue'] ?? '')) === $materialName) {
                 $mFields['status'] = ['stringValue' => 'approved'];
             }
         }
@@ -1191,9 +1218,11 @@ function mark_donation_reserved_in_firestore(string $firestoreId, string $materi
         ]
     ]);
     $res = @file_get_contents($url, false, $context);
-    if (!$res) return false;
+    if (!$res)
+        return false;
     $doc = json_decode($res, true);
-    if (!is_array($doc) || empty($doc['fields'])) return false;
+    if (!is_array($doc) || empty($doc['fields']))
+        return false;
 
     $fields = $doc['fields'];
     $foundMaterial = false;
@@ -1202,14 +1231,14 @@ function mark_donation_reserved_in_firestore(string $firestoreId, string $materi
     if (!empty($fields['materials']['arrayValue']['values'])) {
         foreach ($fields['materials']['arrayValue']['values'] as &$mVal) {
             $mFields = &$mVal['mapValue']['fields'];
-            $mName = trim((string)($mFields['name']['stringValue'] ?? ''));
+            $mName = trim((string) ($mFields['name']['stringValue'] ?? ''));
             if ($mName === $materialName) {
                 $mFields['status'] = ['stringValue' => 'reserved'];
                 // إضافة بيانات الحاجز إلى takerInfo
                 if (!empty($bookerInfo)) {
                     $takerFields = [];
                     foreach ($bookerInfo as $k => $v) {
-                        $takerFields[$k] = ['stringValue' => (string)$v];
+                        $takerFields[$k] = ['stringValue' => (string) $v];
                     }
                     $mFields['takerInfo'] = ['mapValue' => ['fields' => $takerFields]];
                 }
@@ -1274,9 +1303,11 @@ function mark_donation_unreserved_in_firestore(string $firestoreId, string $mate
         ]
     ]);
     $res = @file_get_contents($url, false, $context);
-    if (!$res) return false;
+    if (!$res)
+        return false;
     $doc = json_decode($res, true);
-    if (!is_array($doc) || empty($doc['fields'])) return false;
+    if (!is_array($doc) || empty($doc['fields']))
+        return false;
 
     $fields = $doc['fields'];
     $foundMaterial = false;
@@ -1284,7 +1315,7 @@ function mark_donation_unreserved_in_firestore(string $firestoreId, string $mate
     if (!empty($fields['materials']['arrayValue']['values'])) {
         foreach ($fields['materials']['arrayValue']['values'] as &$mVal) {
             $mFields = &$mVal['mapValue']['fields'];
-            $mName = trim((string)($mFields['name']['stringValue'] ?? ''));
+            $mName = trim((string) ($mFields['name']['stringValue'] ?? ''));
             if ($mName === $materialName) {
                 $mFields['status'] = ['stringValue' => 'approved'];
                 unset($mFields['takerInfo']); // حذف معلومات الحاجز
@@ -1358,16 +1389,18 @@ function delete_material_from_firestore(?string $firestoreId, string $materialNa
         ]
     ]);
     $res = @file_get_contents($url, false, $context);
-    if (!$res) return false;
+    if (!$res)
+        return false;
     $doc = json_decode($res, true);
-    if (!is_array($doc) || empty($doc['fields'])) return false;
+    if (!is_array($doc) || empty($doc['fields']))
+        return false;
 
     $fields = $doc['fields'];
     if (!empty($fields['materials']['arrayValue']['values'])) {
         $newVals = [];
         foreach ($fields['materials']['arrayValue']['values'] as $mVal) {
             $mFields = $mVal['mapValue']['fields'] ?? [];
-            $mName = trim((string)($mFields['name']['stringValue'] ?? ''));
+            $mName = trim((string) ($mFields['name']['stringValue'] ?? ''));
             if ($mName !== $materialName) {
                 $newVals[] = $mVal;
             }
@@ -1396,9 +1429,9 @@ function delete_material_from_firestore(?string $firestoreId, string $materialNa
  */
 function sync_material_update_to_firestore(int $exchangeId, array $data, ?PDO $db = null): bool
 {
-    $firestoreId = trim((string)($data['firestore_id'] ?? ''));
-    $materialName = trim((string)($data['material_name'] ?? ''));
-    $status = trim((string)($data['status'] ?? 'approved'));
+    $firestoreId = trim((string) ($data['firestore_id'] ?? ''));
+    $materialName = trim((string) ($data['material_name'] ?? ''));
+    $status = trim((string) ($data['status'] ?? 'approved'));
 
     // 1. تحديث المستند المنعكس donation_{id}
     if ($exchangeId > 0) {
@@ -1444,25 +1477,27 @@ function sync_material_update_to_firestore(int $exchangeId, array $data, ?PDO $d
         ]
     ]);
     $res = @file_get_contents($url, false, $context);
-    if (!$res) return false;
+    if (!$res)
+        return false;
     $doc = json_decode($res, true);
-    if (!is_array($doc) || empty($doc['fields'])) return false;
+    if (!is_array($doc) || empty($doc['fields']))
+        return false;
 
     $fields = $doc['fields'];
 
     if (!empty($fields['materials']['arrayValue']['values'])) {
         foreach ($fields['materials']['arrayValue']['values'] as &$mVal) {
             $mFields = &$mVal['mapValue']['fields'];
-            $mName = trim((string)($mFields['name']['stringValue'] ?? ''));
+            $mName = trim((string) ($mFields['name']['stringValue'] ?? ''));
             if ($mName === $materialName) {
                 $mFields['status'] = ['stringValue' => $status];
                 if ($status === 'reserved') {
                     $mFields['takerInfo'] = [
                         'mapValue' => [
                             'fields' => [
-                                'name' => ['stringValue' => (string)($data['booker_name'] ?? '')],
-                                'phone' => ['stringValue' => (string)($data['booker_phone'] ?? '')],
-                                'gender' => ['stringValue' => (string)($data['booker_gender'] ?? 'male')],
+                                'name' => ['stringValue' => (string) ($data['booker_name'] ?? '')],
+                                'phone' => ['stringValue' => (string) ($data['booker_phone'] ?? '')],
+                                'gender' => ['stringValue' => (string) ($data['booker_gender'] ?? 'male')],
                                 'bookedAt' => ['timestampValue' => date('c')],
                                 'source' => ['stringValue' => 'admin_panel'],
                             ]
