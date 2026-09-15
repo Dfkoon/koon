@@ -1005,7 +1005,8 @@ function pull_pending_donations_from_firestore(?PDO $db = null): int
         'donor_phone_alt' => 'TEXT',
         'donor_email' => 'TEXT',
         'delivery_week' => 'TEXT',
-        'firestore_id' => 'TEXT'
+        'firestore_id' => 'TEXT',
+        'data_sharing_consent' => 'INTEGER'
     ] as $col => $type) {
         $cols = $db->query('PRAGMA table_info(material_exchanges)')->fetchAll(PDO::FETCH_COLUMN, 1);
         if (!in_array($col, $cols, true)) {
@@ -1019,12 +1020,13 @@ function pull_pending_donations_from_firestore(?PDO $db = null): int
     $stmtInsert = $db->prepare('INSERT INTO material_exchanges (
         donor_name, donor_phone, donor_phone_alt, donor_email, donor_gender,
         material_name, description, delivery_week, status,
-        assigned_coordinator, delivery_status, firestore_id, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        assigned_coordinator, delivery_status, firestore_id, data_sharing_consent, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 
     $stmtUpdate = $db->prepare('UPDATE material_exchanges SET 
         donor_name = ?, donor_phone_alt = ?, donor_email = ?, delivery_week = ?, description = ?,
         status = ?, booker_name = ?, booker_phone = ?, booker_gender = ?, booked_at = ?,
+        data_sharing_consent = ?,
         delivery_status = CASE WHEN ? = \'completed\' THEN \'completed\' WHEN ? = \'reserved\' THEN \'scheduled\' ELSE delivery_status END,
         updated_at = CURRENT_TIMESTAMP
         WHERE id = ?');
@@ -1083,6 +1085,12 @@ function pull_pending_donations_from_firestore(?PDO $db = null): int
             $matDesc = trim((string) ($mFields['description']['stringValue'] ?? ''));
             $matStatus = trim((string) ($mFields['status']['stringValue'] ?? ''));
             $finalStatus = in_array($matStatus, ['pending', 'approved', 'reserved', 'completed'], true) ? $matStatus : $docStatus;
+            $consentValue = null;
+            if (isset($mFields['takerInfo']['mapValue']['fields']['dataSharingConsent']['booleanValue'])) {
+                $consentValue = $mFields['takerInfo']['mapValue']['fields']['dataSharingConsent']['booleanValue'] ? 1 : 0;
+            } elseif (isset($fields['dataSharingConsent']['booleanValue'])) {
+                $consentValue = $fields['dataSharingConsent']['booleanValue'] ? 1 : 0;
+            }
 
             // التحقق من وجود السجل مسبقاً
             $stmtCheck->execute([$docId, $matName]);
@@ -1114,6 +1122,7 @@ function pull_pending_donations_from_firestore(?PDO $db = null): int
                     $bookerPhone !== '' ? $bookerPhone : null,
                     $bookerGender,
                     $bookedAt !== '' ? $bookedAt : null,
+                    $consentValue,
                     $finalStatus,
                     $finalStatus,
                     (int) $existing['id']
@@ -1133,6 +1142,7 @@ function pull_pending_donations_from_firestore(?PDO $db = null): int
                     'shared', // افتراضياً في المشترك لحين موافقة وتوجيه الأدمن
                     'pending_contact',
                     $docId,
+                    $consentValue,
                     $createdAt,
                     $createdAt
                 ]);
@@ -1431,6 +1441,7 @@ function sync_material_update_to_firestore(int $exchangeId, array $data, ?PDO $d
 {
     $firestoreId = trim((string) ($data['firestore_id'] ?? ''));
     $materialName = trim((string) ($data['material_name'] ?? ''));
+    $oldMaterialName = trim((string) ($data['old_material_name'] ?? $materialName));
     $status = trim((string) ($data['status'] ?? 'approved'));
 
     // 1. تحديث المستند المنعكس donation_{id}
@@ -1485,12 +1496,15 @@ function sync_material_update_to_firestore(int $exchangeId, array $data, ?PDO $d
 
     $fields = $doc['fields'];
 
+    $foundMaterial = false;
     if (!empty($fields['materials']['arrayValue']['values'])) {
         foreach ($fields['materials']['arrayValue']['values'] as &$mVal) {
             $mFields = &$mVal['mapValue']['fields'];
             $mName = trim((string) ($mFields['name']['stringValue'] ?? ''));
-            if ($mName === $materialName) {
+            if ($mName === $oldMaterialName || ($oldMaterialName === '' && $mName === $materialName)) {
+                $mFields['name'] = ['stringValue' => $materialName];
                 $mFields['status'] = ['stringValue' => $status];
+                $foundMaterial = true;
                 if ($status === 'reserved') {
                     $mFields['takerInfo'] = [
                         'mapValue' => [
@@ -1509,6 +1523,10 @@ function sync_material_update_to_firestore(int $exchangeId, array $data, ?PDO $d
             }
         }
         unset($mVal);
+    }
+
+    if (!$foundMaterial) {
+        return false;
     }
 
     // تحديث حالة المستند الرئيسي

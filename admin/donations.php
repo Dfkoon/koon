@@ -14,7 +14,8 @@ foreach ([
     'donor_phone_alt' => 'TEXT',
     'donor_email' => 'TEXT',
     'delivery_week' => 'TEXT',
-    'firestore_id' => 'TEXT'
+    'firestore_id' => 'TEXT',
+    'data_sharing_consent' => 'INTEGER'
 ] as $column => $type) {
     $columns = $db->query('PRAGMA table_info(material_exchanges)')->fetchAll(PDO::FETCH_COLUMN, 1);
     if (!in_array($column, $columns, true))
@@ -51,10 +52,10 @@ $isDonationsAdmin = in_array($_donationsRole, ['admin', 'super_admin'], true)
 
 // الصلاحيات الدقيقة للحملات والأرشيف
 $canArchiveCampaign = $isDonationsAdmin || user_has_capability('donations.archive_manage', $_donationsCurrentUser);
-$canCreateCampaign  = $isDonationsAdmin || user_has_capability('donations.create_campaign', $_donationsCurrentUser);
+$canCreateCampaign = $isDonationsAdmin || user_has_capability('donations.create_campaign', $_donationsCurrentUser);
 $canManageCampaigns = $canArchiveCampaign || $canCreateCampaign;
 // الاطلاع على الأرشيف متاح للأدمن أو لمن يملك صلاحية donations.archive_view أو للمنسق افتراضياً
-$canViewArchive     = $isDonationsAdmin || user_has_capability('donations.archive_view', $_donationsCurrentUser) || empty($_donationsCurrentUser['permissions']);
+$canViewArchive = $isDonationsAdmin || user_has_capability('donations.archive_view', $_donationsCurrentUser) || empty($_donationsCurrentUser['permissions']);
 
 // جنس المنسق الحالي (للتحكم في إظهار جداول الذكور/الإناث)
 // null = غير محدد (يرى كل الجداول) ، 'male' أو 'female'
@@ -82,12 +83,12 @@ $currentCampaignLabel = $currentCampaignLabel === false || trim((string) $curren
 if (isset($_GET['action']) && $_GET['action'] === 'check_delivery_status') {
     session_write_close();
     header('Content-Type: application/json; charset=utf-8');
-    $chkId = (int)($_GET['id'] ?? 0);
+    $chkId = (int) ($_GET['id'] ?? 0);
     $chkRow = $db->query("SELECT status, delivery_status, delivered_at FROM material_exchanges WHERE id = $chkId LIMIT 1")->fetch(PDO::FETCH_ASSOC);
     $isDel = $chkRow && ($chkRow['status'] === 'completed' || $chkRow['delivery_status'] === 'completed');
     echo json_encode([
         'success' => true,
-        'delivered' => (bool)$isDel,
+        'delivered' => (bool) $isDel,
         'delivered_at' => $chkRow['delivered_at'] ?? ''
     ]);
     exit;
@@ -109,45 +110,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = "⛔ ليس لديك صلاحية ($permName). هذه العملية تتطلب إذناً متقدماً من مدير النظام.";
                 $messageType = 'error';
             } else {
-            $archiveSemesterName = trim($_POST['archive_semester_name'] ?? '');
-            if ($archiveSemesterName === '') {
-                $archiveSemesterName = trim($_POST['campaign_label'] ?? $currentCampaignLabel);
-            }
-            if ($archiveSemesterName === '') {
-                $archiveSemesterName = $currentCampaignLabel;
-            }
-            $nextCampaignLabel = trim($_POST['next_campaign_label'] ?? '');
-            if ($nextCampaignLabel === '' && !empty($_POST['campaign_label']) && $action === 'start_new_campaign') {
-                $nextCampaignLabel = trim($_POST['campaign_label']);
-            }
-
-            $archiveKey = 'campaign_' . date('YmdHis') . '_' . substr(hash('sha256', $archiveSemesterName . microtime(true)), 0, 8);
-            $db->beginTransaction();
-            try {
-                // ترحيل كل المواد الحالية غير المؤرشفة إلى الأرشيف
-                $stmt = $db->prepare('UPDATE material_exchanges SET archive_key = ?, archive_label = ? WHERE archive_key IS NULL');
-                $stmt->execute([$archiveKey, $archiveSemesterName]);
-                $archivedCount = $stmt->rowCount();
-
-                if ($nextCampaignLabel !== '') {
-                    $stmt = $db->prepare("INSERT INTO site_settings (setting_key, setting_value, setting_group, updated_at) VALUES ('exchange_current_campaign', ?, 'exchange', CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = CURRENT_TIMESTAMP");
-                    $stmt->execute([$nextCampaignLabel]);
-                    $currentCampaignLabel = $nextCampaignLabel;
+                $archiveSemesterName = trim($_POST['archive_semester_name'] ?? '');
+                if ($archiveSemesterName === '') {
+                    $archiveSemesterName = trim($_POST['campaign_label'] ?? $currentCampaignLabel);
+                }
+                if ($archiveSemesterName === '') {
+                    $archiveSemesterName = $currentCampaignLabel;
+                }
+                $nextCampaignLabel = trim($_POST['next_campaign_label'] ?? '');
+                if ($nextCampaignLabel === '' && !empty($_POST['campaign_label']) && $action === 'start_new_campaign') {
+                    $nextCampaignLabel = trim($_POST['campaign_label']);
                 }
 
-                $stmt = $db->prepare("INSERT INTO site_settings (setting_key, setting_value, setting_group, updated_at) VALUES ('exchange_archive_visible', '1', 'exchange', CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO UPDATE SET setting_value = '1', updated_at = CURRENT_TIMESTAMP");
-                $stmt->execute();
-                $db->commit();
+                $archiveKey = 'campaign_' . date('YmdHis') . '_' . substr(hash('sha256', $archiveSemesterName . microtime(true)), 0, 8);
+                $db->beginTransaction();
+                try {
+                    // ترحيل كل المواد الحالية غير المؤرشفة إلى الأرشيف
+                    $stmt = $db->prepare('UPDATE material_exchanges SET archive_key = ?, archive_label = ? WHERE archive_key IS NULL');
+                    $stmt->execute([$archiveKey, $archiveSemesterName]);
+                    $archivedCount = $stmt->rowCount();
 
-                $archiveVisibility = '1';
-                log_activity("أرشفة الحملة الحالية ($archiveSemesterName) وترحيل $archivedCount مادة للأرشيف", 'material_exchange');
-                $message = "تمت أرشفة كافة بيانات ($archiveSemesterName) بنجاح بعدد ($archivedCount مادة) وترحيلها للأرشيف. الجداول الحالية أصبحت فارغة وجاهزة لاستقبال طلبات الحملة الجديدة.";
-            } catch (Throwable $exception) {
-                if ($db->inTransaction())
-                    $db->rollBack();
-                $message = 'تعذر أرشفة الحملة الحالية، يرجى المحاولة مرة أخرى: ' . $exception->getMessage();
-                $messageType = 'error';
-            }
+                    if ($nextCampaignLabel !== '') {
+                        $stmt = $db->prepare("INSERT INTO site_settings (setting_key, setting_value, setting_group, updated_at) VALUES ('exchange_current_campaign', ?, 'exchange', CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = CURRENT_TIMESTAMP");
+                        $stmt->execute([$nextCampaignLabel]);
+                        $currentCampaignLabel = $nextCampaignLabel;
+                    }
+
+                    $stmt = $db->prepare("INSERT INTO site_settings (setting_key, setting_value, setting_group, updated_at) VALUES ('exchange_archive_visible', '1', 'exchange', CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO UPDATE SET setting_value = '1', updated_at = CURRENT_TIMESTAMP");
+                    $stmt->execute();
+                    $db->commit();
+
+                    $archiveVisibility = '1';
+                    log_activity("أرشفة الحملة الحالية ($archiveSemesterName) وترحيل $archivedCount مادة للأرشيف", 'material_exchange');
+                    $message = "تمت أرشفة كافة بيانات ($archiveSemesterName) بنجاح بعدد ($archivedCount مادة) وترحيلها للأرشيف. الجداول الحالية أصبحت فارغة وجاهزة لاستقبال طلبات الحملة الجديدة.";
+                } catch (Throwable $exception) {
+                    if ($db->inTransaction())
+                        $db->rollBack();
+                    $message = 'تعذر أرشفة الحملة الحالية، يرجى المحاولة مرة أخرى: ' . $exception->getMessage();
+                    $messageType = 'error';
+                }
             } // end else (canManageCampaigns)
         } elseif ($action === 'toggle_archive_visibility') {
             $newVisibility = $archiveVisibility === '1' ? '0' : '1';
@@ -217,6 +218,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = 'الرجاء إدخال اسم المتبرع واسم المادة / الكتاب.';
                 $messageType = 'error';
             } else {
+                $oldMaterialStmt = $db->prepare('SELECT material_name FROM material_exchanges WHERE id = ? LIMIT 1');
+                $oldMaterialStmt->execute([$id]);
+                $oldMaterialName = trim((string) ($oldMaterialStmt->fetchColumn() ?: ''));
                 $stmt = $db->prepare('UPDATE material_exchanges SET 
                     donor_name=?, donor_phone=?, donor_gender=?, material_name=?, course_code=?, faculty=?, description=?, 
                     status=?, assigned_coordinator=?, pickup_date=?, pickup_time=?, delivery_status=?, booker_name=?, 
@@ -251,6 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     try {
                         sync_material_update_to_firestore($id, [
                             'firestore_id' => $fsId,
+                            'old_material_name' => $oldMaterialName,
                             'material_name' => $materialName,
                             'status' => $status,
                             'donor_name' => $donorName,
@@ -263,7 +268,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'pickup_time' => $pickupTime,
                             'notes' => $notes,
                         ], $db);
-                    } catch (Throwable $e) {}
+                    } catch (Throwable $e) {
+                    }
                 }
 
                 sync_material_exchanges_to_frontend($db);
@@ -319,7 +325,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'source' => 'admin_panel'
                             ]
                         );
-                    } catch (Throwable $e) { /* الفشل في المزامنة لا يوقف العملية */ }
+                    } catch (Throwable $e) { /* الفشل في المزامنة لا يوقف العملية */
+                    }
                 }
 
                 sync_material_exchanges_to_frontend($db);
@@ -353,7 +360,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'status' => 'completed',
                         'notes' => $deliveryNotes,
                     ], $db);
-                } catch (Throwable $e) {}
+                } catch (Throwable $e) {
+                }
             }
 
             sync_material_exchanges_to_frontend($db);
@@ -387,7 +395,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($matRow && !empty($matRow['firestore_id']) && function_exists('mark_donation_unreserved_in_firestore')) {
                 try {
                     mark_donation_unreserved_in_firestore($matRow['firestore_id'], $matRow['material_name']);
-                } catch (Throwable $e) {}
+                } catch (Throwable $e) {
+                }
             }
 
             if (function_exists('sync_material_exchanges_to_frontend')) {
@@ -415,7 +424,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (function_exists('delete_material_from_firestore')) {
                     try {
                         delete_material_from_firestore($delRow['firestore_id'] ?? null, $delRow['material_name'] ?? '', $id, $db);
-                    } catch (Throwable $e) {}
+                    } catch (Throwable $e) {
+                    }
                 }
 
                 archive_delete('material_exchanges', $id, 'حذف مادة متبادلة');
@@ -549,7 +559,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!empty($mRow['firestore_id']) && function_exists('mark_donation_approved_in_firestore')) {
                         try {
                             mark_donation_approved_in_firestore($mRow['firestore_id'], $mRow['material_name']);
-                        } catch (Throwable $e) {}
+                        } catch (Throwable $e) {
+                        }
                     }
 
                     if (function_exists('sync_material_exchanges_to_frontend')) {
@@ -623,7 +634,7 @@ if ($coordFilter !== '') {
     } elseif ($coordFilter === 'male_all') {
         $maleIds = array_keys(array_filter($coordinatorsList, fn($c) => ($c['gender'] ?? '') !== 'female' && $c['id'] !== 'shared'));
         if (!empty($maleIds)) {
-            $inClause = implode(',', array_map(fn($i) => "'" . addslashes((string)$i) . "'", $maleIds));
+            $inClause = implode(',', array_map(fn($i) => "'" . addslashes((string) $i) . "'", $maleIds));
             $sql .= " AND assigned_coordinator IN ($inClause)";
         } else {
             $sql .= " AND 1=0";
@@ -631,7 +642,7 @@ if ($coordFilter !== '') {
     } elseif ($coordFilter === 'female_all') {
         $femaleIds = array_keys(array_filter($coordinatorsList, fn($c) => ($c['gender'] ?? '') === 'female'));
         if (!empty($femaleIds)) {
-            $inClause = implode(',', array_map(fn($i) => "'" . addslashes((string)$i) . "'", $femaleIds));
+            $inClause = implode(',', array_map(fn($i) => "'" . addslashes((string) $i) . "'", $femaleIds));
             $sql .= " AND assigned_coordinator IN ($inClause)";
         } else {
             $sql .= " AND 1=0";
@@ -810,7 +821,7 @@ $femaleColorIdx = 0;
 foreach ($activeCoordinators as $coord) {
     $coordKey = (string) $coord['id'];
     $isFemale = ($coord['gender'] === 'female');
-    $roleLabel = match($coord['role_type'] ?? 'coordinator') {
+    $roleLabel = match ($coord['role_type'] ?? 'coordinator') {
         'lead_coordinator' => 'منسق رئيسي',
         'coordinator' => 'منسق',
         default => 'منسق'
@@ -880,14 +891,20 @@ function buildWhatsAppLink($phone, $message)
 /* ---------- طباعة كشف المواد الرسمي المنسق للطباعة و PDF ---------- */
 if (isset($_GET['action']) && $_GET['action'] === 'print_sheet') {
     $sheetTitle = 'كشف تبادل وتسليم المواد الدراسية';
-    if ($activeTab === 'available') $sheetTitle = 'كشف المواد المتاحة للاستلام بالمستودع';
-    elseif ($activeTab === 'reserved') $sheetTitle = 'كشف المواد المحجوزة وجداول مواعيد التسليم';
-    elseif ($activeTab === 'completed') $sheetTitle = 'كشف المواد المسلّمة رسمياً للطلبة';
-    elseif ($activeTab === 'pending') $sheetTitle = 'كشف طلبات التبرع المنتظرة للمراجعة والاعتماد';
-    elseif ($activeTab === 'shared') $sheetTitle = 'كشف جدول التسليم المشترك وغير المفرز';
+    if ($activeTab === 'available')
+        $sheetTitle = 'كشف المواد المتاحة للاستلام بالمستودع';
+    elseif ($activeTab === 'reserved')
+        $sheetTitle = 'كشف المواد المحجوزة وجداول مواعيد التسليم';
+    elseif ($activeTab === 'completed')
+        $sheetTitle = 'كشف المواد المسلّمة رسمياً للطلبة';
+    elseif ($activeTab === 'pending')
+        $sheetTitle = 'كشف طلبات التبرع المنتظرة للمراجعة والاعتماد';
+    elseif ($activeTab === 'shared')
+        $sheetTitle = 'كشف جدول التسليم المشترك وغير المفرز';
     ?>
     <!DOCTYPE html>
     <html lang="ar" dir="rtl">
+
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -895,46 +912,219 @@ if (isset($_GET['action']) && $_GET['action'] === 'print_sheet') {
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
         <style>
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { font-family: 'Cairo', sans-serif; padding: 25px 30px; color: #0f172a; background: #fff; line-height: 1.5; font-size: 12px; }
-            .no-print-bar { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; background: #f0f9ff; border: 1.5px solid #bae6fd; padding: 12px 18px; border-radius: 10px; box-shadow: 0 2px 8px rgba(2,132,199,0.08); }
-            .btn-prt { background: #0284c7; color: #fff; border: none; border-radius: 8px; padding: 9px 20px; font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(2,132,199,0.3); }
-            .btn-prt:hover { background: #0369a1; }
-            .btn-cls { background: #fff; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 16px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none; }
-            .btn-cls:hover { background: #f8fafc; color: #0f172a; }
-            
-            .print-header { border-bottom: 2.5px solid #0284c7; padding-bottom: 14px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .brand-title { font-size: 21px; font-weight: 900; color: #0284c7; }
-            .sheet-sub { font-size: 13.5px; font-weight: 800; color: #1e293b; margin-top: 3px; }
-            .meta-box { font-size: 11.5px; color: #64748b; text-align: left; }
-            
-            .summary-bar { display: flex; gap: 14px; margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 14px; font-size: 12px; }
-            .summary-bar span { font-weight: 800; color: #0284c7; }
-            
-            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 12px; }
-            th, td { border: 1px solid #cbd5e1; padding: 7px 9px; text-align: right; vertical-align: middle; }
-            th { background: #f1f5f9; color: #0f172a; font-weight: 800; font-size: 12px; }
-            tr:nth-child(even) { background: #fafbfc; }
-            
-            .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 700; }
-            .badge-completed { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-            .badge-reserved { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
-            .badge-approved { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
-            .badge-pending { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-            
-            .signatures-block { display: flex; justify-content: space-between; margin-top: 36px; padding-top: 10px; page-break-inside: avoid; }
-            .sig-box { text-align: center; width: 200px; }
-            .sig-title { font-weight: 800; color: #334155; font-size: 12px; }
-            .sig-line { border-bottom: 1.5px dotted #94a3b8; height: 40px; margin-top: 6px; }
-            
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                font-family: 'Cairo', sans-serif;
+                padding: 25px 30px;
+                color: #0f172a;
+                background: #fff;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+
+            .no-print-bar {
+                margin-bottom: 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #f0f9ff;
+                border: 1.5px solid #bae6fd;
+                padding: 12px 18px;
+                border-radius: 10px;
+                box-shadow: 0 2px 8px rgba(2, 132, 199, 0.08);
+            }
+
+            .btn-prt {
+                background: #0284c7;
+                color: #fff;
+                border: none;
+                border-radius: 8px;
+                padding: 9px 20px;
+                font-family: inherit;
+                font-size: 13px;
+                font-weight: 800;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+            }
+
+            .btn-prt:hover {
+                background: #0369a1;
+            }
+
+            .btn-cls {
+                background: #fff;
+                color: #475569;
+                border: 1px solid #cbd5e1;
+                border-radius: 8px;
+                padding: 9px 16px;
+                font-family: inherit;
+                font-size: 13px;
+                font-weight: 700;
+                cursor: pointer;
+                text-decoration: none;
+            }
+
+            .btn-cls:hover {
+                background: #f8fafc;
+                color: #0f172a;
+            }
+
+            .print-header {
+                border-bottom: 2.5px solid #0284c7;
+                padding-bottom: 14px;
+                margin-bottom: 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+            }
+
+            .brand-title {
+                font-size: 21px;
+                font-weight: 900;
+                color: #0284c7;
+            }
+
+            .sheet-sub {
+                font-size: 13.5px;
+                font-weight: 800;
+                color: #1e293b;
+                margin-top: 3px;
+            }
+
+            .meta-box {
+                font-size: 11.5px;
+                color: #64748b;
+                text-align: left;
+            }
+
+            .summary-bar {
+                display: flex;
+                gap: 14px;
+                margin-bottom: 16px;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 9px 14px;
+                font-size: 12px;
+            }
+
+            .summary-bar span {
+                font-weight: 800;
+                color: #0284c7;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 25px;
+                font-size: 12px;
+            }
+
+            th,
+            td {
+                border: 1px solid #cbd5e1;
+                padding: 7px 9px;
+                text-align: right;
+                vertical-align: middle;
+            }
+
+            th {
+                background: #f1f5f9;
+                color: #0f172a;
+                font-weight: 800;
+                font-size: 12px;
+            }
+
+            tr:nth-child(even) {
+                background: #fafbfc;
+            }
+
+            .badge {
+                display: inline-block;
+                padding: 2px 7px;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+
+            .badge-completed {
+                background: #dcfce7;
+                color: #15803d;
+                border: 1px solid #bbf7d0;
+            }
+
+            .badge-reserved {
+                background: #fef3c7;
+                color: #b45309;
+                border: 1px solid #fde68a;
+            }
+
+            .badge-approved {
+                background: #e0f2fe;
+                color: #0369a1;
+                border: 1px solid #bae6fd;
+            }
+
+            .badge-pending {
+                background: #fee2e2;
+                color: #b91c1c;
+                border: 1px solid #fecaca;
+            }
+
+            .signatures-block {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 36px;
+                padding-top: 10px;
+                page-break-inside: avoid;
+            }
+
+            .sig-box {
+                text-align: center;
+                width: 200px;
+            }
+
+            .sig-title {
+                font-weight: 800;
+                color: #334155;
+                font-size: 12px;
+            }
+
+            .sig-line {
+                border-bottom: 1.5px dotted #94a3b8;
+                height: 40px;
+                margin-top: 6px;
+            }
+
             @media print {
-                .no-print-bar { display: none !important; }
-                body { padding: 0 !important; }
-                table { page-break-inside: auto; }
-                tr { page-break-inside: avoid; page-break-after: auto; }
+                .no-print-bar {
+                    display: none !important;
+                }
+
+                body {
+                    padding: 0 !important;
+                }
+
+                table {
+                    page-break-inside: auto;
+                }
+
+                tr {
+                    page-break-inside: avoid;
+                    page-break-after: auto;
+                }
             }
         </style>
     </head>
+
     <body>
         <div class="no-print-bar">
             <div style="font-weight: 800; color: #0369a1; font-size: 14px; display: flex; align-items: center; gap: 8px;">
@@ -953,7 +1143,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'print_sheet') {
             </div>
             <div class="meta-box">
                 <div>تاريخ الطباعة: <strong><?= date('Y-m-d H:i') ?></strong></div>
-                <div>المشرف المنفذ: <strong><?= htmlspecialchars($_donationsCurrentUser['full_name'] ?? $_donationsCurrentUser['username'] ?? 'الإدارة') ?></strong></div>
+                <div>المشرف المنفذ:
+                    <strong><?= htmlspecialchars($_donationsCurrentUser['full_name'] ?? $_donationsCurrentUser['username'] ?? 'الإدارة') ?></strong>
+                </div>
             </div>
         </div>
 
@@ -979,13 +1171,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'print_sheet') {
             <tbody>
                 <?php if (empty($materials)): ?>
                     <tr>
-                        <td colspan="9" style="text-align: center; padding: 30px; color: #94a3b8;">لا توجد مواد في هذا الكشف حالياً.</td>
+                        <td colspan="9" style="text-align: center; padding: 30px; color: #94a3b8;">لا توجد مواد في هذا الكشف
+                            حالياً.</td>
                     </tr>
                 <?php else: ?>
-                    <?php foreach ($materials as $idx => $m): 
+                    <?php foreach ($materials as $idx => $m):
                         $statusTxt = $m['status'] === 'completed' ? 'تم التسليم' : ($m['status'] === 'reserved' ? 'محجوز' : ($m['status'] === 'pending' ? 'بانتظار الموافقة' : 'متاح'));
                         $badgeCls = 'badge-' . $m['status'];
-                    ?>
+                        ?>
                         <tr>
                             <td style="text-align: center; font-weight: 700; color: #64748b;"><?= $idx + 1 ?></td>
                             <td>
@@ -1012,8 +1205,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'print_sheet') {
                                     <small dir="ltr" style="color: #64748b;"><?= htmlspecialchars($m['booker_phone']) ?></small>
                                 <?php endif; ?>
                             </td>
-                            <td><?= htmlspecialchars($coordinatorsList[$m['assigned_coordinator']]['name'] ?? ($m['assigned_coordinator'] ?: 'مشترك')) ?></td>
-                            <td><?= htmlspecialchars(trim(($m['pickup_date'] ?? '') . ' ' . ($m['pickup_time'] ?? '')) ?: '—') ?></td>
+                            <td><?= htmlspecialchars($coordinatorsList[$m['assigned_coordinator']]['name'] ?? ($m['assigned_coordinator'] ?: 'مشترك')) ?>
+                            </td>
+                            <td><?= htmlspecialchars(trim(($m['pickup_date'] ?? '') . ' ' . ($m['pickup_time'] ?? '')) ?: '—') ?>
+                            </td>
                             <td style="text-align: center;"><span class="badge <?= $badgeCls ?>"><?= $statusTxt ?></span></td>
                             <td></td>
                         </tr>
@@ -1038,11 +1233,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'print_sheet') {
         </div>
 
         <script>
-            window.onload = function() {
+                        windo w.on                                     load = function () {
                 window.print();
             };
         </script>
     </body>
+
     </html>
     <?php
     exit;
@@ -1052,47 +1248,52 @@ require __DIR__ . '/_header.php';
 ?>
 
 <style>
-@media print {
-    .sidebar,
-    .top-header,
-    .stats-grid,
-    .semester-archive-panel,
-    .tabs-header-wrapper,
-    .panel-box,
-    .alert-msg,
-    .custom-modal-overlay:not(#slipModal),
-    .no-print,
-    .table-action-btns,
-    .whatsapp-quick-btn {
-        display: none !important;
+    @media print {
+
+        .sidebar,
+        .top-header,
+        .stats-grid,
+        .semester-archive-panel,
+        .tabs-header-wrapper,
+        .panel-box,
+        .alert-msg,
+        .custom-modal-overlay:not(#slipModal),
+        .no-print,
+        .table-action-btns,
+        .whatsapp-quick-btn {
+            display: none !important;
+        }
+
+        body {
+            background: #fff !important;
+            color: #000 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+
+        #slipModal {
+            position: static !important;
+            display: block !important;
+            background: transparent !important;
+            padding: 0 !important;
+            width: 100% !important;
+            box-shadow: none !important;
+        }
+
+        #slipModal .custom-modal-box {
+            box-shadow: none !important;
+            border: none !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
     }
-    body {
-        background: #fff !important;
-        color: #000 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-    .main-content {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-    }
-    #slipModal {
-        position: static !important;
-        display: block !important;
-        background: transparent !important;
-        padding: 0 !important;
-        width: 100% !important;
-        box-shadow: none !important;
-    }
-    #slipModal .custom-modal-box {
-        box-shadow: none !important;
-        border: none !important;
-        max-width: 100% !important;
-        padding: 0 !important;
-        width: 100% !important;
-    }
-}
 </style>
 
 <!-- تنبيه الرسائل الإجرائية -->
@@ -1113,22 +1314,29 @@ require __DIR__ . '/_header.php';
 
 <!-- بنر المطابقة الذكية للكتب في قائمة الانتظار -->
 <?php if ($totalSmartMatchesCount > 0): ?>
-    <div style="background:linear-gradient(135deg, #fdf4ff, #fae8ff); border:1.5px solid #d8b4fe; border-radius:14px; padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 4px 15px rgba(147, 51, 234, 0.08);">
+    <div
+        style="background:linear-gradient(135deg, #fdf4ff, #fae8ff); border:1.5px solid #d8b4fe; border-radius:14px; padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 4px 15px rgba(147, 51, 234, 0.08);">
         <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:42px; height:42px; border-radius:12px; background:#9333ea; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 4px 12px rgba(147, 51, 234, 0.3);">
+            <div
+                style="width:42px; height:42px; border-radius:12px; background:#9333ea; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 4px 12px rgba(147, 51, 234, 0.3);">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                 </svg>
             </div>
             <div>
                 <div style="font-weight:800; font-size:15px; color:#581c87; display:flex; align-items:center; gap:8px;">
-                    <span>مطابقة ذكية: تم العثور على <?= $totalSmartMatchesCount ?> طلب في قائمة الانتظار لكتب متوفرة بالمستودع!</span>
-                    <span style="background:#7e22ce; color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px;">تنبيه فوري</span>
+                    <span>مطابقة ذكية: تم العثور على <?= $totalSmartMatchesCount ?> طلب في قائمة الانتظار لكتب متوفرة
+                        بالمستودع!</span>
+                    <span
+                        style="background:#7e22ce; color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:9999px;">تنبيه
+                        فوري</span>
                 </div>
-                <div style="font-size:12.5px; color:#7e22ce; margin-top:2px;">يوجد طلاب يبحثون عن كتب متوفرة حالياً. اضغط على شارة "ربط فوري" داخل الجداول أو افتح قائمة الانتظار.</div>
+                <div style="font-size:12.5px; color:#7e22ce; margin-top:2px;">يوجد طلاب يبحثون عن كتب متوفرة حالياً. اضغط
+                    على شارة "ربط فوري" داخل الجداول أو افتح قائمة الانتظار.</div>
             </div>
         </div>
-        <button type="button" class="btn" onclick="openWishlistModal()" style="background:#9333ea; color:#fff; font-size:13px; font-weight:700; border-radius:10px; padding:9px 18px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+        <button type="button" class="btn" onclick="openWishlistModal()"
+            style="background:#9333ea; color:#fff; font-size:13px; font-weight:700; border-radius:10px; padding:9px 18px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
@@ -1224,31 +1432,38 @@ require __DIR__ . '/_header.php';
                 </svg>
                 <span>حملة تبادل المواد الحالية</span>
             </h2>
-            <div style="font-size:12px;color:#64748b;margin-top:4px;"><?= htmlspecialchars($currentCampaignLabel) ?> · الطلبات الجديدة من الموقع تظهر هنا</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px;"><?= htmlspecialchars($currentCampaignLabel) ?> ·
+                الطلبات الجديدة من الموقع تظهر هنا</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <?php if ($isDonationsAdmin): ?>
-            <button type="button" class="btn" style="background:#f59e0b;color:#fff;border:1px solid #d97706;" onclick="openArchiveCampaignModal()">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect width="20" height="5" x="2" y="3" rx="1" />
-                    <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
-                    <path d="M10 12h4" />
-                </svg>
-                أرشفة الحملة الحالية
-            </button>
+                <button type="button" class="btn" style="background:#f59e0b;color:#fff;border:1px solid #d97706;"
+                    onclick="openArchiveCampaignModal()">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect width="20" height="5" x="2" y="3" rx="1" />
+                        <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+                        <path d="M10 12h4" />
+                    </svg>
+                    أرشفة الحملة الحالية
+                </button>
 
-            <form method="post" style="margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
-                <input type="hidden" name="action" value="start_new_campaign">
-                <input type="text" name="campaign_label" placeholder="اسم الفصل الجديد" aria-label="اسم الفصل الجديد"
-                    style="min-width:180px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">
-                <button type="submit" class="btn btn-primary" style="padding:8px 14px;">فتح حملة جديدة</button>
-            </form>
+                <form method="post" style="margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
+                    <input type="hidden" name="action" value="start_new_campaign">
+                    <input type="text" name="campaign_label" placeholder="اسم الفصل الجديد" aria-label="اسم الفصل الجديد"
+                        style="min-width:180px;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">
+                    <button type="submit" class="btn btn-primary" style="padding:8px 14px;">فتح حملة جديدة</button>
+                </form>
             <?php else: ?>
-            <span style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                إدارة الحملات والأرشفة مخصصة للإدارة فقط
-            </span>
+                <span
+                    style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    إدارة الحملات والأرشفة مخصصة للإدارة فقط
+                </span>
             <?php endif; ?>
         </div>
     </div>
@@ -1260,8 +1475,11 @@ require __DIR__ . '/_header.php';
     $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveFilter) : '';
     $isArchiveSelected = (!empty($archiveFilter) && $archiveFilter !== 'current');
     ?>
-    <details class="panel-box semester-archive-panel" style="margin-top:20px; background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;" <?= $isArchiveSelected ? 'open' : '' ?>>
-        <summary style="padding:16px 20px; cursor:pointer; font-weight:800; font-size:15px; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border-bottom:1px solid #e2e8f0; list-style:none; user-select:none;">
+    <details class="panel-box semester-archive-panel"
+        style="margin-top:20px; background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;"
+        <?= $isArchiveSelected ? 'open' : '' ?>>
+        <summary
+            style="padding:16px 20px; cursor:pointer; font-weight:800; font-size:15px; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border-bottom:1px solid #e2e8f0; list-style:none; user-select:none;">
             <div style="display:flex; align-items:center; gap:10px;">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#475569" stroke-width="2">
                     <rect width="20" height="5" x="2" y="3" rx="1" />
@@ -1270,7 +1488,9 @@ require __DIR__ . '/_header.php';
                 </svg>
                 <span style="color:#1e293b;">📂 أرشيف الفصول والحملات السابقة (قائمة مطوية — اضغط للاستعراض)</span>
                 <?php if ($isArchiveSelected): ?>
-                    <span style="font-size:12px; background:#0284c7; color:#fff; padding:2px 10px; border-radius:999px; font-weight:700;">مستعرض حالياً: <?= htmlspecialchars($campaignBadgeText) ?></span>
+                    <span
+                        style="font-size:12px; background:#0284c7; color:#fff; padding:2px 10px; border-radius:999px; font-weight:700;">مستعرض
+                        حالياً: <?= htmlspecialchars($campaignBadgeText) ?></span>
                 <?php endif; ?>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
@@ -1278,26 +1498,31 @@ require __DIR__ . '/_header.php';
                 <span style="font-size:14px; color:#94a3b8;">▼</span>
             </div>
         </summary>
-        
+
         <div style="padding:18px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
                 <div style="font-size:13px; color:#64748b;">
                     يمكنك استعراض بيانات الفصول السابقة كأرشيف تاريخي (متاح للمنسقين للاطلاع فقط دون تعديل أو حذف).
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <a href="?tab=<?= htmlspecialchars($activeTab) ?>" class="btn <?= (empty($archiveFilter) || $archiveFilter === 'current') ? 'btn-primary' : 'btn-secondary' ?>" style="text-decoration:none; font-size:12.5px;">
+                    <a href="?tab=<?= htmlspecialchars($activeTab) ?>"
+                        class="btn <?= (empty($archiveFilter) || $archiveFilter === 'current') ? 'btn-primary' : 'btn-secondary' ?>"
+                        style="text-decoration:none; font-size:12.5px;">
                         📌 الحملة الحالية (<?= htmlspecialchars($currentCampaignLabel) ?>)
                     </a>
-                    <a href="?tab=<?= htmlspecialchars($activeTab) ?>&amp;archive=all" class="btn <?= $archiveFilter === 'all' ? 'btn-primary' : 'btn-secondary' ?>" style="text-decoration:none; font-size:12.5px;">
+                    <a href="?tab=<?= htmlspecialchars($activeTab) ?>&amp;archive=all"
+                        class="btn <?= $archiveFilter === 'all' ? 'btn-primary' : 'btn-secondary' ?>"
+                        style="text-decoration:none; font-size:12.5px;">
                         عرض جميع الفصول
                     </a>
                 </div>
             </div>
 
             <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
-                <?php foreach ($archiveStats as $archive): 
+                <?php foreach ($archiveStats as $archive):
                     $isSelected = ($archiveFilter === $archive['archive_key']);
-                ?>
+                    ?>
                     <a href="?tab=<?= htmlspecialchars($activeTab) ?>&amp;archive=<?= urlencode($archive['archive_key']) ?>"
                         style="text-decoration:none;color:inherit;border:2px solid <?= $isSelected ? '#0284c7' : '#e2e8f0' ?>;border-radius:12px;padding:16px;background:<?= $isSelected ? '#eff6ff' : '#ffffff' ?>;box-shadow:<?= $isSelected ? '0 0 0 2px rgba(2,132,199,0.2)' : '0 1px 3px rgba(0,0,0,0.05)' ?>;transition:all .2s ease;">
                         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1308,14 +1533,25 @@ require __DIR__ . '/_header.php';
                                 <span><?= htmlspecialchars($archive['archive_label']) ?></span>
                             </div>
                             <?php if ($isSelected): ?>
-                                <span style="font-size:11px;background:#0284c7;color:#fff;padding:2px 8px;border-radius:9999px;font-weight:600;">معروض حالياً</span>
+                                <span
+                                    style="font-size:11px;background:#0284c7;color:#fff;padding:2px 8px;border-radius:9999px;font-weight:600;">معروض
+                                    حالياً</span>
                             <?php endif; ?>
                         </div>
-                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;text-align:center;">
-                            <span><b style="display:block;color:#0284c7;font-size:20px;"><?= (int) $archive['total'] ?></b><small style="color:#64748b;">الإجمالي</small></span>
-                            <span><b style="display:block;color:#16a34a;font-size:20px;"><?= (int) $archive['available'] ?></b><small style="color:#64748b;">متاحة</small></span>
-                            <span><b style="display:block;color:#d97706;font-size:20px;"><?= (int) $archive['reserved'] ?></b><small style="color:#64748b;">محجوزة</small></span>
-                            <span><b style="display:block;color:#9333ea;font-size:20px;"><?= (int) $archive['completed'] ?></b><small style="color:#64748b;">مكتملة</small></span>
+                        <div
+                            style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;text-align:center;">
+                            <span><b
+                                    style="display:block;color:#0284c7;font-size:20px;"><?= (int) $archive['total'] ?></b><small
+                                    style="color:#64748b;">الإجمالي</small></span>
+                            <span><b
+                                    style="display:block;color:#16a34a;font-size:20px;"><?= (int) $archive['available'] ?></b><small
+                                    style="color:#64748b;">متاحة</small></span>
+                            <span><b
+                                    style="display:block;color:#d97706;font-size:20px;"><?= (int) $archive['reserved'] ?></b><small
+                                    style="color:#64748b;">محجوزة</small></span>
+                            <span><b
+                                    style="display:block;color:#9333ea;font-size:20px;"><?= (int) $archive['completed'] ?></b><small
+                                    style="color:#64748b;">مكتملة</small></span>
                         </div>
                     </a>
                 <?php endforeach; ?>
@@ -1339,17 +1575,20 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
             </svg>
             كافة المواد (<?= $totalMaterials ?>)
         </a>
-        <a href="?tab=pending<?= $archiveUrlParam ?>" class="tab-btn <?= $activeTab === 'pending' ? 'active' : '' ?>" style="<?= $pendingCount > 0 ? 'background:#fffbeb;border-color:#f59e0b;color:#b45309;' : '' ?>">
+        <a href="?tab=pending<?= $archiveUrlParam ?>" class="tab-btn <?= $activeTab === 'pending' ? 'active' : '' ?>"
+            style="<?= $pendingCount > 0 ? 'background:#fffbeb;border-color:#f59e0b;color:#b45309;' : '' ?>">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
             </svg>
             الطلبات المنتظرة (<?= $pendingCount ?>)
             <?php if ($pendingCount > 0): ?>
-                <span style="font-size:10px;font-weight:900;background:#f59e0b;color:#fff;padding:2px 7px;border-radius:999px;margin-right:2px;">جديد</span>
+                <span
+                    style="font-size:10px;font-weight:900;background:#f59e0b;color:#fff;padding:2px 7px;border-radius:999px;margin-right:2px;">جديد</span>
             <?php endif; ?>
         </a>
-        <a href="?tab=available<?= $archiveUrlParam ?>" class="tab-btn <?= $activeTab === 'available' ? 'active' : '' ?>">
+        <a href="?tab=available<?= $archiveUrlParam ?>"
+            class="tab-btn <?= $activeTab === 'available' ? 'active' : '' ?>">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 14 14" />
@@ -1381,7 +1620,8 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
             </svg>
             جدول مواعيد المنسقين
         </a>
-        <a href="?tab=completed<?= $archiveUrlParam ?>" class="tab-btn <?= $activeTab === 'completed' ? 'active' : '' ?>">
+        <a href="?tab=completed<?= $archiveUrlParam ?>"
+            class="tab-btn <?= $activeTab === 'completed' ? 'active' : '' ?>">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12" />
             </svg>
@@ -1390,7 +1630,8 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
     </div>
 
     <div class="tabs-actions" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <button type="button" class="btn" style="background:#8b5cf6; color:#fff; border:1px solid #7c3aed;" onclick="openWishlistModal()">
+        <button type="button" class="btn" style="background:#8b5cf6; color:#fff; border:1px solid #7c3aed;"
+            onclick="openWishlistModal()">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
@@ -1406,16 +1647,20 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
             إضافة كتاب / مادة متبادلة
         </button>
         <?php if ($isDonationsAdmin): ?>
-        <button type="button" class="btn" style="background:#f59e0b; color:#fff; border:1px solid #d97706;" onclick="openArchiveCampaignModal()">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <rect width="20" height="5" x="2" y="3" rx="1" />
-                <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
-                <path d="M10 12h4" />
-            </svg>
-            أرشفة الحملة الحالية
-        </button>
+            <button type="button" class="btn" style="background:#f59e0b; color:#fff; border:1px solid #d97706;"
+                onclick="openArchiveCampaignModal()">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="20" height="5" x="2" y="3" rx="1" />
+                    <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+                    <path d="M10 12h4" />
+                </svg>
+                أرشفة الحملة الحالية
+            </button>
         <?php endif; ?>
-        <a href="?action=print_sheet&tab=<?= urlencode($activeTab) ?>&archive=<?= urlencode($archiveFilter) ?>&status=<?= urlencode($statusFilter) ?>&faculty=<?= urlencode($facultyFilter) ?>&coord=<?= urlencode($coordFilter) ?>&q=<?= urlencode($search) ?>" target="_blank" class="btn btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;" title="طباعة كشف المواد والكتب المتبادلة رسمياً">
+        <a href="?action=print_sheet&tab=<?= urlencode($activeTab) ?>&archive=<?= urlencode($archiveFilter) ?>&status=<?= urlencode($statusFilter) ?>&faculty=<?= urlencode($facultyFilter) ?>&coord=<?= urlencode($coordFilter) ?>&q=<?= urlencode($search) ?>"
+            target="_blank" class="btn btn-secondary"
+            style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;"
+            title="طباعة كشف المواد والكتب المتبادلة رسمياً">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 6 2 18 2 18 9" />
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
@@ -1429,7 +1674,8 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
 <!-- صندوق الفلاتر والبحث -->
 <div class="panel-box" style="margin-bottom: 20px;">
     <div class="panel-box-body" style="padding: 16px 20px;">
-        <form method="get" class="search-filter-grid" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <form method="get" class="search-filter-grid"
+            style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
             <input type="hidden" name="tab" value="<?= htmlspecialchars($activeTab) ?>">
             <?php if ($archiveFilter !== ''): ?>
                 <input type="hidden" name="archive" value="<?= htmlspecialchars($archiveFilter) ?>">
@@ -1447,10 +1693,13 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
             <div class="filter-field" style="min-width:200px;">
                 <select name="coord" onchange="this.form.submit()" class="form-control">
                     <option value="">كافة الأقسام والمنسقين</option>
-                    <option value="shared" <?= $coordFilter === 'shared' ? 'selected' : '' ?>>قسم التسليم المشترك (غير المفرز)</option>
-                    <option value="male_all" <?= $coordFilter === 'male_all' ? 'selected' : '' ?>>كافة منسقي الذكور</option>
-                    <option value="female_all" <?= $coordFilter === 'female_all' ? 'selected' : '' ?>>كافة منسقات الإناث</option>
-                    <?php 
+                    <option value="shared" <?= $coordFilter === 'shared' ? 'selected' : '' ?>>قسم التسليم المشترك (غير
+                        المفرز)</option>
+                    <option value="male_all" <?= $coordFilter === 'male_all' ? 'selected' : '' ?>>كافة منسقي الذكور
+                    </option>
+                    <option value="female_all" <?= $coordFilter === 'female_all' ? 'selected' : '' ?>>كافة منسقات الإناث
+                    </option>
+                    <?php
                     $hasMale = false;
                     foreach ($coordinatorsList as $cKey => $cData) {
                         if ($cKey !== 'shared' && ($cData['gender'] ?? '') !== 'female') {
@@ -1459,18 +1708,18 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
                         }
                     }
                     if ($hasMale):
-                    ?>
-                    <optgroup label="منسقو الذكور">
-                        <?php foreach ($coordinatorsList as $cKey => $cData): ?>
-                            <?php if ($cKey !== 'shared' && ($cData['gender'] ?? '') !== 'female'): ?>
-                                <option value="<?= htmlspecialchars((string)$cKey) ?>" <?= ((string)$coordFilter === (string)$cKey) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($cData['name']) ?>
-                                </option>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </optgroup>
+                        ?>
+                        <optgroup label="منسقو الذكور">
+                            <?php foreach ($coordinatorsList as $cKey => $cData): ?>
+                                <?php if ($cKey !== 'shared' && ($cData['gender'] ?? '') !== 'female'): ?>
+                                    <option value="<?= htmlspecialchars((string) $cKey) ?>" <?= ((string) $coordFilter === (string) $cKey) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($cData['name']) ?>
+                                    </option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </optgroup>
                     <?php endif; ?>
-                    <?php 
+                    <?php
                     $hasFemale = false;
                     foreach ($coordinatorsList as $cKey => $cData) {
                         if ($cKey !== 'shared' && ($cData['gender'] ?? '') === 'female') {
@@ -1479,16 +1728,16 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
                         }
                     }
                     if ($hasFemale):
-                    ?>
-                    <optgroup label="منسقات الإناث">
-                        <?php foreach ($coordinatorsList as $cKey => $cData): ?>
-                            <?php if ($cKey !== 'shared' && ($cData['gender'] ?? '') === 'female'): ?>
-                                <option value="<?= htmlspecialchars((string)$cKey) ?>" <?= ((string)$coordFilter === (string)$cKey) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($cData['name']) ?>
-                                </option>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </optgroup>
+                        ?>
+                        <optgroup label="منسقات الإناث">
+                            <?php foreach ($coordinatorsList as $cKey => $cData): ?>
+                                <?php if ($cKey !== 'shared' && ($cData['gender'] ?? '') === 'female'): ?>
+                                    <option value="<?= htmlspecialchars((string) $cKey) ?>" <?= ((string) $coordFilter === (string) $cKey) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($cData['name']) ?>
+                                    </option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </optgroup>
                     <?php endif; ?>
                 </select>
             </div>
@@ -1511,7 +1760,7 @@ $maleMaterials = [];
 $femaleMaterials = [];
 
 foreach ($materials as $mItem) {
-    $cKey = (string)($mItem['assigned_coordinator'] ?? '');
+    $cKey = (string) ($mItem['assigned_coordinator'] ?? '');
     if ($cKey !== '' && $cKey !== 'shared' && isset($coordinatorsList[$cKey])) {
         $coordGender = $coordinatorsList[$cKey]['gender'] ?? 'male';
         if ($coordGender === 'female') {
@@ -1564,491 +1813,595 @@ if ($archiveFilter === 'all') {
  */
 function renderPendingDonationsTable(array $pendingItems, array $coordinatorsList, bool $isDonationsAdmin, string $csrfToken, array $facultiesList): void
 {
-?>
-<div class="custom-table-card" id="section-pending" style="margin-bottom: 24px; border: 2px solid #fef3c7; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 4px 16px rgba(217,119,6,0.08);">
-    <div class="table-card-header" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border-bottom: 1.5px solid #fde68a; padding: 16px 20px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 44px; height: 44px; border-radius: 12px; background: #fef3c7; display: flex; align-items: center; justify-content: center; color: #d97706; border: 1px solid #fcd34d;">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                </div>
-                <div>
-                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #92400e; display: flex; align-items: center; gap: 8px;">
-                        <span>طلبات التبرع بالمواد المنتظرة</span>
-                        <span style="font-size: 12px; background: #d97706; color: #fff; padding: 2px 10px; border-radius: 9999px;"><?= count($pendingItems) ?></span>
-                    </h3>
-                    <div style="font-size: 12px; color: #b45309; margin-top: 3px;">
-                        الطلبات الواردة مباشرة من نموذج التبرع بالمواد على الموقع — تعتمد وتوجّه من الإدارة فقط، وللمنسقين حق الاطلاع
+    ?>
+    <div class="custom-table-card" id="section-pending"
+        style="margin-bottom: 24px; border: 2px solid #fef3c7; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 4px 16px rgba(217,119,6,0.08);">
+        <div class="table-card-header"
+            style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border-bottom: 1.5px solid #fde68a; padding: 16px 20px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div
+                        style="width: 44px; height: 44px; border-radius: 12px; background: #fef3c7; display: flex; align-items: center; justify-content: center; color: #d97706; border: 1px solid #fcd34d;">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3
+                            style="margin: 0; font-size: 16px; font-weight: 800; color: #92400e; display: flex; align-items: center; gap: 8px;">
+                            <span>طلبات التبرع بالمواد المنتظرة</span>
+                            <span
+                                style="font-size: 12px; background: #d97706; color: #fff; padding: 2px 10px; border-radius: 9999px;"><?= count($pendingItems) ?></span>
+                        </h3>
+                        <div style="font-size: 12px; color: #b45309; margin-top: 3px;">
+                            الطلبات الواردة مباشرة من نموذج التبرع بالمواد على الموقع — تعتمد وتوجّه من الإدارة فقط،
+                            وللمنسقين حق الاطلاع
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div>
-                <?php if ($isDonationsAdmin): ?>
-                    <span style="font-size: 12px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 6px 12px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        صلاحية الاعتماد والتوجيه: مفعلة للأدمن
-                    </span>
-                <?php else: ?>
-                    <span style="font-size: 12px; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        اطلاع فقط — الاعتماد والتوجيه مخصص للمشرف العام
-                    </span>
-                <?php endif; ?>
+                <div>
+                    <?php if ($isDonationsAdmin): ?>
+                        <span
+                            style="font-size: 12px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 6px 12px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            </svg>
+                            صلاحية الاعتماد والتوجيه: مفعلة للأدمن
+                        </span>
+                    <?php else: ?>
+                        <span
+                            style="font-size: 12px; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                            اطلاع فقط — الاعتماد والتوجيه مخصص للمشرف العام
+                        </span>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="table-card-body" style="padding: 0; overflow-x: auto;">
-        <table class="custom-table" style="width: 100%; border-collapse: collapse; min-width: 960px;">
-            <thead>
-                <tr style="background: #fffdf5; border-bottom: 2px solid #fef3c7;">
-                    <th style="width: 45px; text-align: center;">#</th>
-                    <th>اسم الطالب المتبرع</th>
-                    <th>أرقام وبيانات التواصل</th>
-                    <th>المادة المتبرع بها والمحتويات</th>
-                    <th>أسبوع التسليم المقترح</th>
-                    <th style="width: 130px;">تاريخ الإرسال</th>
-                    <th style="width: 120px; text-align: center;">الحالة</th>
-                    <th style="width: 180px; text-align: center;">الإجراءات</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($pendingItems)): ?>
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 45px 20px; color: #94a3b8;">
-                            <div style="font-size: 34px; margin-bottom: 8px;">🎉</div>
-                            <div style="font-weight: 700; font-size: 14.5px; color: #475569;">لا توجد أي طلبات تبرع معلقة حالياً</div>
-                            <div style="font-size: 12px; margin-top: 4px;">كافة طلبات التبرع الواردة من الموقع تم اعتمادها أو توجيهها بنجاح</div>
-                        </td>
+        <div class="table-card-body" style="padding: 0; overflow-x: auto;">
+            <table class="custom-table" style="width: 100%; border-collapse: collapse; min-width: 960px;">
+                <thead>
+                    <tr style="background: #fffdf5; border-bottom: 2px solid #fef3c7;">
+                        <th style="width: 45px; text-align: center;">#</th>
+                        <th>اسم الطالب المتبرع</th>
+                        <th>أرقام وبيانات التواصل</th>
+                        <th>المادة المتبرع بها والمحتويات</th>
+                        <th>أسبوع التسليم المقترح</th>
+                        <th style="width: 130px;">تاريخ الإرسال</th>
+                        <th style="width: 120px; text-align: center;">الحالة</th>
+                        <th style="width: 180px; text-align: center;">الإجراءات</th>
                     </tr>
-                <?php else: ?>
-                    <?php foreach ($pendingItems as $idx => $item): 
-                        $phone = preg_replace('/[^0-9]/', '', (string)($item['donor_phone'] ?? ''));
-                        $waUrl = '';
-                        if ($phone !== '') {
-                            $waNum = str_starts_with($phone, '0') ? '962' . substr($phone, 1) : $phone;
-                            $waMsg = urlencode("مرحباً بك زميلنا {$item['donor_name']}، نتواصل معك من فريق مكانك بخصوص طلب التبرع بالمادة ({$item['material_name']}).");
-                            $waUrl = "https://wa.me/{$waNum}?text={$waMsg}";
-                        }
-                    ?>
-                        <tr style="border-bottom: 1px solid #f1f5f9;">
-                            <td style="text-align: center; font-weight: 700; color: #94a3b8;">
-                                <?= $idx + 1 ?>
-                            </td>
-                            <td>
-                                <div style="font-weight: 800; font-size: 14px; color: #0f172a;">
-                                    <?= htmlspecialchars($item['donor_name'] ?: 'طالب') ?>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
-                                    <?php if (($item['donor_gender'] ?? '') === 'female'): ?>
-                                        <span style="font-size: 11px; background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; padding: 2px 7px; border-radius: 6px; font-weight: 700;">
-                                            أنثى
-                                        </span>
-                                    <?php else: ?>
-                                        <span style="font-size: 11px; background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; padding: 2px 7px; border-radius: 6px; font-weight: 700;">
-                                            ذكر
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                            <td>
-                                <!-- رقم التواصل الأساسي (واتساب) -->
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-weight: 700; font-size: 13px; color: #1e293b; font-family: monospace;" dir="ltr">
-                                        <?= htmlspecialchars($item['donor_phone'] ?: '-') ?>
-                                    </span>
-                                    <?php if ($waUrl !== ''): ?>
-                                        <a href="<?= $waUrl ?>" target="_blank" rel="noopener" title="مراسلة سريعة عبر واتساب" style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: #25d366; color: #fff; border-radius: 50%; text-decoration: none;">
-                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 14.99 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.67 12.05 3.67Z"/></svg>
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-                                <!-- رقم التأكيد أو البديل -->
-                                <?php if (!empty($item['donor_phone_alt']) && $item['donor_phone_alt'] !== $item['donor_phone']): ?>
-                                    <div style="font-size: 11px; color: #64748b; margin-top: 3px;" dir="ltr">
-                                        بديل: <?= htmlspecialchars($item['donor_phone_alt']) ?>
-                                    </div>
-                                <?php endif; ?>
-                                <!-- البريد الإلكتروني -->
-                                <?php if (!empty($item['donor_email'])): ?>
-                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                                        <?= htmlspecialchars($item['donor_email']) ?>
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <div style="font-weight: 800; font-size: 14px; color: #0f172a;">
-                                    <?= htmlspecialchars($item['material_name']) ?>
-                                </div>
-                                <?php if (!empty($item['description'])): ?>
-                                    <div style="font-size: 12px; color: #475569; margin-top: 4px; line-height: 1.4; background: #f8fafc; padding: 4px 8px; border-radius: 6px; border: 1px dashed #cbd5e1;">
-                                        <?= htmlspecialchars($item['description']) ?>
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php if (!empty($item['delivery_week'])): ?>
-                                    <span style="font-size: 12px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 3px 8px; border-radius: 6px; font-weight: 600; display: inline-block;">
-                                        📅 <?= htmlspecialchars($item['delivery_week']) ?>
-                                    </span>
-                                <?php else: ?>
-                                    <span style="color: #94a3b8; font-size: 12px;">غير محدد</span>
-                                <?php endif; ?>
-                            </td>
-                            <td style="font-size: 11.5px; color: #64748b;">
-                                <?= htmlspecialchars(substr((string)($item['created_at'] ?? ''), 0, 16)) ?>
-                            </td>
-                            <td style="text-align: center;">
-                                <span style="font-size: 11.5px; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 4px 8px; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                    بانتظار الموافقة
-                                </span>
-                            </td>
-                            <td style="text-align: center;">
-                                <?php if ($isDonationsAdmin): ?>
-                                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                        <button type="button" class="btn btn-sm" style="background: #10b981; color: #fff; border: 1px solid #059669; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;"
-                                            onclick='openApproveDonationModal(<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'>
-                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                                            اعتماد وتوجيه
-                                        </button>
-                                        <form method="post" style="display: inline;" onsubmit="return confirm('تأكيد رفض وحذف طلب التبرع بالمادة (<?= htmlspecialchars($item['material_name']) ?>)؟');">
-                                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                                            <input type="hidden" name="action" value="reject_donation">
-                                            <input type="hidden" name="id" value="<?= $item['id'] ?>">
-                                            <button type="submit" class="btn btn-sm" style="background: #ef4444; color: #fff; border: 1px solid #dc2626; padding: 5px 8px; border-radius: 6px;" title="رفض الطلب">
-                                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                            </button>
-                                        </form>
-                                    </div>
-                                <?php else: ?>
-                                    <span style="font-size: 11px; color: #94a3b8; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
-                                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                        اطلاع فقط
-                                    </span>
-                                <?php endif; ?>
+                </thead>
+                <tbody>
+                    <?php if (empty($pendingItems)): ?>
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 45px 20px; color: #94a3b8;">
+                                <div style="font-size: 34px; margin-bottom: 8px;">🎉</div>
+                                <div style="font-weight: 700; font-size: 14.5px; color: #475569;">لا توجد أي طلبات تبرع معلقة
+                                    حالياً</div>
+                                <div style="font-size: 12px; margin-top: 4px;">كافة طلبات التبرع الواردة من الموقع تم اعتمادها
+                                    أو توجيهها بنجاح</div>
                             </td>
                         </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                    <?php else: ?>
+                        <?php foreach ($pendingItems as $idx => $item):
+                            $phone = preg_replace('/[^0-9]/', '', (string) ($item['donor_phone'] ?? ''));
+                            $waUrl = '';
+                            if ($phone !== '') {
+                                $waNum = str_starts_with($phone, '0') ? '962' . substr($phone, 1) : $phone;
+                                $waMsg = urlencode("مرحباً بك زميلنا {$item['donor_name']}، نتواصل معك من فريق مكانك بخصوص طلب التبرع بالمادة ({$item['material_name']}).");
+                                $waUrl = "https://wa.me/{$waNum}?text={$waMsg}";
+                            }
+                            ?>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="text-align: center; font-weight: 700; color: #94a3b8;">
+                                    <?= $idx + 1 ?>
+                                </td>
+                                <td>
+                                    <div style="font-weight: 800; font-size: 14px; color: #0f172a;">
+                                        <?= htmlspecialchars($item['donor_name'] ?: 'طالب') ?>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                                        <?php if (($item['donor_gender'] ?? '') === 'female'): ?>
+                                            <span
+                                                style="font-size: 11px; background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; padding: 2px 7px; border-radius: 6px; font-weight: 700;">
+                                                أنثى
+                                            </span>
+                                        <?php else: ?>
+                                            <span
+                                                style="font-size: 11px; background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; padding: 2px 7px; border-radius: 6px; font-weight: 700;">
+                                                ذكر
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <!-- رقم التواصل الأساسي (واتساب) -->
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-weight: 700; font-size: 13px; color: #1e293b; font-family: monospace;"
+                                            dir="ltr">
+                                            <?= htmlspecialchars($item['donor_phone'] ?: '-') ?>
+                                        </span>
+                                        <?php if ($waUrl !== ''): ?>
+                                            <a href="<?= $waUrl ?>" target="_blank" rel="noopener" title="مراسلة سريعة عبر واتساب"
+                                                style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: #25d366; color: #fff; border-radius: 50%; text-decoration: none;">
+                                                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                                                    <path
+                                                        d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 14.99 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.67 12.05 3.67Z" />
+                                                </svg>
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
+                                    <!-- رقم التأكيد أو البديل -->
+                                    <?php if (!empty($item['donor_phone_alt']) && $item['donor_phone_alt'] !== $item['donor_phone']): ?>
+                                        <div style="font-size: 11px; color: #64748b; margin-top: 3px;" dir="ltr">
+                                            بديل: <?= htmlspecialchars($item['donor_phone_alt']) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    <!-- البريد الإلكتروني -->
+                                    <?php if (!empty($item['donor_email'])): ?>
+                                        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                                            <?= htmlspecialchars($item['donor_email']) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div style="font-weight: 800; font-size: 14px; color: #0f172a;">
+                                        <?= htmlspecialchars($item['material_name']) ?>
+                                    </div>
+                                    <?php if (!empty($item['description'])): ?>
+                                        <div
+                                            style="font-size: 12px; color: #475569; margin-top: 4px; line-height: 1.4; background: #f8fafc; padding: 4px 8px; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                                            <?= htmlspecialchars($item['description']) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($item['delivery_week'])): ?>
+                                        <span
+                                            style="font-size: 12px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 3px 8px; border-radius: 6px; font-weight: 600; display: inline-block;">
+                                            📅 <?= htmlspecialchars($item['delivery_week']) ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span style="color: #94a3b8; font-size: 12px;">غير محدد</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="font-size: 11.5px; color: #64748b;">
+                                    <?= htmlspecialchars(substr((string) ($item['created_at'] ?? ''), 0, 16)) ?>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span
+                                        style="font-size: 11.5px; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 4px 8px; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+                                            stroke-width="2">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <polyline points="12 6 12 12 16 14" />
+                                        </svg>
+                                        بانتظار الموافقة
+                                    </span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <?php if ($isDonationsAdmin): ?>
+                                        <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                            <button type="button" class="btn btn-sm"
+                                                style="background: #10b981; color: #fff; border: 1px solid #059669; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;"
+                                                onclick='openApproveDonationModal(<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'>
+                                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                                                    stroke-width="2.5">
+                                                    <polyline points="20 6 9 17 4 12" />
+                                                </svg>
+                                                اعتماد وتوجيه
+                                            </button>
+                                            <form method="post" style="display: inline;"
+                                                onsubmit="return confirm('تأكيد رفض وحذف طلب التبرع بالمادة (<?= htmlspecialchars($item['material_name']) ?>)؟');">
+                                                <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                                                <input type="hidden" name="action" value="reject_donation">
+                                                <input type="hidden" name="id" value="<?= $item['id'] ?>">
+                                                <button type="submit" class="btn btn-sm"
+                                                    style="background: #ef4444; color: #fff; border: 1px solid #dc2626; padding: 5px 8px; border-radius: 6px;"
+                                                    title="رفض الطلب">
+                                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                                                        stroke-width="2">
+                                                        <line x1="18" y1="6" x2="6" y2="18" />
+                                                        <line x1="6" y1="6" x2="18" y2="18" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    <?php else: ?>
+                                        <span
+                                            style="font-size: 11px; color: #94a3b8; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+                                                stroke-width="2">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                            اطلاع فقط
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
-<?php
+    <?php
 }
 
-function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $theme, $coordinatorsList, $statusLabels, $csrfToken, $smartMatches = [], $readOnly = false) {
+function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $theme, $coordinatorsList, $statusLabels, $csrfToken, $smartMatches = [], $readOnly = false)
+{
     $badgeBg = $theme['badge_bg'];
     $badgeColor = $theme['badge_color'];
     $badgeBorder = $theme['badge_border'];
     $svgIcon = $theme['svg'] ?? '';
     $count = count($items);
-?>
-<div class="panel-box" id="section-<?= $sectionKey ?>" style="margin-bottom: 24px; border: 1.5px solid <?= $badgeBorder ?>; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
-    <div class="panel-box-header" style="background: <?= $badgeBg ?>; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1.5px solid <?= $badgeBorder ?>; padding: 14px 20px;">
-        <div>
-            <h2 class="panel-box-title" style="color: <?= $badgeColor ?>; font-size: 16px; display: flex; align-items: center; gap: 8px; margin:0;">
-                <?= $svgIcon ?>
-                <span><?= $title ?></span>
-                <span style="background: <?= $badgeColor ?>; color: #fff; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 9999px;"><?= $count ?> مادة</span>
-            </h2>
-            <div style="font-size: 12px; color: #64748b; margin-top: 3px;"><?= $subtitle ?></div>
-        </div>
-        <div style="font-size: 12px; font-weight: 700; color: <?= $badgeColor ?>; background: #fff; padding: 5px 12px; border-radius: 8px; border: 1px solid <?= $badgeBorder ?>;">
-            <?php if ($sectionKey === 'shared'): ?>
-                أولوية الفرز والتوزيع
-            <?php elseif ($sectionKey === 'male'): ?>
-                إشراف منسق الذكور
-            <?php else: ?>
-                إشراف منسقات الإناث
+    ?>
+    <div class="panel-box" id="section-<?= $sectionKey ?>"
+        style="margin-bottom: 24px; border: 1.5px solid <?= $badgeBorder ?>; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
+        <div class="panel-box-header"
+            style="background: <?= $badgeBg ?>; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1.5px solid <?= $badgeBorder ?>; padding: 14px 20px;">
+            <div>
+                <h2 class="panel-box-title"
+                    style="color: <?= $badgeColor ?>; font-size: 16px; display: flex; align-items: center; gap: 8px; margin:0;">
+                    <?= $svgIcon ?>
+                    <span><?= $title ?></span>
+                    <span
+                        style="background: <?= $badgeColor ?>; color: #fff; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 9999px;"><?= $count ?>
+                        مادة</span>
+                </h2>
+                <div style="font-size: 12px; color: #64748b; margin-top: 3px;"><?= $subtitle ?></div>
+            </div>
+            <div
+                style="font-size: 12px; font-weight: 700; color: <?= $badgeColor ?>; background: #fff; padding: 5px 12px; border-radius: 8px; border: 1px solid <?= $badgeBorder ?>;">
+                <?php if ($sectionKey === 'shared'): ?>
+                    أولوية الفرز والتوزيع
+                <?php elseif ($sectionKey === 'male'): ?>
+                    إشراف منسق الذكور
+                <?php else: ?>
+                    إشراف منسقات الإناث
+                <?php endif; ?>
+            </div>
+            <?php if ($readOnly): ?>
+                <div
+                    style="font-size:11px;font-weight:700;color:#64748b;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:4px 10px;display:flex;align-items:center;gap:5px;">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    اطلاع فقط
+                </div>
             <?php endif; ?>
         </div>
-        <?php if ($readOnly): ?>
-        <div style="font-size:11px;font-weight:700;color:#64748b;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:4px 10px;display:flex;align-items:center;gap:5px;">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            اطلاع فقط
-        </div>
-        <?php endif; ?>
-    </div>
 
-    <div style="overflow-x: auto;">
-        <table class="data-table" style="margin: 0; width: 100%;">
-            <thead>
-                <tr>
-                    <th style="width: 50px;">#</th>
-                    <th>المادة / الكتاب</th>
-                    <th>الكلية والرمز</th>
-                    <th>المتبرع / صاحب المادة</th>
-                    <th>الحاجز / المستلم</th>
-                    <th style="min-width: 180px;">الفرز والمنسق المكلف</th>
-                    <th>الحالة</th>
-                    <th style="text-align:center; width: 220px;">الإجراءات السريعة</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($items)): ?>
+        <div style="overflow-x: auto;">
+            <table class="data-table" style="margin: 0; width: 100%;">
+                <thead>
                     <tr>
-                        <td colspan="8" style="text-align:center; padding: 36px 20px; color:#64748b; background:#fafafa;">
-                            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#94a3b8" stroke-width="1.5" style="margin: 0 auto 8px; display:block;">
-                                <rect width="18" height="18" x="3" y="3" rx="2" />
-                                <path d="M3 9h18" />
-                                <path d="M9 21V9" />
-                            </svg>
-                            <div style="font-size:14px; font-weight:700; color:#334155;">لا توجد مواد في هذا القسم حالياً</div>
-                            <div style="font-size:12px; color:#94a3b8; margin-top:2px;">يتم نقل المواد تلقائياً هنا فور فرزها وتعيين المنسق المسؤول.</div>
-                        </td>
+                        <th style="width: 50px;">#</th>
+                        <th>المادة / الكتاب</th>
+                        <th>الكلية والرمز</th>
+                        <th>المتبرع / صاحب المادة</th>
+                        <th>الحاجز / المستلم</th>
+                        <th>موافقة مشاركة البيانات</th>
+                        <th style="min-width: 180px;">الفرز والمنسق المكلف</th>
+                        <th>الحالة</th>
+                        <th style="text-align:center; width: 220px;">الإجراءات السريعة</th>
                     </tr>
-                <?php else: ?>
-                    <?php foreach ($items as $m): ?>
-                        <?php
-                        $stBadge = $statusLabels[$m['status']] ?? ['label' => $m['status'], 'class' => 'badge-pending'];
-                        $currentCoordKey = $m['assigned_coordinator'] ?? 'shared';
-                        if (!isset($coordinatorsList[$currentCoordKey])) {
-                            $currentCoordKey = 'shared';
-                        }
-                        $hasMatch = !empty($smartMatches[$m['id']]);
-                        ?>
-                        <tr id="row_material_<?= $m['id'] ?>">
-                            <td style="font-weight:700; color:#64748b;">#<?= $m['id'] ?></td>
-
-                            <!-- اسم المادة والكتاب والوصف -->
-                            <td>
-                                <div style="font-weight:700; color:#0f172a; font-size:14px;">
-                                    <?= htmlspecialchars($m['material_name']) ?>
+                </thead>
+                <tbody>
+                    <?php if (empty($items)): ?>
+                        <tr>
+                            <td colspan="9" style="text-align:center; padding: 36px 20px; color:#64748b; background:#fafafa;">
+                                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#94a3b8" stroke-width="1.5"
+                                    style="margin: 0 auto 8px; display:block;">
+                                    <rect width="18" height="18" x="3" y="3" rx="2" />
+                                    <path d="M3 9h18" />
+                                    <path d="M9 21V9" />
+                                </svg>
+                                <div style="font-size:14px; font-weight:700; color:#334155;">لا توجد مواد في هذا القسم حالياً
                                 </div>
-                                <?php if (!empty($m['description'])): ?>
-                                    <div style="font-size:12px; color:#64748b; margin-top:2px; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
-                                        title="<?= htmlspecialchars($m['description']) ?>">
-                                        <?= htmlspecialchars($m['description']) ?>
-                                    </div>
-                                <?php endif; ?>
-
-                                <!-- شارة المطابقة الذكية في حال وجود طلاب بالانتظار -->
-                                <?php if ($hasMatch): ?>
-                                    <div style="margin-top:6px;">
-                                        <button type="button" onclick='openSmartMatchModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>, <?= json_encode($smartMatches[$m['id']], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
-                                            style="background:linear-gradient(135deg,#fdf4ff,#fae8ff); color:#7e22ce; border:1.5px solid #d8b4fe; font-size:11px; font-weight:800; padding:3px 8px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(126,34,206,0.12);"
-                                            title="مطابقة ذكية: ربط هذا الكتاب بطالب في قائمة الانتظار">
-                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
-                                            <span><?= count($smartMatches[$m['id']]) ?> طالب بالانتظار (ربط فوري ⚡)</span>
-                                        </button>
-                                    </div>
-                                <?php endif; ?>
+                                <div style="font-size:12px; color:#94a3b8; margin-top:2px;">يتم نقل المواد تلقائياً هنا فور
+                                    فرزها وتعيين المنسق المسؤول.</div>
                             </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($items as $m): ?>
+                            <?php
+                            $stBadge = $statusLabels[$m['status']] ?? ['label' => $m['status'], 'class' => 'badge-pending'];
+                            $currentCoordKey = $m['assigned_coordinator'] ?? 'shared';
+                            if (!isset($coordinatorsList[$currentCoordKey])) {
+                                $currentCoordKey = 'shared';
+                            }
+                            $hasMatch = !empty($smartMatches[$m['id']]);
+                            ?>
+                            <tr id="row_material_<?= $m['id'] ?>">
+                                <td style="font-weight:700; color:#64748b;">#<?= $m['id'] ?></td>
 
-                            <!-- الكلية والرمز -->
-                            <td>
-                                <span class="badge-faculty"><?= htmlspecialchars($m['faculty'] ?: 'متطلب عام') ?></span>
-                                <?php if (!empty($m['course_code'])): ?>
-                                    <div style="margin-top:3px;"><span class="badge-code"><?= htmlspecialchars($m['course_code']) ?></span></div>
-                                <?php endif; ?>
-                            </td>
-
-                            <!-- المتبرع -->
-                            <td>
-                                <div style="font-weight:600; color:#1e293b; display:flex; align-items:center; gap:6px;">
-                                    <span><?= htmlspecialchars($m['donor_name']) ?></span>
-                                    <span class="gender-tag <?= $m['donor_gender'] === 'female' ? 'gender-female' : 'gender-male' ?>">
-                                        <?= $m['donor_gender'] === 'female' ? 'أنثى' : 'ذكر' ?>
-                                    </span>
-                                </div>
-                                <?php if (!empty($m['donor_phone'])): ?>
-                                    <div style="font-size:12px; color:#475569; display:flex; align-items:center; gap:6px; margin-top:3px;">
-                                        <span dir="ltr"><?= htmlspecialchars($m['donor_phone']) ?></span>
-                                        <button type="button" class="whatsapp-quick-btn" onclick='openWhatsAppTemplatesModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>, "donor")' title="مراسلة المتبرع بقوالب جاهزة (شكر / تواصل)">
-                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-                                                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c4.54 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.28-2.42 5.84a8.18 8.18 0 0 1-5.83 2.41c-1.47 0-2.91-.39-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.39c0-4.54 3.7-8.25 8.23-8.25z" />
-                                            </svg>
-                                            واتساب
-                                        </button>
+                                <!-- اسم المادة والكتاب والوصف -->
+                                <td>
+                                    <div style="font-weight:700; color:#0f172a; font-size:14px;">
+                                        <?= htmlspecialchars($m['material_name']) ?>
                                     </div>
-                                <?php endif; ?>
-                            </td>
+                                    <?php if (!empty($m['description'])): ?>
+                                        <div style="font-size:12px; color:#64748b; margin-top:2px; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
+                                            title="<?= htmlspecialchars($m['description']) ?>">
+                                            <?= htmlspecialchars($m['description']) ?>
+                                        </div>
+                                    <?php endif; ?>
 
-                            <!-- الحاجز / المستلم -->
-                            <td>
-                                <?php if (!empty($m['booker_name'])): ?>
-                                    <div style="font-weight:600; color:#0369a1; display:flex; align-items:center; gap:6px;">
-                                        <span><?= htmlspecialchars($m['booker_name']) ?></span>
-                                        <span class="gender-tag <?= $m['booker_gender'] === 'female' ? 'gender-female' : 'gender-male' ?>">
-                                            <?= $m['booker_gender'] === 'female' ? 'أنثى' : 'ذكر' ?>
+                                    <!-- شارة المطابقة الذكية في حال وجود طلاب بالانتظار -->
+                                    <?php if ($hasMatch): ?>
+                                        <div style="margin-top:6px;">
+                                            <button type="button"
+                                                onclick='openSmartMatchModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>, <?= json_encode($smartMatches[$m['id']], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
+                                                style="background:linear-gradient(135deg,#fdf4ff,#fae8ff); color:#7e22ce; border:1.5px solid #d8b4fe; font-size:11px; font-weight:800; padding:3px 8px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(126,34,206,0.12);"
+                                                title="مطابقة ذكية: ربط هذا الكتاب بطالب في قائمة الانتظار">
+                                                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                                                </svg>
+                                                <span><?= count($smartMatches[$m['id']]) ?> طالب بالانتظار (ربط فوري ⚡)</span>
+                                            </button>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+
+                                <!-- الكلية والرمز -->
+                                <td>
+                                    <span class="badge-faculty"><?= htmlspecialchars($m['faculty'] ?: 'متطلب عام') ?></span>
+                                    <?php if (!empty($m['course_code'])): ?>
+                                        <div style="margin-top:3px;"><span
+                                                class="badge-code"><?= htmlspecialchars($m['course_code']) ?></span></div>
+                                    <?php endif; ?>
+                                </td>
+
+                                <!-- المتبرع -->
+                                <td>
+                                    <div style="font-weight:600; color:#1e293b; display:flex; align-items:center; gap:6px;">
+                                        <span><?= htmlspecialchars($m['donor_name']) ?></span>
+                                        <span
+                                            class="gender-tag <?= $m['donor_gender'] === 'female' ? 'gender-female' : 'gender-male' ?>">
+                                            <?= $m['donor_gender'] === 'female' ? 'أنثى' : 'ذكر' ?>
                                         </span>
                                     </div>
-                                    <?php if (!empty($m['booker_phone'])): ?>
-                                        <div style="font-size:12px; color:#475569; display:flex; align-items:center; gap:6px; margin-top:3px;">
-                                            <span dir="ltr"><?= htmlspecialchars($m['booker_phone']) ?></span>
-                                            <button type="button" class="whatsapp-quick-btn" onclick='openWhatsAppTemplatesModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>, "booker")' title="مراسلة المستلم بقوالب جاهزة (تأكيد / تذكير بالموعد)">
+                                    <?php if (!empty($m['donor_phone'])): ?>
+                                        <div
+                                            style="font-size:12px; color:#475569; display:flex; align-items:center; gap:6px; margin-top:3px;">
+                                            <span dir="ltr"><?= htmlspecialchars($m['donor_phone']) ?></span>
+                                            <button type="button" class="whatsapp-quick-btn"
+                                                onclick='openWhatsAppTemplatesModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>, "donor")'
+                                                title="مراسلة المتبرع بقوالب جاهزة (شكر / تواصل)">
                                                 <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-                                                    <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c4.54 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.28-2.42 5.84a8.18 8.18 0 0 1-5.83 2.41c-1.47 0-2.91-.39-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.39c0-4.54 3.7-8.25 8.23-8.25z" />
+                                                    <path
+                                                        d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c4.54 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.28-2.42 5.84a8.18 8.18 0 0 1-5.83 2.41c-1.47 0-2.91-.39-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.39c0-4.54 3.7-8.25 8.23-8.25z" />
                                                 </svg>
                                                 واتساب
                                             </button>
                                         </div>
                                     <?php endif; ?>
-                                <?php else: ?>
-                                    <span style="color:#94a3b8; font-size:12.5px;">— لا يوجد حجز</span>
-                                <?php endif; ?>
-                            </td>
+                                </td>
 
-                            <!-- الفرز والمنسق المكلف (تغيير فوري بضغطة زر) -->
-                            <td>
-                                <form method="post" style="display:flex; flex-direction:column; gap:4px; margin:0;">
-                                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                                    <input type="hidden" name="action" value="quick_assign_coordinator">
-                                    <input type="hidden" name="id" value="<?= $m['id'] ?>">
-                                    <select name="assigned_coordinator" onchange="this.form.submit()" 
-                                        style="padding:5px 8px; font-size:12px; font-weight:700; border-radius:6px; border:1.5px solid <?= $coordinatorsList[$currentCoordKey]['border'] ?>; background:<?= $coordinatorsList[$currentCoordKey]['bg'] ?>; color:<?= $coordinatorsList[$currentCoordKey]['color'] ?>; cursor:pointer;"
-                                        title="تغيير المنسق المسؤول / فرز يدوي">
-                                        <?php foreach ($coordinatorsList as $cKey => $cData): ?>
-                                            <option value="<?= htmlspecialchars((string)$cKey) ?>" <?= ((string)$currentCoordKey === (string)$cKey) ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars($cData['name']) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </form>
-                                <?php if (!empty($m['pickup_date'])): ?>
-                                    <div style="font-size:11.5px; color:#d97706; margin-top:4px; display:flex; align-items:center; gap:3px;">
-                                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2">
-                                            <circle cx="12" cy="12" r="10" />
-                                            <polyline points="12 6 12 12 16 14" />
-                                        </svg>
-                                        <span><?= htmlspecialchars($m['pickup_date']) ?> <?= htmlspecialchars($m['pickup_time']) ?></span>
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-
-                            <!-- الحالة -->
-                            <td>
-                                <span class="custom-badge <?= $stBadge['class'] ?>" id="badge_status_<?= $m['id'] ?>">
-                                    <?= $stBadge['label'] ?>
-                                </span>
-                            </td>
-
-                            <!-- أزرار الإجراءات السريعة -->
-                            <td style="text-align:center;">
-                                <div class="table-action-btns">
-                                    <?php if ($readOnly): ?>
-                                    <!-- وضع الاطلاع فقط — لا يمكن تعديل هذا الجدول -->
-                                    <span style="font-size:11px;color:#94a3b8;display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;">
-                                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                        اطلاع فقط
-                                    </span>
-                                    <button type="button" class="btn-action btn-print-slip"
-                                        onclick='openSlipModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
-                                        title="باركود وسند التسليم السريع (QR)"
-                                        style="display:inline-flex; align-items:center; gap:4px; background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; font-weight:700; padding:4px 8px; border-radius:6px;">
-                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
-                                            <rect x="3" y="3" width="7" height="7"></rect>
-                                            <rect x="14" y="3" width="7" height="7"></rect>
-                                            <rect x="14" y="14" width="7" height="7"></rect>
-                                            <rect x="3" y="14" width="7" height="7"></rect>
-                                        </svg>
-                                        <span style="font-size:11px;">باركود</span>
-                                    </button>
+                                <!-- الحاجز / المستلم -->
+                                <td>
+                                    <?php if (!empty($m['booker_name'])): ?>
+                                        <div style="font-weight:600; color:#0369a1; display:flex; align-items:center; gap:6px;">
+                                            <span><?= htmlspecialchars($m['booker_name']) ?></span>
+                                            <span
+                                                class="gender-tag <?= $m['booker_gender'] === 'female' ? 'gender-female' : 'gender-male' ?>">
+                                                <?= $m['booker_gender'] === 'female' ? 'أنثى' : 'ذكر' ?>
+                                            </span>
+                                        </div>
+                                        <?php if (!empty($m['booker_phone'])): ?>
+                                            <div
+                                                style="font-size:12px; color:#475569; display:flex; align-items:center; gap:6px; margin-top:3px;">
+                                                <span dir="ltr"><?= htmlspecialchars($m['booker_phone']) ?></span>
+                                                <button type="button" class="whatsapp-quick-btn"
+                                                    onclick='openWhatsAppTemplatesModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>, "booker")'
+                                                    title="مراسلة المستلم بقوالب جاهزة (تأكيد / تذكير بالموعد)">
+                                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                                                        <path
+                                                            d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c4.54 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.28-2.42 5.84a8.18 8.18 0 0 1-5.83 2.41c-1.47 0-2.91-.39-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.39c0-4.54 3.7-8.25 8.23-8.25z" />
+                                                    </svg>
+                                                    واتساب
+                                                </button>
+                                            </div>
+                                        <?php endif; ?>
                                     <?php else: ?>
-                                    <!-- زر الحجز السريع إن كانت المادة متاحة -->
-                                    <?php if ($m['status'] === 'approved'): ?>
-                                        <button type="button" class="btn-action btn-reserve"
-                                            onclick='openReserveModal(<?= json_encode($m) ?>)' title="حجز المادة لطالب">
-                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                                                stroke-width="2">
-                                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                                                <circle cx="9" cy="7" r="4" />
-                                                <line x1="19" y1="8" x2="19" y2="14" />
-                                                <line x1="22" y1="11" x2="16" y2="11" />
-                                            </svg>
-                                            حجز
-                                        </button>
+                                        <span style="color:#94a3b8; font-size:12.5px;">— لا يوجد حجز</span>
                                     <?php endif; ?>
+                                </td>
 
-                                    <!-- زر تأكيد التسليم إن كانت المادة محجوزة -->
-                                    <?php if ($m['status'] === 'reserved'): ?>
-                                        <form method="post" style="display:inline;"
-                                            onsubmit="return confirm('هل تم تسليم المادة للطالب بنجاح؟');">
-                                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                                            <input type="hidden" name="action" value="complete_delivery">
-                                            <input type="hidden" name="id" value="<?= $m['id'] ?>">
-                                            <button type="submit" class="btn-action btn-deliver" title="تأكيد التسليم بنجاح">
-                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                                                    stroke-width="2">
-                                                <polyline points="20 6 9 17 4 12" />
-                                                </svg>
-                                                تسليم
-                                            </button>
-                                        </form>
-
-                                        <!-- زر إلغاء الحجز -->
-                                        <form method="post" style="display:inline;"
-                                            onsubmit="return confirm('إلغاء حجز هذه المادة وإعادتها كـ مادة متاحة؟');">
-                                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                                            <input type="hidden" name="action" value="cancel_booking">
-                                            <input type="hidden" name="id" value="<?= $m['id'] ?>">
-                                            <button type="submit" class="btn-action btn-cancel-book" title="إلغاء الحجز">
-                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                                                    stroke-width="2">
-                                                    <circle cx="12" cy="12" r="10" />
-                                                    <line x1="15" y1="9" x2="9" y2="15" />
-                                                    <line x1="9" y1="9" x2="15" y2="15" />
-                                                </svg>
-                                            </button>
-                                        </form>
+                                <!-- الفرز والمنسق المكلف (تغيير فوري بضغطة زر) -->
+                                <td style="text-align:center; min-width:150px;">
+                                    <?php if ($m['data_sharing_consent'] === null || $m['data_sharing_consent'] === ''): ?>
+                                        <span
+                                            style="display:inline-flex; align-items:center; gap:4px; color:#64748b; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:7px; padding:4px 8px; font-size:11px; font-weight:700;">
+                                            غير مسجل
+                                        </span>
+                                    <?php elseif ((int) $m['data_sharing_consent'] === 1): ?>
+                                        <span
+                                            style="display:inline-flex; align-items:center; gap:4px; color:#166534; background:#dcfce7; border:1px solid #86efac; border-radius:7px; padding:4px 8px; font-size:11px; font-weight:700;">
+                                            ✓ وافق على المشاركة
+                                        </span>
+                                    <?php else: ?>
+                                        <span
+                                            style="display:inline-flex; align-items:center; gap:4px; color:#991b1b; background:#fee2e2; border:1px solid #fca5a5; border-radius:7px; padding:4px 8px; font-size:11px; font-weight:700;">
+                                            ✕ لم يوافق
+                                        </span>
                                     <?php endif; ?>
+                                </td>
 
-                                    <!-- زر باركود وسند التسليم السريع -->
-                                    <button type="button" class="btn-action btn-print-slip"
-                                        onclick='openSlipModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
-                                        title="باركود وسند التسليم السريع (QR)"
-                                        style="display:inline-flex; align-items:center; gap:4px; background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; font-weight:700; padding:4px 8px; border-radius:6px;">
-                                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
-                                            <rect x="3" y="3" width="7" height="7"></rect>
-                                            <rect x="14" y="3" width="7" height="7"></rect>
-                                            <rect x="14" y="14" width="7" height="7"></rect>
-                                            <rect x="3" y="14" width="7" height="7"></rect>
-                                        </svg>
-                                        <span style="font-size:11px;">باركود</span>
-                                    </button>
-
-                                    <!-- زر التعديل -->
-                                    <button type="button" class="btn-action btn-edit"
-                                        onclick='openEditModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
-                                        title="تعديل التفاصيل">
-                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                                            stroke-width="2">
-                                            <path d="M12 20h9" />
-                                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                                        </svg>
-                                    </button>
-
-                                    <!-- زر الحذف -->
-                                    <form method="post" style="display:inline;"
-                                        onsubmit="return confirm('تأكيد حذف هذه المادة المتبادلة نهائياً؟');">
+                                <!-- الفرز والمنسق المكلف (تغيير فوري بضغطة زر) -->
+                                <td>
+                                    <form method="post" style="display:flex; flex-direction:column; gap:4px; margin:0;">
                                         <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="action" value="quick_assign_coordinator">
                                         <input type="hidden" name="id" value="<?= $m['id'] ?>">
-                                        <button type="submit" class="btn-action btn-delete" title="حذف المادة">
-                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                                                stroke-width="2">
-                                                <polyline points="3 6 5 6 21 6" />
-                                                <path
-                                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                            </svg>
-                                        </button>
+                                        <select name="assigned_coordinator" onchange="this.form.submit()"
+                                            style="padding:5px 8px; font-size:12px; font-weight:700; border-radius:6px; border:1.5px solid <?= $coordinatorsList[$currentCoordKey]['border'] ?>; background:<?= $coordinatorsList[$currentCoordKey]['bg'] ?>; color:<?= $coordinatorsList[$currentCoordKey]['color'] ?>; cursor:pointer;"
+                                            title="تغيير المنسق المسؤول / فرز يدوي">
+                                            <?php foreach ($coordinatorsList as $cKey => $cData): ?>
+                                                <option value="<?= htmlspecialchars((string) $cKey) ?>" <?= ((string) $currentCoordKey === (string) $cKey) ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($cData['name']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
                                     </form>
-                                    <?php endif; // end readOnly check ?>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                                    <?php if (!empty($m['pickup_date'])): ?>
+                                        <div
+                                            style="font-size:11.5px; color:#d97706; margin-top:4px; display:flex; align-items:center; gap:3px;">
+                                            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
+                                                stroke-width="2">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <polyline points="12 6 12 12 16 14" />
+                                            </svg>
+                                            <span><?= htmlspecialchars($m['pickup_date']) ?>
+                                                <?= htmlspecialchars($m['pickup_time']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+
+                                <!-- الحالة -->
+                                <td>
+                                    <span class="custom-badge <?= $stBadge['class'] ?>" id="badge_status_<?= $m['id'] ?>">
+                                        <?= $stBadge['label'] ?>
+                                    </span>
+                                </td>
+
+                                <!-- أزرار الإجراءات السريعة -->
+                                <td style="text-align:center;">
+                                    <div class="table-action-btns">
+                                        <?php if ($readOnly): ?>
+                                            <!-- وضع الاطلاع فقط — لا يمكن تعديل هذا الجدول -->
+                                            <span
+                                                style="font-size:11px;color:#94a3b8;display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;">
+                                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                    <circle cx="12" cy="12" r="3" />
+                                                </svg>
+                                                اطلاع فقط
+                                            </span>
+                                            <button type="button" class="btn-action btn-print-slip"
+                                                onclick='openSlipModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
+                                                title="باركود وسند التسليم السريع (QR)"
+                                                style="display:inline-flex; align-items:center; gap:4px; background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; font-weight:700; padding:4px 8px; border-radius:6px;">
+                                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                                                    stroke-width="2.2">
+                                                    <rect x="3" y="3" width="7" height="7"></rect>
+                                                    <rect x="14" y="3" width="7" height="7"></rect>
+                                                    <rect x="14" y="14" width="7" height="7"></rect>
+                                                    <rect x="3" y="14" width="7" height="7"></rect>
+                                                </svg>
+                                                <span style="font-size:11px;">باركود</span>
+                                            </button>
+                                        <?php else: ?>
+                                            <!-- زر الحجز السريع إن كانت المادة متاحة -->
+                                            <?php if ($m['status'] === 'approved'): ?>
+                                                <button type="button" class="btn-action btn-reserve"
+                                                    onclick='openReserveModal(<?= json_encode($m) ?>)' title="حجز المادة لطالب">
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                                                        stroke-width="2">
+                                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                                        <circle cx="9" cy="7" r="4" />
+                                                        <line x1="19" y1="8" x2="19" y2="14" />
+                                                        <line x1="22" y1="11" x2="16" y2="11" />
+                                                    </svg>
+                                                    حجز
+                                                </button>
+                                            <?php endif; ?>
+
+                                            <!-- زر تأكيد التسليم إن كانت المادة محجوزة -->
+                                            <?php if ($m['status'] === 'reserved'): ?>
+                                                <form method="post" style="display:inline;"
+                                                    onsubmit="return confirm('هل تم تسليم المادة للطالب بنجاح؟');">
+                                                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                                                    <input type="hidden" name="action" value="complete_delivery">
+                                                    <input type="hidden" name="id" value="<?= $m['id'] ?>">
+                                                    <button type="submit" class="btn-action btn-deliver" title="تأكيد التسليم بنجاح">
+                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                                                            stroke-width="2">
+                                                            <polyline points="20 6 9 17 4 12" />
+                                                        </svg>
+                                                        تسليم
+                                                    </button>
+                                                </form>
+
+                                                <!-- زر إلغاء الحجز -->
+                                                <form method="post" style="display:inline;"
+                                                    onsubmit="return confirm('إلغاء حجز هذه المادة وإعادتها كـ مادة متاحة؟');">
+                                                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                                                    <input type="hidden" name="action" value="cancel_booking">
+                                                    <input type="hidden" name="id" value="<?= $m['id'] ?>">
+                                                    <button type="submit" class="btn-action btn-cancel-book" title="إلغاء الحجز">
+                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                                                            stroke-width="2">
+                                                            <circle cx="12" cy="12" r="10" />
+                                                            <line x1="15" y1="9" x2="9" y2="15" />
+                                                            <line x1="9" y1="9" x2="15" y2="15" />
+                                                        </svg>
+                                                    </button>
+                                                </form>
+                                            <?php endif; ?>
+
+                                            <!-- زر باركود وسند التسليم السريع -->
+                                            <button type="button" class="btn-action btn-print-slip"
+                                                onclick='openSlipModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
+                                                title="باركود وسند التسليم السريع (QR)"
+                                                style="display:inline-flex; align-items:center; gap:4px; background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; font-weight:700; padding:4px 8px; border-radius:6px;">
+                                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                                                    stroke-width="2.2">
+                                                    <rect x="3" y="3" width="7" height="7"></rect>
+                                                    <rect x="14" y="3" width="7" height="7"></rect>
+                                                    <rect x="14" y="14" width="7" height="7"></rect>
+                                                    <rect x="3" y="14" width="7" height="7"></rect>
+                                                </svg>
+                                                <span style="font-size:11px;">باركود</span>
+                                            </button>
+
+                                            <!-- زر التعديل -->
+                                            <button type="button" class="btn-action btn-edit"
+                                                onclick='openEditModal(<?= json_encode($m, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'
+                                                title="تعديل التفاصيل">
+                                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path d="M12 20h9" />
+                                                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                                </svg>
+                                            </button>
+
+                                            <!-- زر الحذف -->
+                                            <form method="post" style="display:inline;"
+                                                onsubmit="return confirm('تأكيد حذف هذه المادة المتبادلة نهائياً؟');">
+                                                <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="id" value="<?= $m['id'] ?>">
+                                                <button type="submit" class="btn-action btn-delete" title="حذف المادة">
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                                                        stroke-width="2">
+                                                        <polyline points="3 6 5 6 21 6" />
+                                                        <path
+                                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        <?php endif; // end readOnly check ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
-<?php
+    <?php
 }
 ?>
 
@@ -2056,153 +2409,173 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
     <?php renderPendingDonationsTable($materials, $coordinatorsList, $isDonationsAdmin, csrf_token(), $facultiesList); ?>
 <?php else: ?>
     <?php if ($pendingCount > 0): ?>
-    <div style="background:linear-gradient(135deg, #fffbeb, #fef3c7); border:1.5px solid #fde68a; border-radius:14px; padding:14px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 2px 8px rgba(245,158,11,0.08);">
-        <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:40px; height:40px; border-radius:10px; background:#fde68a; display:flex; align-items:center; justify-content:center; color:#92400e;">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div
+            style="background:linear-gradient(135deg, #fffbeb, #fef3c7); border:1.5px solid #fde68a; border-radius:14px; padding:14px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:0 2px 8px rgba(245,158,11,0.08);">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div
+                    style="width:40px; height:40px; border-radius:10px; background:#fde68a; display:flex; align-items:center; justify-content:center; color:#92400e;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                </div>
+                <div>
+                    <strong style="color:#92400e; font-size:14.5px;">يوجد <?= $pendingCount ?> طلب تبرع جديد بانتظار اعتماد
+                        الإدارة وتوجيهها للفرق</strong>
+                    <div style="color:#b45309; font-size:12px; margin-top:2px;">تم إرسالها حديثاً عبر نموذج الموقع الرسمي —
+                        يمكنك مراجعتها واعتمادها وتوجيهها إلى جدول الذكور أو الإناث أو المشترك.</div>
+                </div>
             </div>
-            <div>
-                <strong style="color:#92400e; font-size:14.5px;">يوجد <?= $pendingCount ?> طلب تبرع جديد بانتظار اعتماد الإدارة وتوجيهها للفرق</strong>
-                <div style="color:#b45309; font-size:12px; margin-top:2px;">تم إرسالها حديثاً عبر نموذج الموقع الرسمي — يمكنك مراجعتها واعتمادها وتوجيهها إلى جدول الذكور أو الإناث أو المشترك.</div>
-            </div>
+            <a href="?tab=pending<?= $archiveUrlParam ?>" class="btn"
+                style="background:#d97706; color:#fff; border:none; font-size:12.5px; font-weight:800; padding:9px 18px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(217,119,6,0.2);">
+                <span>عرض طلبات التبرع المنتظرة (<?= $pendingCount ?>)</span>
+                <span>←</span>
+            </a>
         </div>
-        <a href="?tab=pending<?= $archiveUrlParam ?>" class="btn" style="background:#d97706; color:#fff; border:none; font-size:12.5px; font-weight:800; padding:9px 18px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(217,119,6,0.2);">
-            <span>عرض طلبات التبرع المنتظرة (<?= $pendingCount ?>)</span>
-            <span>←</span>
-        </a>
-    </div>
     <?php endif; ?>
 
-<!-- بطاقات الانتقال السريع وملخص الأقسام الثلاثة -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 24px;">
-    <a href="#section-shared" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-radius:14px; background:linear-gradient(135deg, #fdf4ff, #fae8ff); border:2px solid #e9d5ff; color:#7e22ce; box-shadow:0 2px 8px rgba(126,34,206,0.06); transition:transform .15s ease;">
-        <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:40px; height:40px; border-radius:10px; background:#f3e8ff; display:flex; align-items:center; justify-content:center; color:#7e22ce;">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-            </div>
-            <div>
-                <div style="font-weight:800; font-size:15px; color:#581c87;">جدول التسليم المشترك</div>
-                <div style="font-size:12px; color:#86198f; margin-top:2px;">بانتظار الفرز والتوزيع اليدوي</div>
-            </div>
-        </div>
-        <span style="font-size:20px; font-weight:900; background:#7e22ce; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($sharedMaterials) ?></span>
-    </a>
-
-    <?php 
-    $maleCardReadOnly = ($currentCoordGender === 'female' && !$isDonationsAdmin);
-    ?>
-    <a href="#section-male" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-radius:14px; background:<?= $maleCardReadOnly ? '#f8fafc' : 'linear-gradient(135deg, #f0f9ff, #e0f2fe)' ?>; border:2px solid <?= $maleCardReadOnly ? '#cbd5e1' : '#bae6fd' ?>; color:<?= $maleCardReadOnly ? '#64748b' : '#0369a1' ?>; box-shadow:0 2px 8px rgba(3,105,161,0.06); transition:transform .15s ease;">
-        <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:40px; height:40px; border-radius:10px; background:<?= $maleCardReadOnly ? '#f1f5f9' : '#e0f2fe' ?>; display:flex; align-items:center; justify-content:center; color:<?= $maleCardReadOnly ? '#64748b' : '#0284c7' ?>;">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                </svg>
-            </div>
-            <div>
-                <div style="font-weight:800; font-size:15px; color:<?= $maleCardReadOnly ? '#334155' : '#0c4a6e' ?>;">
-                    جدول منسقي الذكور <?= $maleCardReadOnly ? '<span style="font-size:11px;background:#e2e8f0;color:#475569;padding:2px 6px;border-radius:4px;font-weight:700;">اطلاع فقط</span>' : '' ?>
+    <!-- بطاقات الانتقال السريع وملخص الأقسام الثلاثة -->
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 24px;">
+        <a href="#section-shared"
+            style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-radius:14px; background:linear-gradient(135deg, #fdf4ff, #fae8ff); border:2px solid #e9d5ff; color:#7e22ce; box-shadow:0 2px 8px rgba(126,34,206,0.06); transition:transform .15s ease;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div
+                    style="width:40px; height:40px; border-radius:10px; background:#f3e8ff; display:flex; align-items:center; justify-content:center; color:#7e22ce;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
                 </div>
-                <div style="font-size:12px; color:<?= $maleCardReadOnly ? '#64748b' : '#0369a1' ?>; margin-top:2px;">
-                    <?= $maleCardReadOnly ? 'مخصص للذكور — متاح لكِ كقراءة واطلاع فقط' : 'فريق منسقي الذكور' ?>
+                <div>
+                    <div style="font-weight:800; font-size:15px; color:#581c87;">جدول التسليم المشترك</div>
+                    <div style="font-size:12px; color:#86198f; margin-top:2px;">بانتظار الفرز والتوزيع اليدوي</div>
                 </div>
             </div>
-        </div>
-        <span style="font-size:20px; font-weight:900; background:<?= $maleCardReadOnly ? '#64748b' : '#0284c7' ?>; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($maleMaterials) ?></span>
-    </a>
+            <span
+                style="font-size:20px; font-weight:900; background:#7e22ce; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($sharedMaterials) ?></span>
+        </a>
 
-    <?php 
-    $femaleCardReadOnly = ($currentCoordGender === 'male' && !$isDonationsAdmin);
-    ?>
-    <a href="#section-female" style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-radius:14px; background:<?= $femaleCardReadOnly ? '#f8fafc' : 'linear-gradient(135deg, #fdf2f8, #fce7f3)' ?>; border:2px solid <?= $femaleCardReadOnly ? '#cbd5e1' : '#fbcfe8' ?>; color:<?= $femaleCardReadOnly ? '#64748b' : '#be185d' ?>; box-shadow:0 2px 8px rgba(190,24,93,0.06); transition:transform .15s ease;">
-        <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:40px; height:40px; border-radius:10px; background:<?= $femaleCardReadOnly ? '#f1f5f9' : '#fce7f3' ?>; display:flex; align-items:center; justify-content:center; color:<?= $femaleCardReadOnly ? '#64748b' : '#db2777' ?>;">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                </svg>
-            </div>
-            <div>
-                <div style="font-weight:800; font-size:15px; color:<?= $femaleCardReadOnly ? '#334155' : '#831843' ?>;">
-                    جدول منسقات الإناث <?= $femaleCardReadOnly ? '<span style="font-size:11px;background:#e2e8f0;color:#475569;padding:2px 6px;border-radius:4px;font-weight:700;">اطلاع فقط</span>' : '' ?>
+        <?php
+        $maleCardReadOnly = ($currentCoordGender === 'female' && !$isDonationsAdmin);
+        ?>
+        <a href="#section-male"
+            style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-radius:14px; background:<?= $maleCardReadOnly ? '#f8fafc' : 'linear-gradient(135deg, #f0f9ff, #e0f2fe)' ?>; border:2px solid <?= $maleCardReadOnly ? '#cbd5e1' : '#bae6fd' ?>; color:<?= $maleCardReadOnly ? '#64748b' : '#0369a1' ?>; box-shadow:0 2px 8px rgba(3,105,161,0.06); transition:transform .15s ease;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div
+                    style="width:40px; height:40px; border-radius:10px; background:<?= $maleCardReadOnly ? '#f1f5f9' : '#e0f2fe' ?>; display:flex; align-items:center; justify-content:center; color:<?= $maleCardReadOnly ? '#64748b' : '#0284c7' ?>;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
                 </div>
-                <div style="font-size:12px; color:<?= $femaleCardReadOnly ? '#64748b' : '#be185d' ?>; margin-top:2px;">
-                    <?= $femaleCardReadOnly ? 'مخصص للإناث — متاح لك كقراءة واطلاع فقط' : 'فريق منسقات الإناث' ?>
+                <div>
+                    <div style="font-weight:800; font-size:15px; color:<?= $maleCardReadOnly ? '#334155' : '#0c4a6e' ?>;">
+                        جدول منسقي الذكور
+                        <?= $maleCardReadOnly ? '<span style="font-size:11px;background:#e2e8f0;color:#475569;padding:2px 6px;border-radius:4px;font-weight:700;">اطلاع فقط</span>' : '' ?>
+                    </div>
+                    <div style="font-size:12px; color:<?= $maleCardReadOnly ? '#64748b' : '#0369a1' ?>; margin-top:2px;">
+                        <?= $maleCardReadOnly ? 'مخصص للذكور — متاح لكِ كقراءة واطلاع فقط' : 'فريق منسقي الذكور' ?>
+                    </div>
                 </div>
             </div>
-        </div>
-        <span style="font-size:20px; font-weight:900; background:<?= $femaleCardReadOnly ? '#64748b' : '#db2777' ?>; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($femaleMaterials) ?></span>
-    </a>
-</div>
+            <span
+                style="font-size:20px; font-weight:900; background:<?= $maleCardReadOnly ? '#64748b' : '#0284c7' ?>; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($maleMaterials) ?></span>
+        </a>
 
-<!-- عرض الجداول الثلاثة مقسمة (المشترك أولاً، ثم الذكور، ثم الإناث) -->
-<?php
-/*
- * منطق عرض الجداول مع مراعاة:
- * - جنس المنسق الحالي ($currentCoordGender)
- * - فلتر المنسق من URL ($coordFilter)
- * - إظهار جدول المشترك في كل التبويبات
- */
-$sharedSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>';
-$maleSvg   = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>';
-$femaleSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>';
+        <?php
+        $femaleCardReadOnly = ($currentCoordGender === 'male' && !$isDonationsAdmin);
+        ?>
+        <a href="#section-female"
+            style="text-decoration:none; display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-radius:14px; background:<?= $femaleCardReadOnly ? '#f8fafc' : 'linear-gradient(135deg, #fdf2f8, #fce7f3)' ?>; border:2px solid <?= $femaleCardReadOnly ? '#cbd5e1' : '#fbcfe8' ?>; color:<?= $femaleCardReadOnly ? '#64748b' : '#be185d' ?>; box-shadow:0 2px 8px rgba(190,24,93,0.06); transition:transform .15s ease;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div
+                    style="width:40px; height:40px; border-radius:10px; background:<?= $femaleCardReadOnly ? '#f1f5f9' : '#fce7f3' ?>; display:flex; align-items:center; justify-content:center; color:<?= $femaleCardReadOnly ? '#64748b' : '#db2777' ?>;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-weight:800; font-size:15px; color:<?= $femaleCardReadOnly ? '#334155' : '#831843' ?>;">
+                        جدول منسقات الإناث
+                        <?= $femaleCardReadOnly ? '<span style="font-size:11px;background:#e2e8f0;color:#475569;padding:2px 6px;border-radius:4px;font-weight:700;">اطلاع فقط</span>' : '' ?>
+                    </div>
+                    <div style="font-size:12px; color:<?= $femaleCardReadOnly ? '#64748b' : '#be185d' ?>; margin-top:2px;">
+                        <?= $femaleCardReadOnly ? 'مخصص للإناث — متاح لك كقراءة واطلاع فقط' : 'فريق منسقات الإناث' ?>
+                    </div>
+                </div>
+            </div>
+            <span
+                style="font-size:20px; font-weight:900; background:<?= $femaleCardReadOnly ? '#64748b' : '#db2777' ?>; color:#fff; padding:4px 14px; border-radius:9999px;"><?= count($femaleMaterials) ?></span>
+        </a>
+    </div>
 
-// تحديد ما إذا كان يجب إخفاء جدول الذكور أو الإناث بالنسبة للمنسق الحالي
+    <!-- عرض الجداول الثلاثة مقسمة (المشترك أولاً، ثم الذكور، ثم الإناث) -->
+    <?php
+    /*
+     * منطق عرض الجداول مع مراعاة:
+     * - جنس المنسق الحالي ($currentCoordGender)
+     * - فلتر المنسق من URL ($coordFilter)
+     * - إظهار جدول المشترك في كل التبويبات
+     */
+    $sharedSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>';
+    $maleSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>';
+    $femaleSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>';
+
+    // تحديد ما إذا كان يجب إخفاء جدول الذكور أو الإناث بالنسبة للمنسق الحالي
 // null = يرى الكل | 'male' = لا يرى جدول الإناث | 'female' = لا يرى جدول الذكور
-$hideMaleTable    = ($currentCoordGender === 'female' && !$isDonationsAdmin);
-$hideFemaleTable  = ($currentCoordGender === 'male'   && !$isDonationsAdmin);
-// جدول الجنس الآخر للمنسق يظهر للقراءة فقط دون إمكانية التعديل
-$showOtherGenderReadOnly = true;
+    $hideMaleTable = ($currentCoordGender === 'female' && !$isDonationsAdmin);
+    $hideFemaleTable = ($currentCoordGender === 'male' && !$isDonationsAdmin);
+    // جدول الجنس الآخر للمنسق يظهر للقراءة فقط دون إمكانية التعديل
+    $showOtherGenderReadOnly = true;
 
-// وضع الأرشيف: إذا كان المستعرض أرشيفاً والمستخدم ليس أدمن، تكون كافة الجداول للاطلاع فقط
-$isArchiveMode = (!empty($archiveFilter) && $archiveFilter !== 'current');
-$coordArchiveReadOnly = ($isArchiveMode && !$isDonationsAdmin);
+    // وضع الأرشيف: إذا كان المستعرض أرشيفاً والمستخدم ليس أدمن، تكون كافة الجداول للاطلاع فقط
+    $isArchiveMode = (!empty($archiveFilter) && $archiveFilter !== 'current');
+    $coordArchiveReadOnly = ($isArchiveMode && !$isDonationsAdmin);
 
-if ($coordFilter === 'shared') {
-    // فلتر صريح للمشترك
-    renderDonationMaterialsTable('shared', 'جدول التسليم المشترك وبانتظار الفرز اليدوي', 'المواد غير المفرزة أو المشتركة بين المنسقين — يرجى تحديد المنسق المسؤول أو متابعتها مشتركاً', $sharedMaterials, ['badge_bg'=>'#faf5ff', 'badge_color'=>'#7e22ce', 'badge_border'=>'#e9d5ff', 'svg'=>$sharedSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
+    if ($coordFilter === 'shared') {
+        // فلتر صريح للمشترك
+        renderDonationMaterialsTable('shared', 'جدول التسليم المشترك وبانتظار الفرز اليدوي', 'المواد غير المفرزة أو المشتركة بين المنسقين — يرجى تحديد المنسق المسؤول أو متابعتها مشتركاً', $sharedMaterials, ['badge_bg' => '#faf5ff', 'badge_color' => '#7e22ce', 'badge_border' => '#e9d5ff', 'svg' => $sharedSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
 
-} elseif ($coordFilter === 'female_all' || (!empty($coordFilter) && isset($coordinatorsList[$coordFilter]) && ($coordinatorsList[$coordFilter]['gender'] ?? '') === 'female')) {
-    // فلتر إناث صريح
-    if (!$hideFemaleTable) {
-        renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg'=>'#fdf2f8', 'badge_color'=>'#db2777', 'badge_border'=>'#fbcfe8', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
+    } elseif ($coordFilter === 'female_all' || (!empty($coordFilter) && isset($coordinatorsList[$coordFilter]) && ($coordinatorsList[$coordFilter]['gender'] ?? '') === 'female')) {
+        // فلتر إناث صريح
+        if (!$hideFemaleTable) {
+            renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg' => '#fdf2f8', 'badge_color' => '#db2777', 'badge_border' => '#fbcfe8', 'svg' => $femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
+        }
+
+    } elseif ($coordFilter === 'male_all' || (!empty($coordFilter) && isset($coordinatorsList[$coordFilter]) && ($coordinatorsList[$coordFilter]['gender'] ?? '') !== 'female')) {
+        // فلتر ذكور صريح
+        if (!$hideMaleTable) {
+            renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg' => '#f0f9ff', 'badge_color' => '#0284c7', 'badge_border' => '#bae6fd', 'svg' => $maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
+        }
+
+    } else {
+        // عرض الجداول المناسبة مع مراعاة جنس المنسق
+
+        // ١. جدول المشترك — يظهر دائماً لأي مستخدم في كل التبويبات
+        renderDonationMaterialsTable('shared', 'جدول التسليم المشترك وبانتظار الفرز اليدوي', 'المواد غير المفرزة أو المشتركة بين المنسقين — يرجى تحديد المنسق المسؤول أو متابعتها مشتركاً', $sharedMaterials, ['badge_bg' => '#faf5ff', 'badge_color' => '#7e22ce', 'badge_border' => '#e9d5ff', 'svg' => $sharedSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
+
+        // ٢. جدول الذكور
+        if (!$hideMaleTable) {
+            // المنسق ذكر أو أدمن → أزرار كاملة (إلا إذا كان في وضع أرشيف لمنسق)
+            renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg' => '#f0f9ff', 'badge_color' => '#0284c7', 'badge_border' => '#bae6fd', 'svg' => $maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
+        } elseif ($showOtherGenderReadOnly) {
+            // منسقة أنثى → جدول الذكور بالقراءة فقط
+            renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور (اطلاع)', 'هذا الجدول مخصص لمنسقي الذكور — أنتِ في وضع الاطلاع فقط', $maleMaterials, ['badge_bg' => '#f8fafc', 'badge_color' => '#94a3b8', 'badge_border' => '#e2e8f0', 'svg' => $maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, true);
+        }
+
+        // ٣. جدول الإناث
+        if (!$hideFemaleTable) {
+            // المنسق أنثى أو أدمن → أزرار كاملة (إلا إذا كان في وضع أرشيف لمنسق)
+            renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg' => '#fdf2f8', 'badge_color' => '#db2777', 'badge_border' => '#fbcfe8', 'svg' => $femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
+        } elseif ($showOtherGenderReadOnly) {
+            // منسق ذكر → جدول الإناث بالقراءة فقط
+            renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث (اطلاع)', 'هذا الجدول مخصص لمنسقات الإناث — أنت في وضع الاطلاع فقط', $femaleMaterials, ['badge_bg' => '#fdf8ff', 'badge_color' => '#94a3b8', 'badge_border' => '#f3e8ff', 'svg' => $femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, true);
+        }
     }
-
-} elseif ($coordFilter === 'male_all' || (!empty($coordFilter) && isset($coordinatorsList[$coordFilter]) && ($coordinatorsList[$coordFilter]['gender'] ?? '') !== 'female')) {
-    // فلتر ذكور صريح
-    if (!$hideMaleTable) {
-        renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg'=>'#f0f9ff', 'badge_color'=>'#0284c7', 'badge_border'=>'#bae6fd', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
-    }
-
-} else {
-    // عرض الجداول المناسبة مع مراعاة جنس المنسق
-
-    // ١. جدول المشترك — يظهر دائماً لأي مستخدم في كل التبويبات
-    renderDonationMaterialsTable('shared', 'جدول التسليم المشترك وبانتظار الفرز اليدوي', 'المواد غير المفرزة أو المشتركة بين المنسقين — يرجى تحديد المنسق المسؤول أو متابعتها مشتركاً', $sharedMaterials, ['badge_bg'=>'#faf5ff', 'badge_color'=>'#7e22ce', 'badge_border'=>'#e9d5ff', 'svg'=>$sharedSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
-
-    // ٢. جدول الذكور
-    if (!$hideMaleTable) {
-        // المنسق ذكر أو أدمن → أزرار كاملة (إلا إذا كان في وضع أرشيف لمنسق)
-        renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور', 'المواد والكتب المسندة لمنسقي الذكور لمتابعتها وتسليمها للطلاب', $maleMaterials, ['badge_bg'=>'#f0f9ff', 'badge_color'=>'#0284c7', 'badge_border'=>'#bae6fd', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
-    } elseif ($showOtherGenderReadOnly) {
-        // منسقة أنثى → جدول الذكور بالقراءة فقط
-        renderDonationMaterialsTable('male', 'جدول تسليم منسقي الذكور (اطلاع)', 'هذا الجدول مخصص لمنسقي الذكور — أنتِ في وضع الاطلاع فقط', $maleMaterials, ['badge_bg'=>'#f8fafc', 'badge_color'=>'#94a3b8', 'badge_border'=>'#e2e8f0', 'svg'=>$maleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, true);
-    }
-
-    // ٣. جدول الإناث
-    if (!$hideFemaleTable) {
-        // المنسق أنثى أو أدمن → أزرار كاملة (إلا إذا كان في وضع أرشيف لمنسق)
-        renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث', 'المواد والكتب المسندة لمنسقات الإناث لمتابعتها وتسليمها للطالبات', $femaleMaterials, ['badge_bg'=>'#fdf2f8', 'badge_color'=>'#db2777', 'badge_border'=>'#fbcfe8', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, $coordArchiveReadOnly);
-    } elseif ($showOtherGenderReadOnly) {
-        // منسق ذكر → جدول الإناث بالقراءة فقط
-        renderDonationMaterialsTable('female', 'جدول تسليم منسقات الإناث (اطلاع)', 'هذا الجدول مخصص لمنسقات الإناث — أنت في وضع الاطلاع فقط', $femaleMaterials, ['badge_bg'=>'#fdf8ff', 'badge_color'=>'#94a3b8', 'badge_border'=>'#f3e8ff', 'svg'=>$femaleSvg], $coordinatorsList, $statusLabels, csrf_token(), $smartMatches, true);
-    }
-}
 ?>
 <?php endif; // end of if activeTab === pending ?>
 
@@ -2213,7 +2586,8 @@ if ($coordFilter === 'shared') {
 <!-- مودال أرشفة الحملة الحالية -->
 <div class="custom-modal-overlay" id="archiveCampaignModal">
     <div class="custom-modal-box" style="max-width:500px;">
-        <div class="custom-modal-header" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-bottom:1px solid #fcd34d;">
+        <div class="custom-modal-header"
+            style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-bottom:1px solid #fcd34d;">
             <h3 style="color:#92400e;display:flex;align-items:center;gap:8px;">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
                     <rect width="20" height="5" x="2" y="3" rx="1" />
@@ -2224,7 +2598,8 @@ if ($coordFilter === 'shared') {
             </h3>
             <button type="button" class="modal-close-btn" onclick="closeModal('archiveCampaignModal')">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
             </button>
         </div>
@@ -2233,10 +2608,15 @@ if ($coordFilter === 'shared') {
                 <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
                 <input type="hidden" name="action" value="archive_current_campaign">
 
-                <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:14px;margin-bottom:18px;">
-                    <div style="font-weight:700;color:#92400e;margin-bottom:6px;font-size:13px;">الحملة الجارية حالياً:</div>
-                    <div style="font-size:16px;font-weight:800;color:#78350f;"><?= htmlspecialchars($currentCampaignLabel) ?></div>
-                    <div style="font-size:12px;color:#92400e;margin-top:4px;">سيتم ترحيل جميع المواد والكتب الحالية إلى الأرشيف تحت هذا الفصل الدراسي، وتفريغ الجداول تماماً.</div>
+                <div
+                    style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:14px;margin-bottom:18px;">
+                    <div style="font-weight:700;color:#92400e;margin-bottom:6px;font-size:13px;">الحملة الجارية حالياً:
+                    </div>
+                    <div style="font-size:16px;font-weight:800;color:#78350f;">
+                        <?= htmlspecialchars($currentCampaignLabel) ?>
+                    </div>
+                    <div style="font-size:12px;color:#92400e;margin-top:4px;">سيتم ترحيل جميع المواد والكتب الحالية إلى
+                        الأرشيف تحت هذا الفصل الدراسي، وتفريغ الجداول تماماً.</div>
                 </div>
 
                 <div style="margin-bottom:16px;">
@@ -2248,7 +2628,8 @@ if ($coordFilter === 'shared') {
                         value="<?= htmlspecialchars($currentCampaignLabel) ?>"
                         style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;"
                         placeholder="مثال: الفصل الأول 2025-2026">
-                    <div style="font-size:11px;color:#6b7280;margin-top:4px;">هذا هو الاسم الذي سيظهر في صفحة الأرشيف</div>
+                    <div style="font-size:11px;color:#6b7280;margin-top:4px;">هذا هو الاسم الذي سيظهر في صفحة الأرشيف
+                    </div>
                 </div>
 
                 <div style="margin-bottom:8px;">
@@ -2259,11 +2640,13 @@ if ($coordFilter === 'shared') {
                     <input type="text" name="next_campaign_label"
                         style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;"
                         placeholder="مثال: الفصل الثاني 2025-2026">
-                    <div style="font-size:11px;color:#6b7280;margin-top:4px;">إذا تركته فارغاً سيبقى اسم الحملة الحالية كما هو</div>
+                    <div style="font-size:11px;color:#6b7280;margin-top:4px;">إذا تركته فارغاً سيبقى اسم الحملة الحالية
+                        كما هو</div>
                 </div>
             </div>
             <div class="custom-modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('archiveCampaignModal')">إلغاء</button>
+                <button type="button" class="btn btn-secondary"
+                    onclick="closeModal('archiveCampaignModal')">إلغاء</button>
                 <button type="submit" class="btn" style="background:#f59e0b;color:#fff;border:1px solid #d97706;"
                     onclick="return confirm('تأكيد أرشفة الحملة الحالية وترحيل جميع البيانات؟ لا يمكن التراجع عن هذه العملية.')">
                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
@@ -2588,7 +2971,8 @@ if ($coordFilter === 'shared') {
         </div>
         <div class="custom-modal-body" id="printableSlipArea">
             <!-- إشعار حي فوري عند مسح الباركود من الهاتف -->
-            <div id="slip_live_delivered_banner" class="no-print" style="display:none; margin-bottom:14px; padding:14px 18px; background:linear-gradient(135deg, #ecfdf5, #d1fae5); border:1.5px solid #10b981; border-radius:12px; color:#065f46; font-weight:800; font-size:14px; text-align:center; box-shadow:0 4px 12px rgba(16,185,129,0.2);">
+            <div id="slip_live_delivered_banner" class="no-print"
+                style="display:none; margin-bottom:14px; padding:14px 18px; background:linear-gradient(135deg, #ecfdf5, #d1fae5); border:1.5px solid #10b981; border-radius:12px; color:#065f46; font-weight:800; font-size:14px; text-align:center; box-shadow:0 4px 12px rgba(16,185,129,0.2);">
                 🎉 تم مسح الباركود وتأكيد استلام المادة بنجاح الآن!
             </div>
             <div class="slip-container">
@@ -2650,13 +3034,18 @@ if ($coordFilter === 'shared') {
                 </div>
 
                 <!-- رمز الاستجابة السريعة (QR Code للتسليم الفوري) -->
-                <div style="display:flex; align-items:center; justify-content:space-between; margin:16px 0; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px;">
+                <div
+                    style="display:flex; align-items:center; justify-content:space-between; margin:16px 0; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px;">
                     <div style="text-align:right;">
                         <div style="font-weight:800; font-size:13px; color:#0f172a;">رمز التسليم السريع (QR Code)</div>
-                        <div style="font-size:11.5px; color:#64748b; margin-top:2px;">امسح الرمز بكاميرا الهاتف لتأكيد الاستلام المباشر</div>
-                        <a id="slip_qr_link" href="#" target="_blank" style="font-size:11px; color:#0284c7; text-decoration:none; display:inline-block; margin-top:4px;">فتح صفحة التأكيد الفوري ↗</a>
+                        <div style="font-size:11.5px; color:#64748b; margin-top:2px;">امسح الرمز بكاميرا الهاتف لتأكيد
+                            الاستلام المباشر</div>
+                        <a id="slip_qr_link" href="#" target="_blank"
+                            style="font-size:11px; color:#0284c7; text-decoration:none; display:inline-block; margin-top:4px;">فتح
+                            صفحة التأكيد الفوري ↗</a>
                     </div>
-                    <div style="background:#fff; padding:6px; border:1px solid #cbd5e1; border-radius:8px; display:inline-block;">
+                    <div
+                        style="background:#fff; padding:6px; border:1px solid #cbd5e1; border-radius:8px; display:inline-block;">
                         <img id="slip_qr_img" src="" alt="QR Code" style="width:85px; height:85px; display:block;">
                     </div>
                 </div>
@@ -2688,37 +3077,51 @@ if ($coordFilter === 'shared') {
 <!-- 5. مودال قوالب واتساب الذكية بنقرة واحدة (WhatsApp Templates Modal) -->
 <div class="custom-modal-overlay" id="whatsappTemplatesModal">
     <div class="custom-modal-box" style="max-width: 580px;">
-        <div class="custom-modal-header" style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border-bottom:1px solid #bbf7d0;">
+        <div class="custom-modal-header"
+            style="background:linear-gradient(135deg, #f0fdf4, #dcfce7); border-bottom:1px solid #bbf7d0;">
             <h3 style="color:#166534; display:flex; align-items:center; gap:8px;">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="#16a34a"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c4.54 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.28-2.42 5.84a8.18 8.18 0 0 1-5.83 2.41c-1.47 0-2.91-.39-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.39c0-4.54 3.7-8.25 8.23-8.25z" /></svg>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="#16a34a">
+                    <path
+                        d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c4.54 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.28-2.42 5.84a8.18 8.18 0 0 1-5.83 2.41c-1.47 0-2.91-.39-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.39c0-4.54 3.7-8.25 8.23-8.25z" />
+                </svg>
                 <span>قوالب واتساب الذكية بنقرة واحدة</span>
             </h3>
             <button type="button" class="close-modal-btn" onclick="closeModal('whatsappTemplatesModal')">✕</button>
         </div>
         <div class="custom-modal-body">
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+            <div
+                style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <div style="font-weight:800; color:#0f172a; font-size:14px;" id="wa_target_name">اسم الطالب</div>
                     <div style="font-size:12px; color:#64748b;" id="wa_target_role">الدور: طالب مستلم</div>
                 </div>
-                <div style="font-weight:700; color:#0284c7; font-size:13px;" dir="ltr" id="wa_target_phone">07XXXXXXXX</div>
+                <div style="font-weight:700; color:#0284c7; font-size:13px;" dir="ltr" id="wa_target_phone">07XXXXXXXX
+                </div>
             </div>
 
-            <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:8px;">اختر نموذج الرسالة الجاهزة:</div>
-            
+            <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:8px;">اختر نموذج الرسالة الجاهزة:
+            </div>
+
             <div style="display:flex; flex-direction:column; gap:10px;" id="wa_templates_container">
                 <!-- أزرار النماذج تملأ عبر JS -->
             </div>
 
             <div style="margin-top:16px;">
-                <label style="font-size:12.5px; font-weight:700; color:#475569; display:block; margin-bottom:6px;">نص الرسالة النهائي (يمكنك التعديل عليه قبل الإرسال):</label>
-                <textarea id="wa_custom_text" rows="4" class="form-control" style="font-family:inherit; font-size:13px; line-height:1.6;"></textarea>
+                <label style="font-size:12.5px; font-weight:700; color:#475569; display:block; margin-bottom:6px;">نص
+                    الرسالة النهائي (يمكنك التعديل عليه قبل الإرسال):</label>
+                <textarea id="wa_custom_text" rows="4" class="form-control"
+                    style="font-family:inherit; font-size:13px; line-height:1.6;"></textarea>
             </div>
         </div>
         <div class="custom-modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeModal('whatsappTemplatesModal')">إلغاء</button>
-            <button type="button" class="btn" style="background:#16a34a; color:#fff; font-weight:800;" onclick="sendCustomWhatsApp()">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c4.54 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.28-2.42 5.84a8.18 8.18 0 0 1-5.83 2.41c-1.47 0-2.91-.39-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.39c0-4.54 3.7-8.25 8.23-8.25z" /></svg>
+            <button type="button" class="btn btn-secondary"
+                onclick="closeModal('whatsappTemplatesModal')">إلغاء</button>
+            <button type="button" class="btn" style="background:#16a34a; color:#fff; font-weight:800;"
+                onclick="sendCustomWhatsApp()">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path
+                        d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c4.54 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.28-2.42 5.84a8.18 8.18 0 0 1-5.83 2.41c-1.47 0-2.91-.39-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.39c0-4.54 3.7-8.25 8.23-8.25z" />
+                </svg>
                 فتح ومراسلة عبر واتساب ↗
             </button>
         </div>
@@ -2728,9 +3131,12 @@ if ($coordFilter === 'shared') {
 <!-- 6. مودال المطابقة الذكية والربط الفوري (Smart Match Modal) -->
 <div class="custom-modal-overlay" id="smartMatchModal">
     <div class="custom-modal-box" style="max-width: 600px;">
-        <div class="custom-modal-header" style="background: linear-gradient(135deg, #fdf4ff, #fae8ff); border-bottom: 1px solid #d8b4fe;">
+        <div class="custom-modal-header"
+            style="background: linear-gradient(135deg, #fdf4ff, #fae8ff); border-bottom: 1px solid #d8b4fe;">
             <h3 style="color:#581c87; display:flex; align-items:center; gap:8px;">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
                 <span>المطابقة الذكية والربط الفوري للكتب</span>
             </h3>
             <button type="button" class="close-modal-btn" onclick="closeModal('smartMatchModal')">✕</button>
@@ -2741,19 +3147,22 @@ if ($coordFilter === 'shared') {
             <input type="hidden" name="exchange_id" id="sm_exchange_id">
 
             <div class="custom-modal-body">
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px; margin-bottom:16px;">
+                <div
+                    style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px; margin-bottom:16px;">
                     <div style="font-size:12px; color:#64748b;">الكتاب المتوفر بالمستودع:</div>
                     <div style="font-weight:800; color:#0f172a; font-size:15px;" id="sm_material_title">اسم المادة</div>
                 </div>
 
                 <div class="form-group">
                     <label style="font-weight:700; color:#581c87;">اختر الطالب المراد ربطه من قائمة الانتظار:</label>
-                    <select name="wishlist_id" id="sm_wishlist_select" class="form-control" required onchange="updateSmartMatchStudentInfo()">
+                    <select name="wishlist_id" id="sm_wishlist_select" class="form-control" required
+                        onchange="updateSmartMatchStudentInfo()">
                         <!-- الخيارات تملأ عبر JS -->
                     </select>
                 </div>
 
-                <div id="sm_student_details_box" style="background:#fdf2f8; border:1px solid #fbcfe8; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:12.5px; color:#9d174d;">
+                <div id="sm_student_details_box"
+                    style="background:#fdf2f8; border:1px solid #fbcfe8; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:12.5px; color:#9d174d;">
                     <!-- معاينة تفاصيل الطالب عبر JS -->
                 </div>
 
@@ -2768,18 +3177,21 @@ if ($coordFilter === 'shared') {
                     </div>
                     <div class="form-group">
                         <label>تاريخ التسليم المقترح</label>
-                        <input type="date" name="pickup_date" id="sm_pickup_date" value="<?= date('Y-m-d') ?>" class="form-control" required>
+                        <input type="date" name="pickup_date" id="sm_pickup_date" value="<?= date('Y-m-d') ?>"
+                            class="form-control" required>
                     </div>
                     <div class="form-group">
                         <label>وقت التسليم</label>
-                        <input type="time" name="pickup_time" id="sm_pickup_time" value="12:00" class="form-control" required>
+                        <input type="time" name="pickup_time" id="sm_pickup_time" value="12:00" class="form-control"
+                            required>
                     </div>
                 </div>
             </div>
 
             <div class="custom-modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('smartMatchModal')">إلغاء</button>
-                <button type="submit" class="btn" style="background:#9333ea; color:#fff; font-weight:800;">⚡ تأكيد الربط الذكي والحجز فورا</button>
+                <button type="submit" class="btn" style="background:#9333ea; color:#fff; font-weight:800;">⚡ تأكيد الربط
+                    الذكي والحجز فورا</button>
             </div>
         </form>
     </div>
@@ -2788,29 +3200,40 @@ if ($coordFilter === 'shared') {
 <!-- 7. مودال إدارة قائمة انتظار الكتب (Wishlist Modal) -->
 <div class="custom-modal-overlay" id="wishlistModal">
     <div class="custom-modal-box" style="max-width: 850px;">
-        <div class="custom-modal-header" style="background:linear-gradient(135deg,#f5f3ff,#ede9fe); border-bottom:1px solid #ddd6fe;">
+        <div class="custom-modal-header"
+            style="background:linear-gradient(135deg,#f5f3ff,#ede9fe); border-bottom:1px solid #ddd6fe;">
             <h3 style="color:#5b21b6; display:flex; align-items:center; gap:8px;">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><polyline points="16 11 18 13 22 9" /></svg>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <polyline points="16 11 18 13 22 9" />
+                </svg>
                 <span>قائمة الانتظار وطلبات الكتب (Wishlist)</span>
-                <span style="background:#7c3aed; color:#fff; font-size:11px; padding:2px 8px; border-radius:9999px;"><?= count($wishlistItems) ?> طلب معلق</span>
+                <span
+                    style="background:#7c3aed; color:#fff; font-size:11px; padding:2px 8px; border-radius:9999px;"><?= count($wishlistItems) ?>
+                    طلب معلق</span>
             </h3>
             <button type="button" class="close-modal-btn" onclick="closeModal('wishlistModal')">✕</button>
         </div>
         <div class="custom-modal-body">
             <!-- نموذج إضافة طلب جديد -->
-            <details style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; margin-bottom:20px;">
-                <summary style="font-weight:800; color:#0284c7; cursor:pointer; font-size:14px;">+ إضافة طالب جديد إلى قائمة الانتظار</summary>
+            <details
+                style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; margin-bottom:20px;">
+                <summary style="font-weight:800; color:#0284c7; cursor:pointer; font-size:14px;">+ إضافة طالب جديد إلى
+                    قائمة الانتظار</summary>
                 <form method="post" style="margin-top:14px;">
                     <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
                     <input type="hidden" name="action" value="add_to_wishlist">
                     <div class="form-grid">
                         <div class="form-group">
                             <label>اسم الطالب *</label>
-                            <input type="text" name="student_name" required class="form-control" placeholder="اسم الطالب الثلاثي">
+                            <input type="text" name="student_name" required class="form-control"
+                                placeholder="اسم الطالب الثلاثي">
                         </div>
                         <div class="form-group">
                             <label>رقم الهاتف *</label>
-                            <input type="text" name="student_phone" required class="form-control" placeholder="07XXXXXXXX">
+                            <input type="text" name="student_phone" required class="form-control"
+                                placeholder="07XXXXXXXX">
                         </div>
                         <div class="form-group">
                             <label>الجنس</label>
@@ -2821,7 +3244,8 @@ if ($coordFilter === 'shared') {
                         </div>
                         <div class="form-group">
                             <label>اسم الكتاب / المادة المطلوبة *</label>
-                            <input type="text" name="material_name" required class="form-control" placeholder="مثال: كالكولس 1">
+                            <input type="text" name="material_name" required class="form-control"
+                                placeholder="مثال: كالكولس 1">
                         </div>
                         <div class="form-group">
                             <label>رمز المادة (اختياري)</label>
@@ -2869,25 +3293,32 @@ if ($coordFilter === 'shared') {
                                     <td style="font-weight:700; color:#64748b;">#<?= $w['id'] ?></td>
                                     <td style="font-weight:700; color:#0f172a;">
                                         <?= htmlspecialchars($w['student_name']) ?>
-                                        <span class="gender-tag <?= $w['student_gender'] === 'female' ? 'gender-female' : 'gender-male' ?>">
+                                        <span
+                                            class="gender-tag <?= $w['student_gender'] === 'female' ? 'gender-female' : 'gender-male' ?>">
                                             <?= $w['student_gender'] === 'female' ? 'أنثى' : 'ذكر' ?>
                                         </span>
                                     </td>
                                     <td dir="ltr" style="font-size:12.5px;"><?= htmlspecialchars($w['student_phone']) ?></td>
-                                    <td style="font-weight:800; color:#7c3aed;"><?= htmlspecialchars($w['material_name']) ?></td>
+                                    <td style="font-weight:800; color:#7c3aed;"><?= htmlspecialchars($w['material_name']) ?>
+                                    </td>
                                     <td>
                                         <span class="badge-faculty"><?= htmlspecialchars($w['faculty'] ?: 'عام') ?></span>
                                         <?php if (!empty($w['course_code'])): ?>
                                             <span class="badge-code"><?= htmlspecialchars($w['course_code']) ?></span>
                                         <?php endif; ?>
                                     </td>
-                                    <td style="font-size:12px; color:#64748b;"><?= htmlspecialchars(substr($w['created_at'], 0, 10)) ?></td>
+                                    <td style="font-size:12px; color:#64748b;">
+                                        <?= htmlspecialchars(substr($w['created_at'], 0, 10)) ?>
+                                    </td>
                                     <td style="text-align:center;">
-                                        <form method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا الطلب؟');" style="display:inline; margin:0;">
+                                        <form method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا الطلب؟');"
+                                            style="display:inline; margin:0;">
                                             <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
                                             <input type="hidden" name="action" value="delete_wishlist">
                                             <input type="hidden" name="wishlist_id" value="<?= $w['id'] ?>">
-                                            <button type="submit" class="btn btn-secondary" style="padding:4px 8px; font-size:11.5px; color:#ef4444;" title="حذف">حذف</button>
+                                            <button type="submit" class="btn btn-secondary"
+                                                style="padding:4px 8px; font-size:11.5px; color:#ef4444;"
+                                                title="حذف">حذف</button>
                                         </form>
                                     </td>
                                 </tr>
@@ -2906,9 +3337,13 @@ if ($coordFilter === 'shared') {
 <!-- 8. مودال اعتماد وتوجيه طلب التبرع (Approve & Assign Modal) -->
 <div class="custom-modal-overlay" id="approveDonationModal">
     <div class="custom-modal-box" style="max-width: 620px;">
-        <div class="custom-modal-header" style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-bottom: 1px solid #a7f3d0;">
+        <div class="custom-modal-header"
+            style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-bottom: 1px solid #a7f3d0;">
             <h3 style="color: #065f46; display: flex; align-items: center; gap: 8px;">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
                 <span>اعتماد وتوجيه طلب التبرع بالمادة</span>
             </h3>
             <button type="button" class="close-modal-btn" onclick="closeModal('approveDonationModal')">✕</button>
@@ -2919,7 +3354,8 @@ if ($coordFilter === 'shared') {
             <input type="hidden" name="id" id="approve_donation_id">
 
             <!-- بطاقة تفاصيل المتبرع والمادة القادمة من نموذج الموقع -->
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 18px;">
+            <div
+                style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 18px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div>
                         <div style="font-size: 11px; color: #64748b; font-weight: 600;">اسم المادة / الكتاب</div>
@@ -2927,13 +3363,21 @@ if ($coordFilter === 'shared') {
                     </div>
                     <span id="approve_donor_gender_badge"></span>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
-                    <div><strong style="color: #475569;">المتبرع:</strong> <span id="approve_donor_name" style="font-weight: 700; color: #0f172a;"></span></div>
-                    <div><strong style="color: #475569;">الهاتف الأساسي:</strong> <span id="approve_donor_phone" dir="ltr" style="font-weight: 700; color: #059669;"></span></div>
-                    <div><strong style="color: #475569;">هاتف إضافي:</strong> <span id="approve_donor_phone_alt" dir="ltr" style="color: #64748b;"></span></div>
-                    <div><strong style="color: #475569;">البريد الإلكتروني:</strong> <span id="approve_donor_email" style="color: #64748b;"></span></div>
-                    <div style="grid-column: span 2;"><strong style="color: #475569;">أسبوع التسليم المقترح:</strong> <span id="approve_delivery_week" style="color: #d97706; font-weight: 700;"></span></div>
-                    <div style="grid-column: span 2;" id="approve_desc_wrapper"><strong style="color: #475569;">الوصف / الملاحظات:</strong> <span id="approve_material_desc" style="color: #334155;"></span></div>
+                <div
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
+                    <div><strong style="color: #475569;">المتبرع:</strong> <span id="approve_donor_name"
+                            style="font-weight: 700; color: #0f172a;"></span></div>
+                    <div><strong style="color: #475569;">الهاتف الأساسي:</strong> <span id="approve_donor_phone"
+                            dir="ltr" style="font-weight: 700; color: #059669;"></span></div>
+                    <div><strong style="color: #475569;">هاتف إضافي:</strong> <span id="approve_donor_phone_alt"
+                            dir="ltr" style="color: #64748b;"></span></div>
+                    <div><strong style="color: #475569;">البريد الإلكتروني:</strong> <span id="approve_donor_email"
+                            style="color: #64748b;"></span></div>
+                    <div style="grid-column: span 2;"><strong style="color: #475569;">أسبوع التسليم المقترح:</strong>
+                        <span id="approve_delivery_week" style="color: #d97706; font-weight: 700;"></span>
+                    </div>
+                    <div style="grid-column: span 2;" id="approve_desc_wrapper"><strong style="color: #475569;">الوصف /
+                            الملاحظات:</strong> <span id="approve_material_desc" style="color: #334155;"></span></div>
                 </div>
             </div>
 
@@ -2943,32 +3387,37 @@ if ($coordFilter === 'shared') {
                     <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
                         توجيه المادة إلى (القسم أو المنسق المسؤول) *
                     </label>
-                    <select name="assigned_coordinator" id="approve_assigned_coordinator" required class="form-control" style="border: 2px solid #10b981; font-weight: 700; font-size: 13.5px; padding: 10px;">
+                    <select name="assigned_coordinator" id="approve_assigned_coordinator" required class="form-control"
+                        style="border: 2px solid #10b981; font-weight: 700; font-size: 13.5px; padding: 10px;">
                         <optgroup label="تسليم عام / غير مفرز">
                             <option value="shared">🤝 جدول التسليم المشترك (بانتظار الفرز أو مشترك)</option>
                         </optgroup>
                         <optgroup label="فريق منسقي الذكور">
                             <?php foreach ($coordinatorsList as $cKey => $cVal): ?>
                                 <?php if ($cKey !== 'shared' && ($cVal['gender'] ?? '') !== 'female'): ?>
-                                    <option value="<?= $cKey ?>">👨‍💼 <?= htmlspecialchars($cVal['name']) ?> (<?= htmlspecialchars($cVal['role'] ?? 'منسق') ?>)</option>
+                                    <option value="<?= $cKey ?>">👨‍💼 <?= htmlspecialchars($cVal['name']) ?>
+                                        (<?= htmlspecialchars($cVal['role'] ?? 'منسق') ?>)</option>
                                 <?php endif; ?>
                             <?php endforeach; ?>
                         </optgroup>
                         <optgroup label="فريق منسقات الإناث">
                             <?php foreach ($coordinatorsList as $cKey => $cVal): ?>
                                 <?php if ($cKey !== 'shared' && ($cVal['gender'] ?? '') === 'female'): ?>
-                                    <option value="<?= $cKey ?>">👩‍💼 <?= htmlspecialchars($cVal['name']) ?> (<?= htmlspecialchars($cVal['role'] ?? 'منسقة') ?>)</option>
+                                    <option value="<?= $cKey ?>">👩‍💼 <?= htmlspecialchars($cVal['name']) ?>
+                                        (<?= htmlspecialchars($cVal['role'] ?? 'منسقة') ?>)</option>
                                 <?php endif; ?>
                             <?php endforeach; ?>
                         </optgroup>
                     </select>
                     <span style="font-size: 11.5px; color: #64748b; margin-top: 5px; display: block;">
-                        بناءً على جنس المتبرع ونوع المادة، يمكنك إسنادها فوراً للمنسق المسؤول أو وضعها في الجدول المشترك.
+                        بناءً على جنس المتبرع ونوع المادة، يمكنك إسنادها فوراً للمنسق المسؤول أو وضعها في الجدول
+                        المشترك.
                     </span>
                 </div>
 
                 <div class="form-group">
-                    <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">الكلية التابعة لها المادة</label>
+                    <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">الكلية التابعة
+                        لها المادة</label>
                     <select name="faculty" id="approve_faculty" class="form-control">
                         <option value="">— اختر الكلية (اختياري) —</option>
                         <?php foreach ($facultiesList as $fac): ?>
@@ -2978,20 +3427,30 @@ if ($coordFilter === 'shared') {
                 </div>
 
                 <div class="form-group">
-                    <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">رمز المساق (اختياري)</label>
-                    <input type="text" name="course_code" id="approve_course_code" class="form-control" placeholder="مثال: ECON101">
+                    <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">رمز المساق
+                        (اختياري)</label>
+                    <input type="text" name="course_code" id="approve_course_code" class="form-control"
+                        placeholder="مثال: ECON101">
                 </div>
 
                 <div class="form-group" style="grid-column: span 2;">
-                    <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">ملاحظات إدارية إضافية (اختياري)</label>
-                    <input type="text" name="notes" id="approve_notes" class="form-control" placeholder="مثال: تم التنسيق مع الطالب للتسليم عند مدخل الكلية">
+                    <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">ملاحظات إدارية
+                        إضافية (اختياري)</label>
+                    <input type="text" name="notes" id="approve_notes" class="form-control"
+                        placeholder="مثال: تم التنسيق مع الطالب للتسليم عند مدخل الكلية">
                 </div>
             </div>
 
-            <div class="custom-modal-footer" style="margin-top: 20px; padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('approveDonationModal')">إلغاء</button>
-                <button type="submit" class="btn" style="background: #10b981; color: #fff; font-weight: 700; border: 1px solid #059669; padding: 9px 22px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <div class="custom-modal-footer"
+                style="margin-top: 20px; padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-secondary"
+                    onclick="closeModal('approveDonationModal')">إلغاء</button>
+                <button type="submit" class="btn"
+                    style="background: #10b981; color: #fff; font-weight: 700; border: 1px solid #059669; padding: 9px 22px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                    </svg>
                     تأكيد الاعتماد والتوجيه للجدول
                 </button>
             </div>
@@ -3026,7 +3485,7 @@ if ($coordFilter === 'shared') {
         document.getElementById('approve_donor_phone_alt').textContent = item.donor_phone_alt || '-';
         document.getElementById('approve_donor_email').textContent = item.donor_email || '-';
         document.getElementById('approve_delivery_week').textContent = item.delivery_week || 'غير محدد';
-        
+
         const desc = item.material_description || item.notes || '';
         const descWrap = document.getElementById('approve_desc_wrapper');
         if (desc) {
@@ -3172,7 +3631,7 @@ if ($coordFilter === 'shared') {
         if (item.status === 'completed') {
             if (liveBanner) liveBanner.style.display = 'block';
         } else if (item.status === 'reserved') {
-            slipPollTimer = setInterval(function() {
+            slipPollTimer = setInterval(function () {
                 if (!slipPollCurrentId) { clearInterval(slipPollTimer); return; }
                 fetch('donations.php?action=check_delivery_status&id=' + slipPollCurrentId)
                     .then(r => r.json())
@@ -3190,7 +3649,7 @@ if ($coordFilter === 'shared') {
                                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                                 const osc = ctx.createOscillator(); osc.connect(ctx.destination);
                                 osc.frequency.value = 880; osc.start(); osc.stop(ctx.currentTime + 0.25);
-                            } catch(e) {}
+                            } catch (e) { }
                             // تحديث badge الحالة في صف الجدول بدون ريلود
                             const badgeEl = document.getElementById('badge_status_' + slipPollCurrentId);
                             if (badgeEl) {
@@ -3201,7 +3660,7 @@ if ($coordFilter === 'shared') {
                             document.getElementById('slip_status').innerText = 'تم التسليم';
                         }
                     })
-                    .catch(() => {});
+                    .catch(() => { });
             }, 2000);
         }
     }
@@ -3274,7 +3733,7 @@ if ($coordFilter === 'shared') {
             btn.className = 'btn';
             btn.style.cssText = 'text-align:right; display:flex; flex-direction:column; align-items:flex-start; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:10px 14px; cursor:pointer; width:100%; transition:all .15s;';
             btn.innerHTML = `<div style="font-weight:800; color:#0f172a; font-size:13.5px;">${tpl.title}</div><div style="font-size:11.5px; color:#64748b; margin-top:2px;">${tpl.desc}</div>`;
-            btn.onclick = function() {
+            btn.onclick = function () {
                 container.querySelectorAll('button').forEach(b => {
                     b.style.borderColor = '#e2e8f0';
                     b.style.background = '#f8fafc';
@@ -3317,7 +3776,7 @@ if ($coordFilter === 'shared') {
     function openSmartMatchModal(material, matchedWishlist) {
         document.getElementById('sm_exchange_id').value = material.id;
         document.getElementById('sm_material_title').innerText = material.material_name + (material.course_code ? ' (' + material.course_code + ')' : '') + ' — ' + (material.faculty || 'عام');
-        
+
         currentSmartMatchedStudents = matchedWishlist;
         const select = document.getElementById('sm_wishlist_select');
         select.innerHTML = '';

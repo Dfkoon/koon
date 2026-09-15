@@ -1575,6 +1575,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                     studentGender: bookingData.gender,
                     hideFromCounterparty: !!bookingData.hideContactInfo,
                     hideBookerInfo: !!bookingData.hideContactInfo,
+                    dataSharingConsent: !!agreedToBookingTerms,
                     bookedAt: new Date()
                 };
                 const allReserved = updatedMaterials.every(m => {
