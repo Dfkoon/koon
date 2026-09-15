@@ -139,6 +139,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     $stmt = $db->prepare('UPDATE study_materials SET course_name=?, course_code=?, faculty=?, requirement_category=?, updated_at=CURRENT_TIMESTAMP WHERE course_name=?');
     $stmt->execute([$newCourseName, $courseCode, $faculty, $reqCat, $oldCourseName]);
+    if ($oldCourseName !== $newCourseName) {
+      firestoreDeleteDoc('academic_courses', courseFirestoreDocId($oldCourseName));
+    }
     log_activity("تعديل بيانات المادة الدراسية: $newCourseName", 'study_materials');
     sync_courses_to_frontend($db);
     sync_all_courses_to_firestore($db);

@@ -193,6 +193,11 @@ function firestoreDeleteDoc(string $collection, string $docId): bool
     return $ok;
 }
 
+function courseFirestoreDocId(string $courseName): string
+{
+    return 'course_' . substr(md5(trim($courseName)), 0, 16);
+}
+
 function firestoreDeleteQuizQuestion(PDO $db, int $questionId): bool
 {
     $stmt = $db->prepare('SELECT part_slug, source_part_id, part_id FROM quiz_questions WHERE id = ? LIMIT 1');
@@ -269,7 +274,7 @@ function sync_course_to_firestore(string $courseName, ?PDO $db = null, bool $isD
         return false;
     }
 
-    $docId = 'course_' . substr(md5($courseName), 0, 16);
+    $docId = courseFirestoreDocId($courseName);
 
     if ($isDeleted) {
         return firestoreUpsertDoc('academic_courses', $docId, [

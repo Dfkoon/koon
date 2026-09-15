@@ -25,7 +25,7 @@ $db->exec("UPDATE material_exchanges SET archive_key = 'second_2025_2026', archi
 $db->exec("UPDATE material_exchanges SET archive_key = 'summer_2025_2026', archive_label = 'الفصل الدراسي الصيفي 2025-2026' WHERE notes LIKE '%الفصل الدراسي الصيفي 2026%'");
 
 // ترحيل القيم القديمة النصية ('ahmad','sara','admin') إلى 'shared' لأن المنسقين محددون الآن بـ ID
-$db->exec("UPDATE material_exchanges SET assigned_coordinator = 'shared' WHERE assigned_coordinator IN ('ahmad','sara','admin') OR (assigned_coordinator IS NOT NULL AND assigned_coordinator != 'shared' AND assigned_coordinator != '' AND assigned_coordinator NOT GLOB '[0-9]*')");
+$db->exec("UPDATE material_exchanges SET assigned_coordinator = 'shared' WHERE assigned_coordinator IN ('ahmad','sara','admin')");
 
 // جلب وتحديث طلبات التبرع الجديدة من السحابة إن وجدت
 try {
@@ -78,6 +78,17 @@ $currentCampaignLabel = $db->query("SELECT setting_value FROM site_settings WHER
 $currentCampaignLabel = $currentCampaignLabel === false || trim((string) $currentCampaignLabel) === ''
     ? 'الفصل الدراسي الأول 2026-2027'
     : (string) $currentCampaignLabel;
+
+$routingTargets = [
+    'male' => 'جدول منسقي الذكور',
+    'female' => 'جدول منسقات الإناث',
+    'shared' => 'الجدول المشترك',
+    'resort' => 'إعادة الفرز',
+];
+
+$normalizeRoutingTarget = static function (string $value) use ($routingTargets): string {
+    return array_key_exists($value, $routingTargets) ? $value : 'shared';
+};
 
 /* ---------- استعلام حالة التسليم الفوري بدون تحديث الصفحة (AJAX Live Check) ---------- */
 if (isset($_GET['action']) && $_GET['action'] === 'check_delivery_status') {
@@ -168,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $faculty = trim($_POST['faculty'] ?? 'عام');
             $description = trim($_POST['description'] ?? '');
             $status = $_POST['status'] ?? 'approved';
-            $assignedCoordinator = $_POST['assigned_coordinator'] ?? ($donorGender === 'female' ? 'sara' : 'ahmad');
+            $assignedCoordinator = $normalizeRoutingTarget(trim($_POST['assigned_coordinator'] ?? 'shared'));
             $notes = trim($_POST['notes'] ?? '');
 
             if ($donorName === '' || $materialName === '') {
@@ -197,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $faculty = trim($_POST['faculty'] ?? 'عام');
             $description = trim($_POST['description'] ?? '');
             $status = $_POST['status'] ?? 'approved';
-            $assignedCoordinator = $_POST['assigned_coordinator'] ?? 'ahmad';
+            $assignedCoordinator = $normalizeRoutingTarget(trim($_POST['assigned_coordinator'] ?? 'shared'));
             $pickupDate = trim($_POST['pickup_date'] ?? '');
             $pickupTime = trim($_POST['pickup_time'] ?? '');
             $deliveryStatus = $_POST['delivery_status'] ?? 'pending_contact';
@@ -285,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bookerGender = $_POST['booker_gender'] ?? 'male';
             $pickupDate = trim($_POST['pickup_date'] ?? '');
             $pickupTime = trim($_POST['pickup_time'] ?? '');
-            $assignedCoordinator = $_POST['assigned_coordinator'] ?? ($bookerGender === 'female' ? 'sara' : 'ahmad');
+            $assignedCoordinator = $normalizeRoutingTarget(trim($_POST['assigned_coordinator'] ?? 'shared'));
             $notes = trim($_POST['notes'] ?? '');
 
             if ($bookerName === '' || $bookerPhone === '') {
@@ -440,13 +451,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 7. فرز وتعيين يدوي فوري للمنسق المكلف
         elseif ($action === 'quick_assign_coordinator') {
             $id = (int) ($_POST['id'] ?? 0);
-            $newCoord = trim($_POST['assigned_coordinator'] ?? 'shared');
-            if ($newCoord !== 'shared' && !isset($coordinatorsList[$newCoord])) {
-                $newCoord = 'shared';
-            }
+            $newCoord = $normalizeRoutingTarget(trim($_POST['assigned_coordinator'] ?? 'shared'));
             $stmt = $db->prepare('UPDATE material_exchanges SET assigned_coordinator = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
             $stmt->execute([$newCoord, $id]);
-            $coordName = $coordinatorsList[$newCoord]['name'] ?? $newCoord;
+            $coordName = $routingTargets[$newCoord];
             log_activity("فرز وتعيين المادة #$id إلى: $coordName", 'material_exchange');
             $message = "تم فرز وتعيين المادة #$id بنجاح إلى: $coordName";
         }
@@ -457,7 +465,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $wishlistId = (int) ($_POST['wishlist_id'] ?? 0);
             $pickupDate = trim($_POST['pickup_date'] ?? date('Y-m-d'));
             $pickupTime = trim($_POST['pickup_time'] ?? '12:00');
-            $assignedCoord = trim($_POST['assigned_coordinator'] ?? 'shared');
+            $assignedCoord = $normalizeRoutingTarget(trim($_POST['assigned_coordinator'] ?? 'shared'));
 
             $stmtW = $db->prepare('SELECT * FROM material_wishlist WHERE id = ?');
             $stmtW->execute([$wishlistId]);
@@ -536,7 +544,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'error';
             } else {
                 $id = (int) ($_POST['id'] ?? 0);
-                $assignedCoord = trim($_POST['assigned_coordinator'] ?? 'shared');
+                $assignedCoord = $normalizeRoutingTarget(trim($_POST['assigned_coordinator'] ?? 'shared'));
                 $faculty = trim($_POST['faculty'] ?? '');
                 $courseCode = trim($_POST['course_code'] ?? '');
                 $adminNotes = trim($_POST['notes'] ?? '');
@@ -611,7 +619,7 @@ if ($activeTab === 'all' && $statusFilter === '') {
 } elseif ($activeTab === 'reserved') {
     $sql .= " AND status = 'reserved'";
 } elseif ($activeTab === 'shared') {
-    $sql .= " AND (assigned_coordinator = 'shared' OR assigned_coordinator = 'admin' OR assigned_coordinator = '' OR assigned_coordinator IS NULL) AND status != 'pending'";
+    $sql .= " AND (assigned_coordinator IN ('shared', 'resort', 'admin', '') OR assigned_coordinator IS NULL) AND status != 'pending'";
 } elseif ($activeTab === 'completed') {
     $sql .= " AND status = 'completed'";
 } elseif ($activeTab === 'pending') {
@@ -629,24 +637,19 @@ if ($facultyFilter !== '') {
     $params[] = $facultyFilter;
 }
 if ($coordFilter !== '') {
-    if ($coordFilter === 'shared') {
-        $sql .= " AND (assigned_coordinator = 'shared' OR assigned_coordinator = 'admin' OR assigned_coordinator = '' OR assigned_coordinator IS NULL)";
+    if ($coordFilter === 'shared' || $coordFilter === 'resort') {
+        $sql .= " AND assigned_coordinator = ?";
+        $params[] = $coordFilter;
     } elseif ($coordFilter === 'male_all') {
         $maleIds = array_keys(array_filter($coordinatorsList, fn($c) => ($c['gender'] ?? '') !== 'female' && $c['id'] !== 'shared'));
-        if (!empty($maleIds)) {
-            $inClause = implode(',', array_map(fn($i) => "'" . addslashes((string) $i) . "'", $maleIds));
-            $sql .= " AND assigned_coordinator IN ($inClause)";
-        } else {
-            $sql .= " AND 1=0";
-        }
+        $maleIds[] = 'male';
+        $inClause = implode(',', array_map(fn($i) => "'" . addslashes((string) $i) . "'", $maleIds));
+        $sql .= " AND assigned_coordinator IN ($inClause)";
     } elseif ($coordFilter === 'female_all') {
         $femaleIds = array_keys(array_filter($coordinatorsList, fn($c) => ($c['gender'] ?? '') === 'female'));
-        if (!empty($femaleIds)) {
-            $inClause = implode(',', array_map(fn($i) => "'" . addslashes((string) $i) . "'", $femaleIds));
-            $sql .= " AND assigned_coordinator IN ($inClause)";
-        } else {
-            $sql .= " AND 1=0";
-        }
+        $femaleIds[] = 'female';
+        $inClause = implode(',', array_map(fn($i) => "'" . addslashes((string) $i) . "'", $femaleIds));
+        $sql .= " AND assigned_coordinator IN ($inClause)";
     } else {
         $sql .= ' AND assigned_coordinator = ?';
         $params[] = $coordFilter;
@@ -1233,7 +1236,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'print_sheet') {
         </div>
 
         <script>
-                        windo w.on                                     load = function () {
+                                                        windo w.on                                     load = function () {
                 window.print();
             };
         </script>
@@ -1692,53 +1695,11 @@ $archiveUrlParam = $archiveFilter !== '' ? '&amp;archive=' . urlencode($archiveF
 
             <div class="filter-field" style="min-width:200px;">
                 <select name="coord" onchange="this.form.submit()" class="form-control">
-                    <option value="">كافة الأقسام والمنسقين</option>
-                    <option value="shared" <?= $coordFilter === 'shared' ? 'selected' : '' ?>>قسم التسليم المشترك (غير
-                        المفرز)</option>
-                    <option value="male_all" <?= $coordFilter === 'male_all' ? 'selected' : '' ?>>كافة منسقي الذكور
-                    </option>
-                    <option value="female_all" <?= $coordFilter === 'female_all' ? 'selected' : '' ?>>كافة منسقات الإناث
-                    </option>
-                    <?php
-                    $hasMale = false;
-                    foreach ($coordinatorsList as $cKey => $cData) {
-                        if ($cKey !== 'shared' && ($cData['gender'] ?? '') !== 'female') {
-                            $hasMale = true;
-                            break;
-                        }
-                    }
-                    if ($hasMale):
-                        ?>
-                        <optgroup label="منسقو الذكور">
-                            <?php foreach ($coordinatorsList as $cKey => $cData): ?>
-                                <?php if ($cKey !== 'shared' && ($cData['gender'] ?? '') !== 'female'): ?>
-                                    <option value="<?= htmlspecialchars((string) $cKey) ?>" <?= ((string) $coordFilter === (string) $cKey) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($cData['name']) ?>
-                                    </option>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </optgroup>
-                    <?php endif; ?>
-                    <?php
-                    $hasFemale = false;
-                    foreach ($coordinatorsList as $cKey => $cData) {
-                        if ($cKey !== 'shared' && ($cData['gender'] ?? '') === 'female') {
-                            $hasFemale = true;
-                            break;
-                        }
-                    }
-                    if ($hasFemale):
-                        ?>
-                        <optgroup label="منسقات الإناث">
-                            <?php foreach ($coordinatorsList as $cKey => $cData): ?>
-                                <?php if ($cKey !== 'shared' && ($cData['gender'] ?? '') === 'female'): ?>
-                                    <option value="<?= htmlspecialchars((string) $cKey) ?>" <?= ((string) $coordFilter === (string) $cKey) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($cData['name']) ?>
-                                    </option>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </optgroup>
-                    <?php endif; ?>
+                    <option value="">كل الجداول</option>
+                    <option value="male_all" <?= $coordFilter === 'male_all' ? 'selected' : '' ?>>جدول الذكور</option>
+                    <option value="female_all" <?= $coordFilter === 'female_all' ? 'selected' : '' ?>>جدول الإناث</option>
+                    <option value="shared" <?= $coordFilter === 'shared' ? 'selected' : '' ?>>الجدول المشترك</option>
+                    <option value="resort" <?= $coordFilter === 'resort' ? 'selected' : '' ?>>إعادة الفرز</option>
                 </select>
             </div>
 
@@ -1761,7 +1722,11 @@ $femaleMaterials = [];
 
 foreach ($materials as $mItem) {
     $cKey = (string) ($mItem['assigned_coordinator'] ?? '');
-    if ($cKey !== '' && $cKey !== 'shared' && isset($coordinatorsList[$cKey])) {
+    if ($cKey === 'female') {
+        $femaleMaterials[] = $mItem;
+    } elseif ($cKey === 'male') {
+        $maleMaterials[] = $mItem;
+    } elseif ($cKey !== '' && $cKey !== 'shared' && $cKey !== 'resort' && isset($coordinatorsList[$cKey])) {
         $coordGender = $coordinatorsList[$cKey]['gender'] ?? 'male';
         if ($coordGender === 'female') {
             $femaleMaterials[] = $mItem;
@@ -2042,6 +2007,12 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
     $badgeBorder = $theme['badge_border'];
     $svgIcon = $theme['svg'] ?? '';
     $count = count($items);
+    $routingOptions = [
+        'male' => 'جدول منسقي الذكور',
+        'female' => 'جدول منسقات الإناث',
+        'shared' => 'الجدول المشترك',
+        'resort' => 'إعادة الفرز',
+    ];
     ?>
     <div class="panel-box" id="section-<?= $sectionKey ?>"
         style="margin-bottom: 24px; border: 1.5px solid <?= $badgeBorder ?>; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
@@ -2116,9 +2087,16 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                             <?php
                             $stBadge = $statusLabels[$m['status']] ?? ['label' => $m['status'], 'class' => 'badge-pending'];
                             $currentCoordKey = $m['assigned_coordinator'] ?? 'shared';
-                            if (!isset($coordinatorsList[$currentCoordKey])) {
-                                $currentCoordKey = 'shared';
+                            if (!isset($routingOptions[$currentCoordKey])) {
+                                $currentCoordKey = in_array($sectionKey, ['male', 'female'], true) ? $sectionKey : 'shared';
                             }
+                            $routingStyles = [
+                                'male' => ['border' => '#bae6fd', 'bg' => '#f0f9ff', 'color' => '#0369a1'],
+                                'female' => ['border' => '#fbcfe8', 'bg' => '#fdf2f8', 'color' => '#be185d'],
+                                'shared' => ['border' => '#e9d5ff', 'bg' => '#faf5ff', 'color' => '#7e22ce'],
+                                'resort' => ['border' => '#fde68a', 'bg' => '#fffbeb', 'color' => '#b45309'],
+                            ];
+                            $currentRoutingStyle = $routingStyles[$currentCoordKey];
                             $hasMatch = !empty($smartMatches[$m['id']]);
                             ?>
                             <tr id="row_material_<?= $m['id'] ?>">
@@ -2244,11 +2222,11 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                                         <input type="hidden" name="action" value="quick_assign_coordinator">
                                         <input type="hidden" name="id" value="<?= $m['id'] ?>">
                                         <select name="assigned_coordinator" onchange="this.form.submit()"
-                                            style="padding:5px 8px; font-size:12px; font-weight:700; border-radius:6px; border:1.5px solid <?= $coordinatorsList[$currentCoordKey]['border'] ?>; background:<?= $coordinatorsList[$currentCoordKey]['bg'] ?>; color:<?= $coordinatorsList[$currentCoordKey]['color'] ?>; cursor:pointer;"
-                                            title="تغيير المنسق المسؤول / فرز يدوي">
-                                            <?php foreach ($coordinatorsList as $cKey => $cData): ?>
-                                                <option value="<?= htmlspecialchars((string) $cKey) ?>" <?= ((string) $currentCoordKey === (string) $cKey) ? 'selected' : '' ?>>
-                                                    <?= htmlspecialchars($cData['name']) ?>
+                                            style="padding:5px 8px; font-size:12px; font-weight:700; border-radius:6px; border:1.5px solid <?= $currentRoutingStyle['border'] ?>; background:<?= $currentRoutingStyle['bg'] ?>; color:<?= $currentRoutingStyle['color'] ?>; cursor:pointer;"
+                                            title="اختيار جدول التوجيه">
+                                            <?php foreach ($routingOptions as $routingKey => $routingLabel): ?>
+                                                <option value="<?= htmlspecialchars($routingKey) ?>" <?= $currentCoordKey === $routingKey ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($routingLabel) ?>
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
@@ -2731,9 +2709,10 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                 <div class="form-group">
                     <label>المنسق المكلف بمتابعة المادة</label>
                     <select name="assigned_coordinator" class="form-control">
-                        <?php foreach ($coordinatorsList as $cKey => $cVal): ?>
-                            <option value="<?= $cKey ?>"><?= $cVal['name'] ?> (<?= $cVal['badge'] ?>)</option>
-                        <?php endforeach; ?>
+                        <option value="male">جدول منسقي الذكور</option>
+                        <option value="female">جدول منسقات الإناث</option>
+                        <option value="shared" selected>الجدول المشترك</option>
+                        <option value="resort">إعادة الفرز</option>
                     </select>
                 </div>
 
@@ -2801,9 +2780,10 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                 <div class="form-group">
                     <label>المنسق المشرف على التسليم</label>
                     <select name="assigned_coordinator" id="reserve_coordinator" class="form-control">
-                        <?php foreach ($coordinatorsList as $cKey => $cVal): ?>
-                            <option value="<?= $cKey ?>"><?= $cVal['name'] ?></option>
-                        <?php endforeach; ?>
+                        <option value="male">جدول منسقي الذكور</option>
+                        <option value="female">جدول منسقات الإناث</option>
+                        <option value="shared" selected>الجدول المشترك</option>
+                        <option value="resort">إعادة الفرز</option>
                     </select>
                 </div>
 
@@ -2898,9 +2878,10 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                 <div class="form-group">
                     <label>المنسق المكلف</label>
                     <select name="assigned_coordinator" id="edit_assigned_coordinator" class="form-control">
-                        <?php foreach ($coordinatorsList as $cKey => $cVal): ?>
-                            <option value="<?= $cKey ?>"><?= $cVal['name'] ?></option>
-                        <?php endforeach; ?>
+                        <option value="male">جدول منسقي الذكور</option>
+                        <option value="female">جدول منسقات الإناث</option>
+                        <option value="shared">الجدول المشترك</option>
+                        <option value="resort">إعادة الفرز</option>
                     </select>
                 </div>
 
@@ -3170,9 +3151,10 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                     <div class="form-group">
                         <label>المنسق المكلف بالتسليم</label>
                         <select name="assigned_coordinator" id="sm_coordinator" class="form-control">
-                            <?php foreach ($coordinatorsList as $cKey => $cVal): ?>
-                                <option value="<?= $cKey ?>"><?= $cVal['name'] ?></option>
-                            <?php endforeach; ?>
+                            <option value="male">جدول منسقي الذكور</option>
+                            <option value="female">جدول منسقات الإناث</option>
+                            <option value="shared" selected>الجدول المشترك</option>
+                            <option value="resort">إعادة الفرز</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -3385,33 +3367,17 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
             <div class="modal-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                 <div class="form-group" style="grid-column: span 2;">
                     <label style="display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
-                        توجيه المادة إلى (القسم أو المنسق المسؤول) *
+                        توجيه المادة إلى جدول *
                     </label>
                     <select name="assigned_coordinator" id="approve_assigned_coordinator" required class="form-control"
                         style="border: 2px solid #10b981; font-weight: 700; font-size: 13.5px; padding: 10px;">
-                        <optgroup label="تسليم عام / غير مفرز">
-                            <option value="shared">🤝 جدول التسليم المشترك (بانتظار الفرز أو مشترك)</option>
-                        </optgroup>
-                        <optgroup label="فريق منسقي الذكور">
-                            <?php foreach ($coordinatorsList as $cKey => $cVal): ?>
-                                <?php if ($cKey !== 'shared' && ($cVal['gender'] ?? '') !== 'female'): ?>
-                                    <option value="<?= $cKey ?>">👨‍💼 <?= htmlspecialchars($cVal['name']) ?>
-                                        (<?= htmlspecialchars($cVal['role'] ?? 'منسق') ?>)</option>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </optgroup>
-                        <optgroup label="فريق منسقات الإناث">
-                            <?php foreach ($coordinatorsList as $cKey => $cVal): ?>
-                                <?php if ($cKey !== 'shared' && ($cVal['gender'] ?? '') === 'female'): ?>
-                                    <option value="<?= $cKey ?>">👩‍💼 <?= htmlspecialchars($cVal['name']) ?>
-                                        (<?= htmlspecialchars($cVal['role'] ?? 'منسقة') ?>)</option>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </optgroup>
+                        <option value="male">جدول منسقي الذكور</option>
+                        <option value="female">جدول منسقات الإناث</option>
+                        <option value="shared">الجدول المشترك</option>
+                        <option value="resort">إعادة الفرز</option>
                     </select>
                     <span style="font-size: 11.5px; color: #64748b; margin-top: 5px; display: block;">
-                        بناءً على جنس المتبرع ونوع المادة، يمكنك إسنادها فوراً للمنسق المسؤول أو وضعها في الجدول
-                        المشترك.
+                        يتم تحديد جدول المتابعة فقط، ويجري توزيع المنسقين داخل الجدول لاحقاً.
                     </span>
                 </div>
 
