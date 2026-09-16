@@ -595,6 +595,99 @@ if (!function_exists('get_db')) {
                 $pdo->exec("ALTER TABLE coordinators ADD COLUMN badge_level TEXT NOT NULL DEFAULT 'bronze';");
             }
 
+            // استعادة وتثبيت حسابات المنسقين الرسمية وربطها تلقائياً إذا كانت مفقودة
+            try {
+                $unlinkedCoordsCount = (int) $pdo->query("SELECT COUNT(*) FROM coordinators WHERE user_id IS NULL OR user_id = 0")->fetchColumn();
+                if ($unlinkedCoordsCount > 0) {
+                    $defaultCoords = [
+                        [
+                            'id' => 4,
+                            'username' => 'coord_7',
+                            'password_hash' => '$2y$12$Aq4tKGLnw75XSkSzKx20aOr8eQ1myX2moPzvL.7k8FNEtr/nfx5Ui',
+                            'totp_secret' => 'XKNHJ7N2JRUGXYXM2B2BYCDFN6KCYLEQ',
+                            'totp_enabled' => 1,
+                            'must_change_password' => 1,
+                            'full_name' => 'علي الزعبي',
+                            'role' => 'coordinator',
+                            'permissions' => '["tasks","rewards","donations","materials","tests","services","stats","reports","tasks.view_all","tasks.create","tasks.edit","tasks.delete"]',
+                            'coord_match' => '%علي الزعبي%'
+                        ],
+                        [
+                            'id' => 7,
+                            'username' => 'coord_y7mfgb3h',
+                            'password_hash' => '$2y$12$E.trAd5SitjoZULSkMcdO.Em2u978TFNsS9Eluy5FUYXXNTY4UHj6',
+                            'totp_secret' => null,
+                            'totp_enabled' => 0,
+                            'must_change_password' => 1,
+                            'full_name' => 'سندس السعودي',
+                            'role' => 'campaign_coordinator',
+                            'permissions' => '["tasks","donations","stats"]',
+                            'coord_match' => '%سندس السعودي%'
+                        ],
+                        [
+                            'id' => 8,
+                            'username' => 'coord_n5jsakf9',
+                            'password_hash' => '$2y$12$skm7hA5.Xx7gKibRvd8rzO/v1LFwF9qoghtXhJb0XGDxKi4jtK1ga',
+                            'totp_secret' => null,
+                            'totp_enabled' => 0,
+                            'must_change_password' => 0,
+                            'full_name' => 'ليان ابو رمان',
+                            'role' => 'coordinator',
+                            'permissions' => '["tasks","rewards","donations","materials","tests","services","stats","reviews","reports"]',
+                            'coord_match' => '%ليان ابو رمان%'
+                        ],
+                        [
+                            'id' => 9,
+                            'username' => 'coord_abdulrahman',
+                            'password_hash' => '$2y$12$AzvT6dH2W3KBCq.qDoHZE.Mt8rQoI7uG4FwruBl2LThSByYlM1p2q',
+                            'totp_secret' => null,
+                            'totp_enabled' => 0,
+                            'must_change_password' => 0,
+                            'full_name' => 'عبد الرحمن الفريحات',
+                            'role' => 'coordinator',
+                            'permissions' => '["tasks","rewards","donations","materials","tests","services","stats","reviews","reports"]',
+                            'coord_match' => '%عبد الرحمن الفريحات%'
+                        ],
+                        [
+                            'id' => 10,
+                            'username' => 'coord_lin',
+                            'password_hash' => '$2y$12$BC6FlYzVQtfZjvH60LKYrOmCCcCpMgYAF58aqGmv4.tzDP8o0G4ky',
+                            'totp_secret' => null,
+                            'totp_enabled' => 0,
+                            'must_change_password' => 0,
+                            'full_name' => 'لين',
+                            'role' => 'coordinator',
+                            'permissions' => '["tasks","rewards","donations","materials","tests","services","stats","reviews","reports"]',
+                            'coord_match' => '%لين%'
+                        ]
+                    ];
+
+                    foreach ($defaultCoords as $dc) {
+                        $uStmt = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+                        $uStmt->execute([$dc['username']]);
+                        $uid = $uStmt->fetchColumn();
+                        if (!$uid) {
+                            $ins = $pdo->prepare("INSERT INTO users (id, username, password_hash, totp_secret, totp_enabled, must_change_password, full_name, role, permissions, is_official) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
+                            $ins->execute([
+                                $dc['id'],
+                                $dc['username'],
+                                $dc['password_hash'],
+                                $dc['totp_secret'],
+                                $dc['totp_enabled'],
+                                $dc['must_change_password'],
+                                $dc['full_name'],
+                                $dc['role'],
+                                $dc['permissions']
+                            ]);
+                            $uid = $dc['id'];
+                        }
+                        $link = $pdo->prepare("UPDATE coordinators SET user_id = ? WHERE (name LIKE ? OR id = ?) AND (user_id IS NULL OR user_id = 0)");
+                        $link->execute([$uid, $dc['coord_match'], $dc['id']]);
+                    }
+                }
+            } catch (Throwable $e) {
+            }
+
             // هجرة جدول coordinator_tasks
             $taskCols = $pdo->query("PRAGMA table_info(coordinator_tasks)")->fetchAll(PDO::FETCH_COLUMN, 1);
             if (!in_array('category', $taskCols)) {
