@@ -611,8 +611,20 @@ const Quiz = () => {
             });
         }
 
-        // Filter out deleted questions
-        mergedQuestions = mergedQuestions.filter(q => !q.deleted);
+        // Filter deleted questions and collapse static/cloud copies of the same question.
+        const seenQuestionKeys = new Set();
+        mergedQuestions = mergedQuestions.filter(q => {
+            if (q.deleted) return false;
+            const text = String(q.questionAr || q.questionEn || '')
+                .replace(/<[^>]*>/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+            const key = text ? `text:${text}` : `id:${String(q.id)}`;
+            if (seenQuestionKeys.has(key)) return false;
+            seenQuestionKeys.add(key);
+            return true;
+        });
 
         return {
             ...baseQuiz,
