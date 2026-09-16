@@ -413,6 +413,92 @@ if (!function_exists('get_db')) {
             if (!in_array('image_url_2', $questionCols, true)) {
                 $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN image_url_2 TEXT;");
             }
+            // هجرة أعمدة quiz_questions الجديدة (نظام بنك الأسئلة المتطور)
+            if (!in_array('source_id', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN source_id TEXT;");
+            }
+            if (!in_array('source_part_id', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN source_part_id TEXT;");
+            }
+            if (!in_array('source_subject_id', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN source_subject_id TEXT;");
+            }
+            if (!in_array('part_slug', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN part_slug TEXT;");
+            }
+            if (!in_array('subject_slug', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN subject_slug TEXT;");
+            }
+            if (!in_array('cat', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN cat TEXT;");
+            }
+            if (!in_array('points', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN points REAL NOT NULL DEFAULT 1;");
+            }
+            if (!in_array('type', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN type TEXT;");
+            }
+            if (!in_array('diff', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN diff TEXT;");
+            }
+            if (!in_array('text_ar', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN text_ar TEXT;");
+            }
+            if (!in_array('text_en', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN text_en TEXT;");
+            }
+            if (!in_array('code', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN code TEXT;");
+            }
+            if (!in_array('explanation_ar', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN explanation_ar TEXT;");
+            }
+            if (!in_array('model_answer', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN model_answer TEXT;");
+            }
+            if (!in_array('sort_order', $questionCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_questions ADD COLUMN sort_order INTEGER DEFAULT 0;");
+            }
+            // هجرة أعمدة quiz_parts الجديدة
+            $partCols = $pdo->query("PRAGMA table_info(quiz_parts)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            if (!in_array('slug', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN slug TEXT;");
+            }
+            if (!in_array('subject_id', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN subject_id TEXT;");
+            }
+            if (!in_array('name', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN name TEXT;");
+            }
+            if (!in_array('icon', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN icon TEXT DEFAULT 'doc';");
+            }
+            if (!in_array('color', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN color TEXT DEFAULT '#1B3A2E';");
+            }
+            if (!in_array('category', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN category TEXT DEFAULT 'Quiz';");
+            }
+            if (!in_array('time_limit', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN time_limit INTEGER DEFAULT 30;");
+            }
+            if (!in_array('pass_score', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN pass_score REAL DEFAULT 60;");
+            }
+            if (!in_array('force_english', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN force_english INTEGER DEFAULT 0;");
+            }
+            if (!in_array('sort_order', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN sort_order INTEGER DEFAULT 0;");
+            }
+            // هجرة أعمدة study_materials الجديدة
+            $materialCols2 = $pdo->query("PRAGMA table_info(study_materials)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            if (!in_array('downloads_count', $materialCols2, true)) {
+                $pdo->exec("ALTER TABLE study_materials ADD COLUMN downloads_count INTEGER NOT NULL DEFAULT 0;");
+            }
+            if (!in_array('views_count', $materialCols2, true)) {
+                $pdo->exec("ALTER TABLE study_materials ADD COLUMN views_count INTEGER NOT NULL DEFAULT 0;");
+            }
             $userCols = $pdo->query("PRAGMA table_info(users)")->fetchAll(PDO::FETCH_COLUMN, 1);
             if (!in_array('full_name', $userCols)) {
                 $pdo->exec("ALTER TABLE users ADD COLUMN full_name TEXT;");
