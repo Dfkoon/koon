@@ -38,6 +38,59 @@ try {
 // تحميل المنسقين النشطين من قاعدة البيانات ديناميكياً
 $activeCoordinators = $db->query("SELECT id, name, gender, role_type, faculty FROM coordinators WHERE is_active = 1 ORDER BY role_type DESC, name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
+// بناء قائمة المنسقين ديناميكياً من قاعدة البيانات في البداية لضمان توفرها لكافة الفلاتر
+$coordinatorsList = [
+    'shared' => [
+        'id' => 'shared',
+        'name' => 'غير مسند / تسليم مشترك',
+        'short_name' => 'مشترك',
+        'gender' => 'all',
+        'badge' => 'مشترك',
+        'bg' => '#faf5ff',
+        'color' => '#7e22ce',
+        'border' => '#e9d5ff',
+        'role_type' => 'shared',
+    ],
+];
+
+$maleColors = ['#0284c7', '#0369a1', '#0e7490', '#047857', '#1d4ed8'];
+$femaleColors = ['#db2777', '#be185d', '#9d174d', '#7c3aed', '#b45309'];
+$maleColorIdx = 0;
+$femaleColorIdx = 0;
+
+foreach ($activeCoordinators as $coord) {
+    $coordKey = (string) $coord['id'];
+    $isFemale = ($coord['gender'] === 'female');
+    $roleLabel = match ($coord['role_type'] ?? 'coordinator') {
+        'lead_coordinator' => 'منسق رئيسي',
+        'coordinator' => 'منسق',
+        default => 'منسق'
+    };
+    if ($isFemale) {
+        $color = $femaleColors[$femaleColorIdx % count($femaleColors)];
+        $femaleColorIdx++;
+        $bg = '#fdf2f8';
+        $border = '#fbcfe8';
+    } else {
+        $color = $maleColors[$maleColorIdx % count($maleColors)];
+        $maleColorIdx++;
+        $bg = '#f0f9ff';
+        $border = '#bae6fd';
+    }
+    $coordinatorsList[$coordKey] = [
+        'id' => $coord['id'],
+        'name' => $coord['name'] . ' (' . $roleLabel . ')',
+        'short_name' => $coord['name'],
+        'gender' => $coord['gender'],
+        'badge' => $roleLabel,
+        'bg' => $bg,
+        'color' => $color,
+        'border' => $border,
+        'role_type' => $coord['role_type'] ?? 'coordinator',
+        'faculty' => $coord['faculty'] ?? '',
+    ];
+}
+
 /* ---------- صلاحيات المستخدم الحالي في هذه الصفحة ---------- */
 $_donationsCurrentUserId = (int) ($_SESSION['user_id'] ?? 0);
 $_donationsUserStmt = $db->prepare('SELECT id, username, role FROM users WHERE id = ? LIMIT 1');
@@ -818,61 +871,6 @@ $specializationsByFaculty = [
         'هندسة البرمجيات (SE)',
     ],
 ];
-
-// بناء قائمة المنسقين ديناميكياً من قاعدة البيانات
-// القيمة الخاصة 'shared' = غير مسند / قسم مشترك
-$coordinatorsList = [
-    'shared' => [
-        'id' => 'shared',
-        'name' => 'غير مسند / تسليم مشترك',
-        'short_name' => 'مشترك',
-        'gender' => 'all',
-        'badge' => 'مشترك',
-        'bg' => '#faf5ff',
-        'color' => '#7e22ce',
-        'border' => '#e9d5ff',
-        'role_type' => 'shared',
-    ],
-];
-
-// إضافة المنسقين من قاعدة البيانات
-$maleColors = ['#0284c7', '#0369a1', '#0e7490', '#047857', '#1d4ed8'];
-$femaleColors = ['#db2777', '#be185d', '#9d174d', '#7c3aed', '#b45309'];
-$maleColorIdx = 0;
-$femaleColorIdx = 0;
-
-foreach ($activeCoordinators as $coord) {
-    $coordKey = (string) $coord['id'];
-    $isFemale = ($coord['gender'] === 'female');
-    $roleLabel = match ($coord['role_type'] ?? 'coordinator') {
-        'lead_coordinator' => 'منسق رئيسي',
-        'coordinator' => 'منسق',
-        default => 'منسق'
-    };
-    if ($isFemale) {
-        $color = $femaleColors[$femaleColorIdx % count($femaleColors)];
-        $femaleColorIdx++;
-        $bg = '#fdf2f8';
-        $border = '#fbcfe8';
-    } else {
-        $color = $maleColors[$maleColorIdx % count($maleColors)];
-        $maleColorIdx++;
-        $bg = '#f0f9ff';
-        $border = '#bae6fd';
-    }
-    $coordinatorsList[$coordKey] = [
-        'id' => $coord['id'],
-        'name' => $coord['name'] . ' (' . $roleLabel . ')',
-        'short_name' => $coord['name'],
-        'gender' => $coord['gender'],
-        'badge' => $roleLabel,
-        'bg' => $bg,
-        'color' => $color,
-        'border' => $border,
-        'role_type' => $coord['role_type'] ?? 'coordinator',
-        'faculty' => $coord['faculty'] ?? '',
-    ];
-}
 
 $statusLabels = [
     'approved' => ['label' => 'متاح للاستلام', 'class' => 'badge-success'],
@@ -3627,7 +3625,7 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
 
         try {
             const formData = new FormData();
-            formData.append('csrf', <?= json_encode($csrfToken) ?>);
+            formData.append('csrf', <?= json_encode(csrf_token()) ?>);
             formData.append('action', 'quick_update_consent');
             formData.append('id', id);
             formData.append('consent', consent);
