@@ -230,26 +230,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'confirm_delivery' && !
             <div style="font-size:12px; color:#64748b; margin-top:4px;">الكلية: <?= htmlspecialchars($item['faculty'] ?: 'متطلب عام') ?></div>
         </div>
 
-        <div class="info-row">
-            <span class="info-label">رقم المادة:</span>
-            <span class="info-val">#<?= $item['id'] ?></span>
-        </div>
+        <?php
+        $isConsentApproved = ((int) ($item['data_sharing_consent'] ?? 0) === 1);
+        ?>
+
         <div class="info-row">
             <span class="info-label">الطالب المستلم:</span>
-            <span class="info-val" style="color:#0284c7;"><?= htmlspecialchars($item['booker_name'] ?: 'غير محدد') ?></span>
+            <span class="info-val" style="color:#0284c7;">
+                <?= $isConsentApproved ? htmlspecialchars($item['booker_name'] ?: 'غير محدد') : 'طالب مستلم (محجوب لعدم مشاركة البيانات)' ?>
+            </span>
         </div>
-        <?php if (!empty($item['booker_phone'])): ?>
+        <?php if ($isConsentApproved && !empty($item['booker_phone'])): ?>
         <div class="info-row">
             <span class="info-label">هاتف المستلم:</span>
             <span class="info-val" dir="ltr"><?= htmlspecialchars($item['booker_phone']) ?></span>
         </div>
         <?php endif; ?>
+
         <div class="info-row">
             <span class="info-label">الطالب المتبرع:</span>
-            <span class="info-val" style="color:#64748b; font-size:12.5px;">
-                <?= (!empty($item['hide_donor_info']) || true) ? 'فاعل خير (محجوب للخصوصية)' : htmlspecialchars($item['donor_name'] ?: 'فاعل خير') ?>
+            <span class="info-val" style="color:#0f172a;">
+                <?= $isConsentApproved ? htmlspecialchars($item['donor_name'] ?: 'فاعل خير') : 'فاعل خير (محجوب لعدم مشاركة البيانات)' ?>
             </span>
         </div>
+        <?php if ($isConsentApproved && !empty($item['donor_phone'])): ?>
+        <div class="info-row">
+            <span class="info-label">هاتف المتبرع:</span>
+            <span class="info-val" dir="ltr"><?= htmlspecialchars($item['donor_phone']) ?></span>
+        </div>
+        <?php endif; ?>
+
+        <div class="info-row">
+            <span class="info-label">موافقة مشاركة البيانات:</span>
+            <span class="info-val" style="font-size:12px; font-weight:800; color:<?= $isConsentApproved ? '#16a34a' : '#dc2626' ?>;">
+                <?= $isConsentApproved ? '✓ موافق على المشاركة' : '✕ غير موافق على المشاركة' ?>
+            </span>
+        </div>
+
         <?php if (!empty($item['delivered_at'])): ?>
         <div class="info-row">
             <span class="info-label">وقت التسليم المسجل:</span>
@@ -270,20 +287,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'confirm_delivery' && !
                     </button>
                 </form>
             <?php else: ?>
-                <?php
-                $adminWhatsappPhone = '962782934685';
-                $studentName = !empty($item['booker_name']) ? $item['booker_name'] : 'طالب مستلم';
-                $materialTitle = !empty($item['material_name']) ? $item['material_name'] : 'المادة الدراسية';
-                $thanksMsg = "السلام عليكم ورحمة الله،\nأنا الطالب ({$studentName})، استلمت مادة ({$materialTitle}) بنجاح.\n\nأتوجه بجزيل الشكر والتقدير لإدارة منصة مكانك وفريق التنسيق وللمتبرع الكريم على هذه المبادرة الطيبة وجهودكم المباركة، جزاكم الله كل خير! 🌸";
-                $thanksUrl = 'https://wa.me/' . $adminWhatsappPhone . '?text=' . rawurlencode($thanksMsg);
-                ?>
-                <a href="<?= $thanksUrl ?>" target="_blank" class="action-btn btn-whatsapp">
-                    <span>💬 إرسال رسالة شكر للإدارة وفريق الحملة عبر واتساب</span>
-                </a>
+                <?php if ($isConsentApproved && !empty($item['donor_phone'])): ?>
+                    <?php
+                    $rawPhone = preg_replace('/\D+/', '', (string) $item['donor_phone']);
+                    if (str_starts_with($rawPhone, '07')) {
+                        $donorWhatsApp = '962' . substr($rawPhone, 1);
+                    } elseif (str_starts_with($rawPhone, '7')) {
+                        $donorWhatsApp = '962' . $rawPhone;
+                    } else {
+                        $donorWhatsApp = $rawPhone;
+                    }
+                    $studentName = !empty($item['booker_name']) ? $item['booker_name'] : 'أحد زملائك الطلبة';
+                    $materialTitle = !empty($item['material_name']) ? $item['material_name'] : 'المادة الدراسية';
+                    $donorName = !empty($item['donor_name']) ? $item['donor_name'] : 'المتبرع الكريم';
+                    $thanksMsg = "السلام عليكم ورحمة الله،\nأخي/أختي الكريم/ة ({$donorName})،\nتم بحمد الله استلام مادتك الدراسية ({$materialTitle}) من قبل الطالب ({$studentName}) عبر منصة مكانك.\n\nأتوجه لك بجزيل الشكر والتقدير ووافر الامتنان على هذه المبادرة الطيبة والتبرع الكريم، جعله الله في ميزان حسناتك ونفع بك الجميع! 🌸🤍";
+                    $thanksUrl = 'https://wa.me/' . $donorWhatsApp . '?text=' . rawurlencode($thanksMsg);
+                    ?>
+                    <a href="<?= $thanksUrl ?>" target="_blank" class="action-btn btn-whatsapp">
+                        <span>💬 إرسال رسالة شكر للمتبرع على واتساب</span>
+                    </a>
+                <?php endif; ?>
             <?php endif; ?>
 
             <button type="button" onclick="window.close(); if(!window.closed){ window.location.href='about:blank'; }" class="action-btn btn-back">
-                ✕ إغلاق النافذة
+                ✕ إغلاق بعد المسح
             </button>
         </div>
     </div>

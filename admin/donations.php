@@ -232,10 +232,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $oldMaterialStmt = $db->prepare('SELECT material_name FROM material_exchanges WHERE id = ? LIMIT 1');
                 $oldMaterialStmt->execute([$id]);
                 $oldMaterialName = trim((string) ($oldMaterialStmt->fetchColumn() ?: ''));
+                $dataSharingConsent = isset($_POST['data_sharing_consent']) && $_POST['data_sharing_consent'] !== '' ? (int) $_POST['data_sharing_consent'] : null;
                 $stmt = $db->prepare('UPDATE material_exchanges SET 
                     donor_name=?, donor_phone=?, donor_gender=?, material_name=?, course_code=?, faculty=?, description=?, 
                     status=?, assigned_coordinator=?, pickup_date=?, pickup_time=?, delivery_status=?, booker_name=?, 
-                    booker_phone=?, booker_gender=?, notes=?, updated_at=CURRENT_TIMESTAMP 
+                    booker_phone=?, booker_gender=?, notes=?, data_sharing_consent=?, updated_at=CURRENT_TIMESTAMP 
                     WHERE id=?');
                 $stmt->execute([
                     $donorName,
@@ -254,6 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $bookerPhone,
                     $bookerGender,
                     $notes,
+                    $dataSharingConsent,
                     $id
                 ]);
                 log_activity("تعديل بيانات المادة المتبادلة #$id (\"$materialName\")", 'material_exchange');
@@ -457,6 +459,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $coordName = $routingTargets[$newCoord];
             log_activity("فرز وتعيين المادة #$id إلى: $coordName", 'material_exchange');
             $message = "تم فرز وتعيين المادة #$id بنجاح إلى: $coordName";
+        }
+
+        // 7.1 تحديث فوري لموافقة مشاركة البيانات (موافق / غير موافق)
+        elseif ($action === 'quick_update_consent') {
+            $id = (int) ($_POST['id'] ?? 0);
+            $consent = isset($_POST['consent']) ? (int) $_POST['consent'] : 0;
+            $stmt = $db->prepare('UPDATE material_exchanges SET data_sharing_consent = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+            $stmt->execute([$consent, $id]);
+            log_activity("تحديث موافقة مشاركة البيانات للمادة #$id إلى: " . ($consent === 1 ? 'موافق' : 'غير موافق'), 'material_exchange');
+            if (function_exists('sync_material_exchanges_to_frontend')) {
+                sync_material_exchanges_to_frontend($db);
+            }
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'id' => $id, 'consent' => $consent]);
+                exit;
+            }
+            $message = "تم تحديث حالة موافقة مشاركة البيانات للمادة #$id بنجاح.";
         }
 
         // 8. تنفيذ المطابقة الذكية وربط الكتاب بطالب في قائمة الانتظار فوراً
@@ -2195,24 +2215,24 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                                     <?php endif; ?>
                                 </td>
 
-                                <!-- الفرز والمنسق المكلف (تغيير فوري بضغطة زر) -->
-                                <td style="text-align:center; min-width:150px;">
-                                    <?php if ($m['data_sharing_consent'] === null || $m['data_sharing_consent'] === ''): ?>
-                                        <span
-                                            style="display:inline-flex; align-items:center; gap:4px; color:#64748b; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:7px; padding:4px 8px; font-size:11px; font-weight:700;">
-                                            غير مسجل
-                                        </span>
-                                    <?php elseif ((int) $m['data_sharing_consent'] === 1): ?>
-                                        <span
-                                            style="display:inline-flex; align-items:center; gap:4px; color:#166534; background:#dcfce7; border:1px solid #86efac; border-radius:7px; padding:4px 8px; font-size:11px; font-weight:700;">
-                                            ✓ وافق على المشاركة
-                                        </span>
-                                    <?php else: ?>
-                                        <span
-                                            style="display:inline-flex; align-items:center; gap:4px; color:#991b1b; background:#fee2e2; border:1px solid #fca5a5; border-radius:7px; padding:4px 8px; font-size:11px; font-weight:700;">
-                                            ✕ لم يوافق
-                                        </span>
-                                    <?php endif; ?>
+                                <!-- موافقة مشاركة البيانات (أزرار تفاعلية مباشرة) -->
+                                <td style="text-align:center; min-width:160px;">
+                                    <div style="display:inline-flex; align-items:center; gap:5px; background:#f8fafc; padding:3px 6px; border-radius:9px; border:1px solid #e2e8f0;">
+                                        <button type="button" 
+                                            onclick="updateDataSharingConsent(<?= $m['id'] ?>, 1)"
+                                            id="consent_btn_yes_<?= $m['id'] ?>"
+                                            style="padding:4px 9px; font-size:11.5px; border-radius:7px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:3px; <?= ((int) $m['data_sharing_consent'] === 1) ? 'background:#16a34a; color:#fff; font-weight:800; border:1px solid #15803d; box-shadow:0 1px 3px rgba(22,163,74,0.3);' : 'background:#fff; color:#475569; font-weight:600; border:1px solid #cbd5e1;' ?>"
+                                            title="تحديد: موافق على مشاركة البيانات">
+                                            <span>✓ موافق</span>
+                                        </button>
+                                        <button type="button" 
+                                            onclick="updateDataSharingConsent(<?= $m['id'] ?>, 0)"
+                                            id="consent_btn_no_<?= $m['id'] ?>"
+                                            style="padding:4px 9px; font-size:11.5px; border-radius:7px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:3px; <?= ($m['data_sharing_consent'] !== null && $m['data_sharing_consent'] !== '' && (int) $m['data_sharing_consent'] === 0) ? 'background:#dc2626; color:#fff; font-weight:800; border:1px solid #b91c1c; box-shadow:0 1px 3px rgba(220,38,38,0.3);' : 'background:#fff; color:#475569; font-weight:600; border:1px solid #cbd5e1;' ?>"
+                                            title="تحديد: غير موافق على مشاركة البيانات">
+                                            <span>✕ غير موافق</span>
+                                        </button>
+                                    </div>
                                 </td>
 
                                 <!-- الفرز والمنسق المكلف (تغيير فوري بضغطة زر) -->
@@ -2924,6 +2944,15 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                     <input type="time" name="pickup_time" id="edit_pickup_time" class="form-control">
                 </div>
 
+                <div class="form-group">
+                    <label>موافقة مشاركة البيانات</label>
+                    <select name="data_sharing_consent" id="edit_data_sharing_consent" class="form-control">
+                        <option value="">غير مسجل</option>
+                        <option value="1">✓ موافق على المشاركة</option>
+                        <option value="0">✕ غير موافق على المشاركة</option>
+                    </select>
+                </div>
+
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label>وصف المادة</label>
                     <textarea name="description" id="edit_description" rows="2" class="form-control"></textarea>
@@ -3561,18 +3590,72 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
         document.getElementById('edit_pickup_time').value = item.pickup_time || '';
         document.getElementById('edit_description').value = item.description || '';
         document.getElementById('edit_notes').value = item.notes || '';
+        document.getElementById('edit_data_sharing_consent').value = (item.data_sharing_consent !== null && item.data_sharing_consent !== '') ? item.data_sharing_consent : '';
         openModal('editMaterialModal');
     }
 
+    async function updateDataSharingConsent(id, consent) {
+        const btnYes = document.getElementById('consent_btn_yes_' + id);
+        const btnNo = document.getElementById('consent_btn_no_' + id);
+        if (!btnYes || !btnNo) return;
+
+        if (consent === 1) {
+            btnYes.style.background = '#16a34a';
+            btnYes.style.color = '#fff';
+            btnYes.style.fontWeight = '800';
+            btnYes.style.border = '1px solid #15803d';
+            btnYes.style.boxShadow = '0 1px 3px rgba(22,163,74,0.3)';
+
+            btnNo.style.background = '#fff';
+            btnNo.style.color = '#475569';
+            btnNo.style.fontWeight = '600';
+            btnNo.style.border = '1px solid #cbd5e1';
+            btnNo.style.boxShadow = 'none';
+        } else {
+            btnNo.style.background = '#dc2626';
+            btnNo.style.color = '#fff';
+            btnNo.style.fontWeight = '800';
+            btnNo.style.border = '1px solid #b91c1c';
+            btnNo.style.boxShadow = '0 1px 3px rgba(220,38,38,0.3)';
+
+            btnYes.style.background = '#fff';
+            btnYes.style.color = '#475569';
+            btnYes.style.fontWeight = '600';
+            btnYes.style.border = '1px solid #cbd5e1';
+            btnYes.style.boxShadow = 'none';
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('csrf', <?= json_encode($csrfToken) ?>);
+            formData.append('action', 'quick_update_consent');
+            formData.append('id', id);
+            formData.append('consent', consent);
+
+            const res = await fetch('donations.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            if (!data.success) {
+                alert('تعذر تحديث الموافقة: ' + (data.error || 'حدث خطأ'));
+            }
+        } catch (err) {
+            console.error('Error updating consent:', err);
+        }
+    }
+
     function openSlipModal(item) {
+        const isConsentApproved = Number(item.data_sharing_consent) === 1;
         document.getElementById('slip_id').innerText = '#' + item.id;
         document.getElementById('slip_material_name').innerText = item.material_name || '—';
         document.getElementById('slip_course_code').innerText = item.course_code || '—';
         document.getElementById('slip_faculty').innerText = item.faculty || '—';
-        document.getElementById('slip_donor_name').innerText = item.donor_name || '—';
-        document.getElementById('slip_donor_phone').innerText = item.donor_phone || '—';
-        document.getElementById('slip_booker_name').innerText = item.booker_name || 'بانتظار المستلم';
-        document.getElementById('slip_booker_phone').innerText = item.booker_phone || '—';
+        document.getElementById('slip_donor_name').innerText = isConsentApproved ? (item.donor_name || '—') : 'فاعل خير (محجوب لعدم مشاركة البيانات)';
+        document.getElementById('slip_donor_phone').innerText = isConsentApproved ? (item.donor_phone || '—') : 'محجوب للخصوصية';
+        document.getElementById('slip_booker_name').innerText = isConsentApproved ? (item.booker_name || 'بانتظار المستلم') : (item.booker_name ? 'طالب مستلم (محجوب لعدم مشاركة البيانات)' : 'بانتظار المستلم');
+        document.getElementById('slip_booker_phone').innerText = isConsentApproved ? (item.booker_phone || '—') : 'محجوب للخصوصية';
         document.getElementById('slip_coord').innerText = COORDINATORS_MAP[item.assigned_coordinator] || item.assigned_coordinator || 'غير مسند / تسليم مشترك';
         document.getElementById('slip_status').innerText = item.status === 'completed' ? 'تم التسليم' : (item.status === 'reserved' ? 'محجوز' : 'متاح');
         document.getElementById('slip_pickup_datetime').innerText = (item.pickup_date || 'غير محدد') + (item.pickup_time ? ' الساعة ' + item.pickup_time : '');
