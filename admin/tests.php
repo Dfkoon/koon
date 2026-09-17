@@ -811,6 +811,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $icon = trim($input['icon'] ?? 'book');
 
       if ($id !== '') {
+        $duplicateSubject = $db->prepare('SELECT id FROM quiz_subjects WHERE (id = ? OR name = ? OR name_en = ?) AND id != ? LIMIT 1');
+        $duplicateSubject->execute([$id, $name, $nameEn, $id]);
+        if ($duplicateSubject->fetchColumn()) {
+          echo json_encode(['success' => false, 'error' => 'هذه المادة موجودة بالفعل.']);
+          exit;
+        }
+
+        $normalizedName = normalize_quiz_subject_name($name);
+        if ($normalizedName !== '') {
+          $subjects = $db->query('SELECT id, name, name_en FROM quiz_subjects')->fetchAll(PDO::FETCH_ASSOC);
+          foreach ($subjects as $subject) {
+            if ((string) $subject['id'] === $id) {
+              continue;
+            }
+            $existingNames = array_filter([
+              normalize_quiz_subject_name($subject['name'] ?? ''),
+              normalize_quiz_subject_name($subject['name_en'] ?? ''),
+            ]);
+            if (in_array($normalizedName, $existingNames, true)) {
+              echo json_encode(['success' => false, 'error' => 'هذه المادة موجودة بالفعل.']);
+              exit;
+            }
+          }
+        }
+
         $firestoreSynced = false;
         $chk = $db->prepare('SELECT id FROM quiz_subjects WHERE id = ?');
         $chk->execute([$id]);
@@ -849,19 +874,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'sync_all_from_site') {
       $output = [];
       $retCode = 0;
-      exec('python3 ' . escapeshellarg(__DIR__ . '/../scripts/migrate_quizzes_to_sqlite.py') . ' 2>&1', $output, $retCode);
+      exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/../scripts/sync_quizzes_from_firestore.php') . ' 2>&1', $output, $retCode);
+
+      if ($retCode === 0) {
+        sync_quizzes_to_frontend($db);
+      }
 
       $qCount = (int) $db->query('SELECT count(*) FROM quiz_questions')->fetchColumn();
       $pCount = (int) $db->query('SELECT count(*) FROM quiz_parts')->fetchColumn();
       $sCount = (int) $db->query('SELECT count(*) FROM quiz_subjects')->fetchColumn();
 
       echo json_encode([
-        'success' => true,
+        'success' => $retCode === 0,
         'counts' => [
           'questions' => $qCount,
           'parts' => $pCount,
           'subjects' => $sCount
         ],
+        'error' => $retCode === 0 ? null : 'فشل جلب بيانات الاختبارات من Firestore الرسمي',
         'log' => implode("\n", $output)
       ]);
       exit;
@@ -2611,7 +2641,8 @@ require __DIR__ . '/_header.php';
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
             <span style="font-size:20px;">📘</span>
             <h2 style="margin:0;color:#12285e;font-size:18px;">
-              <?= $testsAdmin ? 'ملاحظات وطريقة العمل في بنك الأسئلة' : 'ملاحظات الإدارة لبنك الأسئلة' ?></h2>
+              <?= $testsAdmin ? 'ملاحظات وطريقة العمل في بنك الأسئلة' : 'ملاحظات الإدارة لبنك الأسئلة' ?>
+            </h2>
           </div>
           <?php if ($testsAdmin): ?>
             <p style="margin:0;color:#687386;font-size:12px;line-height:1.7;">أضف تعليمات للأدمن حول إنشاء الأسئلة أو
@@ -4602,18 +4633,26 @@ require __DIR__ . '/_header.php';
         container.prepend(row);
         const input = row.querySelector('input');
         input.focus();
-        const confirmFn = () => { const v = input.value.trim(); if (v) { onConfirm(v); } row.remove(); };
+        const confirmFn = async () => { const v = input.value.trim(); if (v) { await onConfirm(v); } row.remove(); };
         row.querySelector('.qa-ok').addEventListener('click', confirmFn);
         row.querySelector('.qa-cancel').addEventListener('click', () => row.remove());
         input.addEventListener('keydown', e => { if (e.key === 'Enter') confirmFn(); if (e.key === 'Escape') row.remove(); });
       }
 
       $('#addSubjectBtn').addEventListener('click', () => {
-        quickAdd($('#subjectItems'), 'اسم المادة الجديدة...', (name) => {
+        quickAdd($('#subjectItems'), 'اسم المادة الجديدة...', async (name) => {
           const id = 'subj_' + Math.random().toString(36).slice(2, 8);
+          if (subjects.some(subject => normalizeSearchText(subject.name) === normalizeSearchText(name))) {
+            toast('هذه المادة موجودة بالفعل.', { danger: true });
+            return;
+          }
+          const result = await apiCall('save_subject', { id, name, icon: 'book' });
+          if (!result?.success) {
+            toast(result?.error || 'تعذر إضافة المادة.', { danger: true });
+            return;
+          }
           subjects.push({ id, name, icon: 'book' });
           state.subjectId = id; state.partId = null;
-          apiCall('save_subject', { id, name, icon: 'book' });
           persistData();
           renderAll(); toast('تمت إضافة المادة');
         });
@@ -5051,9 +5090,9 @@ require __DIR__ . '/_header.php';
 
 
       $('#syncDbBtn')?.addEventListener('click', async () => {
-        const ok = await askConfirm('استيراد ومزامنة قاعدة البيانات', 'هل تريد إعادة استيراد ومزامنة كافة الأسئلة والمواد من ملفات وقاعدة بيانات الموقع؟', { okLabel: 'مزامنة الآن' });
+        const ok = await askConfirm('استيراد ومزامنة قاعدة البيانات', 'هل تريد جلب كافة المواد والاختبارات والأسئلة مباشرة من Firestore الرسمي وتحديث لوحة التحكم بالكامل؟', { okLabel: 'مزامنة الآن' });
         if (!ok) return;
-        toast('جارٍ الاستيراد والمزامنة...');
+        toast('جارٍ جلب المحتوى الكامل من الموقع الرسمي...');
         const res = await apiCall('sync_all_from_site');
         if (res && res.success) {
           toast(`تمت المزامنة بنجاح! الأسئلة: ${res.counts.questions}، الاختبارات: ${res.counts.parts}، المواد: ${res.counts.subjects}`);

@@ -1574,6 +1574,15 @@ if (!function_exists('find_duplicate_quiz_question_id')) {
     }
 }
 
+if (!function_exists('normalize_quiz_subject_name')) {
+    function normalize_quiz_subject_name(?string $name): string
+    {
+        $name = trim((string) $name);
+        $name = preg_replace('/\s+/u', ' ', $name) ?? $name;
+        return function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+    }
+}
+
 if (!function_exists('get_client_device_info')) {
     /** التعرف على اسم الجهاز والمتصفح ونظام التشغيل */
     function get_client_device_info(): string

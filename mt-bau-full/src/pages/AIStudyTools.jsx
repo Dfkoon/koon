@@ -5,36 +5,36 @@ import toast from 'react-hot-toast';
 import './AIStudyTools.css';
 
 // ─── Icons ────────────────────────────────────────────────────────────────
-const IconQuiz     = () => <span className="ast-icon">📝</span>;
-const IconSummary  = () => <span className="ast-icon">📋</span>;
-const IconMindMap  = () => <span className="ast-icon">🗺️</span>;
-const IconPlan     = () => <span className="ast-icon">📚</span>;
-const IconAI       = () => <span className="ast-icon">🤖</span>;
-const IconCopy     = () => <span className="ast-icon">📋</span>;
-const IconPrint    = () => <span className="ast-icon">🖨️</span>;
-const IconReset    = () => <span className="ast-icon">🔄</span>;
+const IconQuiz = () => <span className="ast-icon">📝</span>;
+const IconSummary = () => <span className="ast-icon">📋</span>;
+const IconMindMap = () => <span className="ast-icon">🗺️</span>;
+const IconPlan = () => <span className="ast-icon">📚</span>;
+const IconAI = () => <span className="ast-icon">🤖</span>;
+const IconCopy = () => <span className="ast-icon">📋</span>;
+const IconPrint = () => <span className="ast-icon">🖨️</span>;
+const IconReset = () => <span className="ast-icon">🔄</span>;
 
 // ─── Output Type Cards ────────────────────────────────────────────────────
 const OUTPUT_TYPES = [
-  { id: 'quiz',    icon: '📝', labelAr: 'اختبار',       labelEn: 'Quiz',       descAr: 'أسئلة تفاعلية',  descEn: 'Interactive questions' },
-  { id: 'summary', icon: '📋', labelAr: 'ملخص ذكي',     labelEn: 'Summary',    descAr: 'نقاط ومفاهيم',    descEn: 'Key points & concepts' },
-  { id: 'mindmap', icon: '🗺️', labelAr: 'مخطط ذهني',   labelEn: 'Mind Map',   descAr: 'هيكل بصري',        descEn: 'Visual structure' },
-  { id: 'plan',    icon: '📚', labelAr: 'خطة الدراسة', labelEn: 'Study Plan', descAr: 'جدول يومي',        descEn: 'Daily schedule' },
+  { id: 'quiz', icon: '📝', labelAr: 'اختبار', labelEn: 'Quiz', descAr: 'أسئلة تفاعلية', descEn: 'Interactive questions' },
+  { id: 'summary', icon: '📋', labelAr: 'ملخص ذكي', labelEn: 'Summary', descAr: 'نقاط ومفاهيم', descEn: 'Key points & concepts' },
+  { id: 'mindmap', icon: '🗺️', labelAr: 'مخطط ذهني', labelEn: 'Mind Map', descAr: 'هيكل بصري', descEn: 'Visual structure' },
+  { id: 'plan', icon: '📚', labelAr: 'خطة الدراسة', labelEn: 'Study Plan', descAr: 'جدول يومي', descEn: 'Daily schedule' },
 ];
 
 const QUESTION_TYPES = [
-  { id: 'mcq',   labelAr: 'اختيار من متعدد', labelEn: 'MCQ' },
-  { id: 'tf',    labelAr: 'صح / خطأ',        labelEn: 'True / False' },
-  { id: 'essay', labelAr: 'مقالي',            labelEn: 'Essay' },
-  { id: 'mixed', labelAr: 'مختلط',            labelEn: 'Mixed' },
+  { id: 'mcq', labelAr: 'اختيار من متعدد', labelEn: 'MCQ' },
+  { id: 'tf', labelAr: 'صح / خطأ', labelEn: 'True / False' },
+  { id: 'essay', labelAr: 'مقالي', labelEn: 'Essay' },
+  { id: 'mixed', labelAr: 'مختلط', labelEn: 'Mixed' },
 ];
 
 // ─── Result Renderers ─────────────────────────────────────────────────────
 
 const QuizResult = ({ data, lang }) => {
-  const [answers, setAnswers]     = useState({});
+  const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
-  const [score, setScore]         = useState(0);
+  const [score, setScore] = useState(0);
   const isRtl = lang === 'ar';
 
   const handleSelect = (qId, val) => {
@@ -180,7 +180,7 @@ const MindMapResult = ({ data, lang }) => {
   const isRtl = lang === 'ar';
   const toggle = i => setOpen(p => ({ ...p, [i]: !p[i] }));
 
-  const colors = ['#d32f2f','#506400','#1565c0','#6a1b9a','#e65100','#00695c'];
+  const colors = ['#d32f2f', '#506400', '#1565c0', '#6a1b9a', '#e65100', '#00695c'];
 
   return (
     <div className="ast-mindmap">
@@ -287,14 +287,15 @@ const AIStudyTools = () => {
   const { language } = useLanguage();
   const isRtl = language === 'ar';
 
-  const [text, setText]               = useState('');
-  const [lang, setLang]               = useState(language || 'ar');
-  const [outputType, setOutputType]   = useState('quiz');
+  const [text, setText] = useState('');
+  const [lang, setLang] = useState(language || 'ar');
+  const [outputType, setOutputType] = useState('quiz');
   const [questionCount, setQuestionCount] = useState(10);
-  const [questionType, setQuestionType]   = useState('mcq');
-  const [loading, setLoading]         = useState(false);
-  const [result, setResult]           = useState(null);
-  const [error, setError]             = useState('');
+  const [questionType, setQuestionType] = useState('mcq');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+  const [isGeneratorOpen, setIsGeneratorOpen] = useState(true);
   const resultRef = useRef(null);
 
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
@@ -314,9 +315,9 @@ const AIStudyTools = () => {
 
     if (res.error) {
       const msgs = {
-        API_KEY_MISSING:   isRtl ? 'مفتاح الذكاء الاصطناعي غير مضبوط. تواصل مع المسؤول.' : 'AI API key is not configured.',
-        TEXT_TOO_SHORT:    isRtl ? 'النص قصير جداً.' : 'Text is too short.',
-        TIMEOUT:           isRtl ? 'انتهت مهل الاتصال. حاول مجدداً.' : 'Request timed out. Please try again.',
+        API_KEY_MISSING: isRtl ? 'مفتاح الذكاء الاصطناعي غير مضبوط. تواصل مع المسؤول.' : 'AI API key is not configured.',
+        TEXT_TOO_SHORT: isRtl ? 'النص قصير جداً.' : 'Text is too short.',
+        TIMEOUT: isRtl ? 'انتهت مهل الاتصال. حاول مجدداً.' : 'Request timed out. Please try again.',
         GENERATION_FAILED: isRtl ? 'حدث خطأ أثناء التوليد. حاول مجدداً.' : 'Generation failed. Please try again.',
       };
       setError(msgs[res.error] || res.error);
@@ -325,6 +326,7 @@ const AIStudyTools = () => {
     }
 
     setResult(res);
+    setIsGeneratorOpen(false);
     toast.success(isRtl ? '✅ تم التوليد بنجاح!' : '✅ Generated successfully!');
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
   };
@@ -336,7 +338,7 @@ const AIStudyTools = () => {
   };
 
   const handlePrint = () => window.print();
-  const handleReset = () => { setResult(null); setError(''); setText(''); };
+  const handleReset = () => { setResult(null); setError(''); setText(''); setIsGeneratorOpen(true); };
 
   return (
     <div className="ast-page" dir={isRtl ? 'rtl' : 'ltr'}>
@@ -369,122 +371,11 @@ const AIStudyTools = () => {
         </div>
       </div>
 
-      {/* ── Main Card ── */}
       <div className="ast-main">
-        <div className="ast-card">
+        <button className="ast-open-modal-btn" onClick={() => setIsGeneratorOpen(true)}>
+          {isRtl ? 'توليد جديد' : 'Generate New'}
+        </button>
 
-          {/* Step 1: Text Input */}
-          <div className="ast-step">
-            <div className="ast-step-header">
-              <div className="ast-step-num">1</div>
-              <h2>{isRtl ? 'أدخل نص المادة' : 'Enter Study Material'}</h2>
-            </div>
-            <div className="ast-textarea-wrapper">
-              <textarea
-                className="ast-textarea"
-                value={text}
-                onChange={e => setText(e.target.value)}
-                placeholder={isRtl
-                  ? 'الصق نص المحاضرة أو الكتاب أو الملاحظات هنا...\n\nمثال: "الشبكات العصبيةة هي نماذج حسابية مستوحاة من الدماغ البشري..."'
-                  : 'Paste your lecture, book, or notes here...\n\nExample: "Neural networks are computational models inspired by the human brain..."'}
-                rows={10}
-              />
-              <div className="ast-textarea-footer">
-                <span className={`ast-word-count ${wordCount < 30 ? 'low' : wordCount < 100 ? 'mid' : 'good'}`}>
-                  {wordCount} {isRtl ? 'كلمة' : 'words'}
-                  {wordCount < 30 && ` — ${isRtl ? 'أضف المزيد للحصول على نتائج أفضل' : 'Add more for better results'}`}
-                  {wordCount >= 30 && wordCount < 100 && ` — ${isRtl ? 'جيد' : 'Good'}`}
-                  {wordCount >= 100 && ` — ${isRtl ? 'ممتاز!' : 'Excellent!'}`}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Step 2: Language */}
-          <div className="ast-step">
-            <div className="ast-step-header">
-              <div className="ast-step-num">2</div>
-              <h2>{isRtl ? 'لغة المخرج' : 'Output Language'}</h2>
-            </div>
-            <div className="ast-lang-btns">
-              <button className={`ast-lang-btn ${lang === 'ar' ? 'active' : ''}`} onClick={() => setLang('ar')}>
-                🇯🇴 {isRtl ? 'عربي' : 'Arabic'}
-              </button>
-              <button className={`ast-lang-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => setLang('en')}>
-                🇬🇧 English
-              </button>
-            </div>
-          </div>
-
-          {/* Step 3: Output Type */}
-          <div className="ast-step">
-            <div className="ast-step-header">
-              <div className="ast-step-num">3</div>
-              <h2>{isRtl ? 'نوع المخرج' : 'Output Type'}</h2>
-            </div>
-            <div className="ast-type-grid">
-              {OUTPUT_TYPES.map(type => (
-                <button
-                  key={type.id}
-                  className={`ast-type-card ${outputType === type.id ? 'active' : ''}`}
-                  onClick={() => setOutputType(type.id)}
-                >
-                  <span className="ast-type-icon">{type.icon}</span>
-                  <span className="ast-type-label">{isRtl ? type.labelAr : type.labelEn}</span>
-                  <span className="ast-type-desc">{isRtl ? type.descAr : type.descEn}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Step 4: Quiz Options (conditional) */}
-          {outputType === 'quiz' && (
-            <div className="ast-step ast-step-quiz-opts">
-              <div className="ast-step-header">
-                <div className="ast-step-num">4</div>
-                <h2>{isRtl ? 'خيارات الاختبار' : 'Quiz Options'}</h2>
-              </div>
-              <div className="ast-quiz-opts">
-                <div className="ast-opt-group">
-                  <label>{isRtl ? 'عدد الأسئلة' : 'Number of Questions'}</label>
-                  <div className="ast-count-btns">
-                    {[5, 10, 15, 20].map(n => (
-                      <button key={n} className={`ast-count-btn ${questionCount === n ? 'active' : ''}`} onClick={() => setQuestionCount(n)}>
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="ast-opt-group">
-                  <label>{isRtl ? 'نوع الأسئلة' : 'Question Type'}</label>
-                  <div className="ast-qtype-btns">
-                    {QUESTION_TYPES.map(qt => (
-                      <button key={qt.id} className={`ast-qtype-btn ${questionType === qt.id ? 'active' : ''}`} onClick={() => setQuestionType(qt.id)}>
-                        {isRtl ? qt.labelAr : qt.labelEn}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Generate Button */}
-          <button
-            className={`ast-generate-btn ${loading ? 'loading' : ''}`}
-            onClick={handleGenerate}
-            disabled={loading || !text.trim()}
-          >
-            {loading ? (
-              <><span className="ast-spinner" />{isRtl ? 'جاري التوليد...' : 'Generating...'}</>
-            ) : (
-              <>🚀 {isRtl ? 'توليد الآن' : 'Generate Now'}</>
-            )}
-          </button>
-
-        </div>
-
-        {/* ── Result Section ── */}
         {loading && <LoadingState lang={lang} />}
 
         {error && !loading && (
@@ -516,14 +407,135 @@ const AIStudyTools = () => {
             </div>
 
             <div className="ast-result-body">
-              {result.type === 'quiz'    && <QuizResult    data={result.data} lang={lang} />}
+              {result.type === 'quiz' && <QuizResult data={result.data} lang={lang} />}
               {result.type === 'summary' && <SummaryResult data={result.data} lang={lang} />}
               {result.type === 'mindmap' && <MindMapResult data={result.data} lang={lang} />}
-              {result.type === 'plan'    && <StudyPlanResult data={result.data} lang={lang} />}
+              {result.type === 'plan' && <StudyPlanResult data={result.data} lang={lang} />}
             </div>
           </div>
         )}
       </div>
+
+      {isGeneratorOpen && (
+        <div className="ast-modal-backdrop" onClick={() => setIsGeneratorOpen(false)}>
+          <div className="ast-modal-panel" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="ast-modal-header">
+              <h2>{isRtl ? 'إنشاء محتوى ذكي' : 'Generate Smart Content'}</h2>
+              <button type="button" className="ast-close-btn" onClick={() => setIsGeneratorOpen(false)} aria-label="Close">
+                ✕
+              </button>
+            </div>
+
+            <div className="ast-modal-body">
+              <div className="ast-card ast-modal-card">
+                <div className="ast-step">
+                  <div className="ast-step-header">
+                    <div className="ast-step-num">1</div>
+                    <h2>{isRtl ? 'أدخل نص المادة' : 'Enter Study Material'}</h2>
+                  </div>
+                  <div className="ast-textarea-wrapper">
+                    <textarea
+                      className="ast-textarea"
+                      value={text}
+                      onChange={e => setText(e.target.value)}
+                      placeholder={isRtl
+                        ? 'الصق نص المحاضرة أو الكتاب أو الملاحظات هنا...\n\nمثال: "الشبكات العصبيةة هي نماذج حسابية مستوحاة من الدماغ البشري..."'
+                        : 'Paste your lecture, book, or notes here...\n\nExample: "Neural networks are computational models inspired by the human brain..."'}
+                      rows={10}
+                    />
+                    <div className="ast-textarea-footer">
+                      <span className={`ast-word-count ${wordCount < 30 ? 'low' : wordCount < 100 ? 'mid' : 'good'}`}>
+                        {wordCount} {isRtl ? 'كلمة' : 'words'}
+                        {wordCount < 30 && ` — ${isRtl ? 'أضف المزيد للحصول على نتائج أفضل' : 'Add more for better results'}`}
+                        {wordCount >= 30 && wordCount < 100 && ` — ${isRtl ? 'جيد' : 'Good'}`}
+                        {wordCount >= 100 && ` — ${isRtl ? 'ممتاز!' : 'Excellent!'}`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ast-step">
+                  <div className="ast-step-header">
+                    <div className="ast-step-num">2</div>
+                    <h2>{isRtl ? 'لغة المخرج' : 'Output Language'}</h2>
+                  </div>
+                  <div className="ast-lang-btns">
+                    <button className={`ast-lang-btn ${lang === 'ar' ? 'active' : ''}`} onClick={() => setLang('ar')}>
+                      🇯🇴 {isRtl ? 'عربي' : 'Arabic'}
+                    </button>
+                    <button className={`ast-lang-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => setLang('en')}>
+                      🇬🇧 English
+                    </button>
+                  </div>
+                </div>
+
+                <div className="ast-step">
+                  <div className="ast-step-header">
+                    <div className="ast-step-num">3</div>
+                    <h2>{isRtl ? 'نوع المخرج' : 'Output Type'}</h2>
+                  </div>
+                  <div className="ast-type-grid">
+                    {OUTPUT_TYPES.map(type => (
+                      <button
+                        key={type.id}
+                        className={`ast-type-card ${outputType === type.id ? 'active' : ''}`}
+                        onClick={() => setOutputType(type.id)}
+                      >
+                        <span className="ast-type-icon">{type.icon}</span>
+                        <span className="ast-type-label">{isRtl ? type.labelAr : type.labelEn}</span>
+                        <span className="ast-type-desc">{isRtl ? type.descAr : type.descEn}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {outputType === 'quiz' && (
+                  <div className="ast-step ast-step-quiz-opts">
+                    <div className="ast-step-header">
+                      <div className="ast-step-num">4</div>
+                      <h2>{isRtl ? 'خيارات الاختبار' : 'Quiz Options'}</h2>
+                    </div>
+                    <div className="ast-quiz-opts">
+                      <div className="ast-opt-group">
+                        <label>{isRtl ? 'عدد الأسئلة' : 'Number of Questions'}</label>
+                        <div className="ast-count-btns">
+                          {[5, 10, 15, 20].map(n => (
+                            <button key={n} className={`ast-count-btn ${questionCount === n ? 'active' : ''}`} onClick={() => setQuestionCount(n)}>
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="ast-opt-group">
+                        <label>{isRtl ? 'نوع الأسئلة' : 'Question Type'}</label>
+                        <div className="ast-qtype-btns">
+                          {QUESTION_TYPES.map(qt => (
+                            <button key={qt.id} className={`ast-qtype-btn ${questionType === qt.id ? 'active' : ''}`} onClick={() => setQuestionType(qt.id)}>
+                              {isRtl ? qt.labelAr : qt.labelEn}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  className={`ast-generate-btn ${loading ? 'loading' : ''}`}
+                  onClick={handleGenerate}
+                  disabled={loading || !text.trim()}
+                >
+                  {loading ? (
+                    <><span className="ast-spinner" />{isRtl ? 'جاري التوليد...' : 'Generating...'}</>
+                  ) : (
+                    <>🚀 {isRtl ? 'توليد الآن' : 'Generate Now'}</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

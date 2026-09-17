@@ -2116,7 +2116,10 @@ const Quiz = () => {
 
                             {/* Question Content Box */}
                             <div className="moodle-q-content-box">
-                                <div className={`moodle-q-text-area ${isEnglishContent ? 'force-ltr' : ''}`}>
+                                <div
+                                    className={`moodle-q-text-area ${isEnglishContent ? 'force-ltr' : ''}`}
+                                    dir={isEnglishContent ? 'ltr' : 'rtl'}
+                                >
                                     {question.codeBlock && <CodeBlock code={question.codeBlock} />}
                                     <div className="moodle-q-text-main">
                                         {renderTextWithCode(displayLang === 'ar' ? (question.questionAr || question.questionEn) : question.questionEn)}
@@ -2223,7 +2226,7 @@ const Quiz = () => {
                                         </div>
                                     )}
 
-                                    <div className="moodle-q-options-display">
+                                    <div className="moodle-q-options-display" dir={isEnglishContent ? 'ltr' : 'rtl'}>
                                         {question.type === 'multi_select' ? (
                                             // Checkbox multi-select
                                             (question.options || []).map((opt, oIdx) => {

@@ -2767,6 +2767,26 @@ body:has(.moodle-theme-wrapper) {
     width: 100%;
 }
 
+.moodle-q-text-area,
+.moodle-q-text-main,
+.moodle-q-options-display {
+    unicode-bidi: plaintext;
+}
+
+.moodle-q-text-area[dir="ltr"],
+.moodle-q-text-area[dir="ltr"] .moodle-q-text-main,
+.moodle-q-options-display[dir="ltr"] {
+    direction: ltr !important;
+    text-align: left !important;
+}
+
+.moodle-q-text-area[dir="rtl"],
+.moodle-q-text-area[dir="rtl"] .moodle-q-text-main,
+.moodle-q-options-display[dir="rtl"] {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
 [dir="rtl"] .moodle-question-block {
     flex-direction: row-reverse;
 }

@@ -494,7 +494,7 @@ function sync_quiz_part_to_firestore(PDO $db, string $partSlug): bool
     }
 
     $slug = (string) ($part['slug'] ?: $part['id']);
-    $subjectId = (string) ($part['subject_id'] ?: ($part['source_subject_id'] ?? ''));
+    $subjectId = canonicalQuizSubjectSlug((string) ($part['subject_id'] ?: ($part['source_subject_id'] ?? '')));
     $titleEn = $part['title_en'] ?? ($part['name_en'] ?? ($part['title'] ?? ($part['name'] ?? '')));
     $titleAr = $part['name'] ?? ($part['title'] ?? ($part['title_en'] ?? ''));
 
@@ -505,6 +505,7 @@ function sync_quiz_part_to_firestore(PDO $db, string $partSlug): bool
         'titleAr' => $titleAr,
         'durationMinutes' => (int) ($part['duration_minutes'] ?: 30),
         'passMark' => (float) ($part['pass_mark'] ?: 60),
+        'forceEnglish' => !empty($part['force_english']),
         'status' => $part['status'] ?? 'active',
         'updatedAt' => date('c'),
     ]);
@@ -528,6 +529,14 @@ function sync_quiz_subject_to_firestore(PDO $db, string $subjectId): bool
     ]);
 }
 
+function canonicalQuizSubjectSlug(string $subjectSlug): string
+{
+    return match (trim($subjectSlug)) {
+        'organism-oriented_programming_laboratory' => 'oop_lab',
+        default => trim($subjectSlug),
+    };
+}
+
 function sync_quiz_question_to_firestore(PDO $db, int $questionId): bool
 {
     $stmt = $db->prepare('SELECT * FROM quiz_questions WHERE id = ? LIMIT 1');
@@ -538,10 +547,17 @@ function sync_quiz_question_to_firestore(PDO $db, int $questionId): bool
     }
 
     $partSlug = trim((string) ($question['part_slug'] ?: ($question['source_part_id'] ?: ($question['part_id'] ?? ''))));
-    $subjectSlug = trim((string) ($question['subject_slug'] ?: ($question['source_subject_id'] ?? '')));
+    $subjectSlug = canonicalQuizSubjectSlug((string) ($question['subject_slug'] ?: ($question['source_subject_id'] ?? '')));
     if ($partSlug === '') {
         return false;
     }
+
+    // Questions imported from older exports can retain a legacy subject slug.
+    // The part's current subject is the authoritative relationship used by the site.
+    $partSubjectStmt = $db->prepare('SELECT subject_id, source_subject_id FROM quiz_parts WHERE slug = ? OR id = ? LIMIT 1');
+    $partSubjectStmt->execute([$partSlug, $question['part_id'] ?? $partSlug]);
+    $partSubject = $partSubjectStmt->fetch(PDO::FETCH_ASSOC);
+    $subjectSlug = canonicalQuizSubjectSlug((string) (($partSubject['subject_id'] ?? '') ?: ($partSubject['source_subject_id'] ?? $subjectSlug)));
 
     $options = normalizeQuizOptions(json_decode((string) ($question['options_json'] ?? ''), true));
     return firestoreUpsertDoc('quiz_questions', $partSlug . '_' . $questionId, [
@@ -786,6 +802,7 @@ function sync_quizzes_to_frontend(?PDO $db = null, bool $syncFirestore = false):
                     'titleAr' => $titleAr,
                     'durationMinutes' => (int) ($p['duration_minutes'] ?: 30),
                     'passMark' => (float) ($p['pass_mark'] ?: 60),
+                    'forceEnglish' => !empty($p['force_english']),
                     'status' => $p['status'] ?? 'active',
                     'updatedAt' => date('c'),
                 ]);
