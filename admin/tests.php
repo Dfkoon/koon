@@ -1672,6 +1672,48 @@ require __DIR__ . '/_header.php';
     padding: 6px 12px;
   }
 
+  .prompt-question-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 430px;
+    overflow-y: auto;
+  }
+
+  .prompt-question-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .prompt-question-item:has(input:checked) {
+    border-color: var(--green);
+    background: #f1f8f4;
+  }
+
+  .prompt-question-item input {
+    margin-top: 3px;
+    accent-color: var(--green);
+  }
+
+  .prompt-question-number {
+    min-width: 28px;
+    color: var(--ink-soft);
+    font: 700 12px var(--mono);
+  }
+
+  .prompt-question-text {
+    flex: 1;
+    line-height: 1.7;
+    font-size: 13px;
+    color: var(--ink);
+  }
+
   /* Bulk action bar */
   .bulk-bar {
     display: none;
@@ -3137,6 +3179,38 @@ require __DIR__ . '/_header.php';
     </div>
   </div>
 
+  <!-- Prompt question picker modal -->
+  <div class="reg-overlay" id="promptOverlay">
+    <div class="reg-modal" style="max-width:720px;">
+      <div class="reg-modal-head">
+        <div class="title">
+          <button class="reg-x-btn" id="closePromptModal" type="button" aria-label="إغلاق"><svg width="14" height="14"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg></button>
+          <h3>اختيار أسئلة البرومت</h3>
+        </div>
+        <span id="promptSelectedCount" class="mono" style="color:var(--ink-soft);font-size:12px;"></span>
+      </div>
+      <div class="reg-modal-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;">
+          <p style="margin:0;color:var(--ink-soft);font-size:13px;">اختر الأسئلة التي تريد إرسالها للبرومت، وسيتم الحفاظ
+            على ترتيبها الحالي.</p>
+          <button class="reg-btn-ghost2" id="promptSelectAll" type="button">تحديد الكل</button>
+        </div>
+        <div class="prompt-question-list" id="promptQuestionList"></div>
+      </div>
+      <div class="reg-modal-foot">
+        <div></div>
+        <div class="right-actions">
+          <button class="reg-btn-ghost2" id="cancelPrompt" type="button">إلغاء</button>
+          <button class="reg-btn-primary" id="buildPrompt" type="button">إنشاء البرومت</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-host"></div>
 
   <script>              (function () {
@@ -4024,6 +4098,101 @@ require __DIR__ . '/_header.php';
         return arr;
       }
 
+      const promptOverlay = $('#promptOverlay');
+      let promptQuestions = [];
+      let promptSelectedIds = new Set();
+
+      function updatePromptSelectionCount() {
+        $('#promptSelectedCount').textContent = `محدد: ${promptSelectedIds.size}`;
+        $('#promptSelectAll').textContent = promptSelectedIds.size === promptQuestions.length ? 'إلغاء تحديد الكل' : 'تحديد الكل';
+      }
+
+      function renderPromptQuestionPicker() {
+        const list = $('#promptQuestionList');
+        list.innerHTML = promptQuestions.map((q, index) => {
+          const question = q.textAr || q.textEn || 'سؤال بدون نص';
+          return `<label class="prompt-question-item">
+            <input type="checkbox" class="prompt-question-check" data-id="${q.id}" ${promptSelectedIds.has(String(q.id)) ? 'checked' : ''}>
+            <span class="prompt-question-number">Q${index + 1}</span>
+            <span class="prompt-question-text">${esc(question)}</span>
+          </label>`;
+        }).join('');
+        list.querySelectorAll('.prompt-question-check').forEach(input => input.addEventListener('change', () => {
+          if (input.checked) promptSelectedIds.add(input.dataset.id);
+          else promptSelectedIds.delete(input.dataset.id);
+          updatePromptSelectionCount();
+        }));
+        updatePromptSelectionCount();
+      }
+
+      function openPromptPicker(list) {
+        promptQuestions = list;
+        promptSelectedIds = new Set(list.map(q => String(q.id)));
+        renderPromptQuestionPicker();
+        promptOverlay.classList.add('open');
+      }
+
+      function closePromptPicker() {
+        promptOverlay.classList.remove('open');
+      }
+
+      function buildSelectedPrompt() {
+        const part = (parts[state.subjectId] || []).find(item => item.id === state.partId);
+        const selected = promptQuestions.filter(q => promptSelectedIds.has(String(q.id)));
+        return [
+          `اختبار: ${part?.name || 'اختبار'}`,
+          'أعد صياغة أو معالجة الأسئلة التالية مع الحفاظ على ترتيبها وخياراتها والإجابة الصحيحة:',
+          '',
+          ...selected.map((q, index) => {
+            const question = q.textAr || q.textEn || '';
+            const options = (q.options || []).map((option, optionIndex) => {
+              const marker = String.fromCharCode(65 + optionIndex);
+              return `${marker}. ${option.text}${option.correct ? ' [الإجابة الصحيحة]' : ''}`;
+            });
+            return [
+              `${index + 1}. ${question}`,
+              ...options,
+              q.explanationAr ? `الشرح: ${q.explanationAr}` : '',
+              ''
+            ].filter(Boolean).join('\n');
+          })
+        ].join('\n');
+      }
+
+      async function copyPromptText(prompt) {
+        try {
+          await navigator.clipboard.writeText(prompt);
+        } catch (error) {
+          const textarea = document.createElement('textarea');
+          textarea.value = prompt;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          textarea.remove();
+        }
+      }
+
+      $('#closePromptModal').addEventListener('click', closePromptPicker);
+      $('#cancelPrompt').addEventListener('click', closePromptPicker);
+      promptOverlay.addEventListener('click', event => { if (event.target === promptOverlay) closePromptPicker(); });
+      $('#promptSelectAll').addEventListener('click', () => {
+        promptSelectedIds = promptSelectedIds.size === promptQuestions.length
+          ? new Set()
+          : new Set(promptQuestions.map(q => String(q.id)));
+        renderPromptQuestionPicker();
+      });
+      $('#buildPrompt').addEventListener('click', async () => {
+        if (!promptSelectedIds.size) {
+          toast('اختر سؤالاً واحداً على الأقل لتوليد البرومت', { danger: true });
+          return;
+        }
+        await copyPromptText(buildSelectedPrompt());
+        closePromptPicker();
+        toast('تم توليد البرومت ونسخه بالترتيب المحدد');
+      });
+
       function bindShuffleButtons() {
         const sQBtn = $('#shuffleQuestionsBtn');
         if (sQBtn && !sQBtn.dataset.bound) {
@@ -4065,52 +4234,18 @@ require __DIR__ . '/_header.php';
         const promptBtn = $('#generatePromptBtn');
         if (promptBtn && !promptBtn.dataset.bound) {
           promptBtn.dataset.bound = 'true';
-          promptBtn.addEventListener('click', async () => {
+          promptBtn.addEventListener('click', () => {
             if (!state.partId) {
               toast('اختر اختباراً أولاً لتوليد البرومت', { danger: true });
               return;
             }
 
-            const part = (parts[state.subjectId] || []).find(item => item.id === state.partId);
             const list = questions[state.partId] || [];
             if (!list.length) {
               toast('لا توجد أسئلة في هذا الاختبار', { danger: true });
               return;
             }
-
-            const prompt = [
-              `اختبار: ${part?.name || 'اختبار'}`,
-              'أعد صياغة أو معالجة الأسئلة التالية مع الحفاظ على ترتيبها وخياراتها والإجابة الصحيحة:',
-              '',
-              ...list.map((q, index) => {
-                const question = q.textAr || q.textEn || '';
-                const options = (q.options || []).map((option, optionIndex) => {
-                  const marker = String.fromCharCode(65 + optionIndex);
-                  return `${marker}. ${option.text}${option.correct ? ' [الإجابة الصحيحة]' : ''}`;
-                });
-                return [
-                  `${index + 1}. ${question}`,
-                  ...options,
-                  q.explanationAr ? `الشرح: ${q.explanationAr}` : '',
-                  ''
-                ].filter(Boolean).join('\n');
-              })
-            ].join('\n');
-
-            try {
-              await navigator.clipboard.writeText(prompt);
-              toast('تم توليد البرومت ونسخه بالترتيب الحالي');
-            } catch (error) {
-              const textarea = document.createElement('textarea');
-              textarea.value = prompt;
-              textarea.style.position = 'fixed';
-              textarea.style.opacity = '0';
-              document.body.appendChild(textarea);
-              textarea.select();
-              document.execCommand('copy');
-              textarea.remove();
-              toast('تم توليد البرومت ونسخه بالترتيب الحالي');
-            }
+            openPromptPicker(list);
           });
         }
       }
