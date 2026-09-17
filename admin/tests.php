@@ -286,6 +286,7 @@ $adminGuide = $db->query('SELECT * FROM quiz_admin_guides WHERE id = 1')->fetch(
 // ---------------- Handle AJAX API actions ----------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!empty($_FILES['csvFile']) || (($_POST['action'] ?? '') === 'import_questions_csv')) {
+    require_once __DIR__ . '/../includes/sync_frontend_live.php';
     if (!csrf_check($_POST['csrf'] ?? '')) {
       http_response_code(400);
       header('Content-Type: application/json; charset=utf-8');
@@ -508,10 +509,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     fclose($handle);
     sync_quizzes_to_frontend($db);
     $fsSynced = false;
-    if (function_exists('sync_all_quizzes_to_firestore')) {
-      $fsResult = sync_all_quizzes_to_firestore($db);
-      $fsSynced = ($fsResult['questions'] ?? 0) > 0;
-    }
+    $fsResult = sync_all_quizzes_to_firestore($db);
+    $fsSynced = ($fsResult['questions'] ?? 0) > 0
+      && empty($GLOBALS['firestore_sync_failed']);
+    $fsError = $GLOBALS['firestore_sync_error'] ?? '';
 
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
@@ -520,6 +521,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'skipped' => $skipped,
       'errors' => $errors,
       'firestore_synced' => $fsSynced,
+      'firestore_error' => $fsSynced ? '' : ($fsError !== '' ? $fsError : 'تعذر نشر الأسئلة إلى الموقع الرسمي'),
     ]);
     exit;
   }
@@ -3327,7 +3329,13 @@ require __DIR__ . '/_header.php';
             console.warn('CSV import warnings:', data.errors.slice(0, 5));
           }
           if (imported > 0) {
-            toast(`تمت إضافة ${imported} سؤالاً بنجاح${skipped ? `، وتم تخطي ${skipped} سؤالاً` : ''}`);
+            const importSummary = `تمت إضافة ${imported} سؤالاً بنجاح${skipped ? `، وتم تخطي ${skipped} سؤالاً` : ''}`;
+            if (data.firestore_synced) {
+              toast(`${importSummary} ونُشرت على الموقع الرسمي`);
+            } else {
+              const syncReason = data.firestore_error || 'تعذر الاتصال بخدمة الموقع الرسمي';
+              toast(`${importSummary} محلياً، لكن لم تُنشر على الموقع. السبب: ${syncReason.slice(0, 220)}`, { danger: true });
+            }
           } else {
             const reason = Array.isArray(data.errors) && data.errors.length
               ? data.errors.slice(0, 3).join(' | ')
