@@ -3179,9 +3179,9 @@ require __DIR__ . '/_header.php';
     </div>
   </div>
 
-  <!-- Prompt question picker modal -->
+  <!-- General prompt builder modal -->
   <div class="reg-overlay" id="promptOverlay">
-    <div class="reg-modal" style="max-width:720px;">
+    <div class="reg-modal" style="max-width:620px;">
       <div class="reg-modal-head">
         <div class="title">
           <button class="reg-x-btn" id="closePromptModal" type="button" aria-label="إغلاق"><svg width="14" height="14"
@@ -3189,23 +3189,44 @@ require __DIR__ . '/_header.php';
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg></button>
-          <h3>اختيار أسئلة البرومت</h3>
+          <h3>إنشاء برومت اختبار عام</h3>
         </div>
-        <span id="promptSelectedCount" class="mono" style="color:var(--ink-soft);font-size:12px;"></span>
       </div>
       <div class="reg-modal-body">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;">
-          <p style="margin:0;color:var(--ink-soft);font-size:13px;">اختر الأسئلة التي تريد إرسالها للبرومت، وسيتم الحفاظ
-            على ترتيبها الحالي.</p>
-          <button class="reg-btn-ghost2" id="promptSelectAll" type="button">تحديد الكل</button>
+        <div class="reg-form-row">
+          <div class="reg-f-field">
+            <div class="reg-f-label"><span>لغة الاختبار</span></div>
+            <select id="promptLanguage">
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div class="reg-f-field">
+            <div class="reg-f-label"><span>عدد الأسئلة</span></div>
+            <input id="promptCount" type="number" min="1" max="100" value="10" inputmode="numeric">
+          </div>
         </div>
-        <div class="prompt-question-list" id="promptQuestionList"></div>
+        <div class="reg-f-field">
+          <div class="reg-f-label"><span>نوع الاختبار</span></div>
+          <select id="promptQuestionType">
+            <option value="mcq">اختيار من متعدد</option>
+            <option value="tf">صح أو خطأ</option>
+            <option value="essay">مقالي</option>
+            <option value="mixed">مختلط</option>
+          </select>
+        </div>
+        <div class="reg-f-field">
+          <div class="reg-f-label"><span>موضوع الاختبار <small>(اختياري)</small></span></div>
+          <textarea id="promptTopic" rows="4" placeholder="مثال: القوائم و tuples في لغة بايثون..."></textarea>
+        </div>
+        <p style="margin:0;color:var(--ink-soft);font-size:13px;line-height:1.8;">سيتم إنشاء برومت جاهز للنسخ بناءً على
+          اختياراتك، دون الحاجة لاختيار مادة أو اختبار من القائمة.</p>
       </div>
       <div class="reg-modal-foot">
         <div></div>
         <div class="right-actions">
           <button class="reg-btn-ghost2" id="cancelPrompt" type="button">إلغاء</button>
-          <button class="reg-btn-primary" id="buildPrompt" type="button">إنشاء البرومت</button>
+          <button class="reg-btn-primary" id="buildPrompt" type="button">إنشاء ونسخ البرومت</button>
         </div>
       </div>
     </div>
@@ -4099,64 +4120,48 @@ require __DIR__ . '/_header.php';
       }
 
       const promptOverlay = $('#promptOverlay');
-      let promptQuestions = [];
-      let promptSelectedIds = new Set();
-
-      function updatePromptSelectionCount() {
-        $('#promptSelectedCount').textContent = `محدد: ${promptSelectedIds.size}`;
-        $('#promptSelectAll').textContent = promptSelectedIds.size === promptQuestions.length ? 'إلغاء تحديد الكل' : 'تحديد الكل';
-      }
-
-      function renderPromptQuestionPicker() {
-        const list = $('#promptQuestionList');
-        list.innerHTML = promptQuestions.map((q, index) => {
-          const question = q.textAr || q.textEn || 'سؤال بدون نص';
-          return `<label class="prompt-question-item">
-            <input type="checkbox" class="prompt-question-check" data-id="${q.id}" ${promptSelectedIds.has(String(q.id)) ? 'checked' : ''}>
-            <span class="prompt-question-number">Q${index + 1}</span>
-            <span class="prompt-question-text">${esc(question)}</span>
-          </label>`;
-        }).join('');
-        list.querySelectorAll('.prompt-question-check').forEach(input => input.addEventListener('change', () => {
-          if (input.checked) promptSelectedIds.add(input.dataset.id);
-          else promptSelectedIds.delete(input.dataset.id);
-          updatePromptSelectionCount();
-        }));
-        updatePromptSelectionCount();
-      }
-
-      function openPromptPicker(list) {
-        promptQuestions = list;
-        promptSelectedIds = new Set(list.map(q => String(q.id)));
-        renderPromptQuestionPicker();
+      function openPromptBuilder() {
         promptOverlay.classList.add('open');
+        setTimeout(() => $('#promptTopic').focus(), 30);
       }
 
-      function closePromptPicker() {
+      function closePromptBuilder() {
         promptOverlay.classList.remove('open');
       }
 
-      function buildSelectedPrompt() {
-        const part = (parts[state.subjectId] || []).find(item => item.id === state.partId);
-        const selected = promptQuestions.filter(q => promptSelectedIds.has(String(q.id)));
-        return [
-          `اختبار: ${part?.name || 'اختبار'}`,
-          'أعد صياغة أو معالجة الأسئلة التالية مع الحفاظ على ترتيبها وخياراتها والإجابة الصحيحة:',
-          '',
-          ...selected.map((q, index) => {
-            const question = q.textAr || q.textEn || '';
-            const options = (q.options || []).map((option, optionIndex) => {
-              const marker = String.fromCharCode(65 + optionIndex);
-              return `${marker}. ${option.text}${option.correct ? ' [الإجابة الصحيحة]' : ''}`;
-            });
-            return [
-              `${index + 1}. ${question}`,
-              ...options,
-              q.explanationAr ? `الشرح: ${q.explanationAr}` : '',
-              ''
-            ].filter(Boolean).join('\n');
-          })
-        ].join('\n');
+      function buildGeneralPrompt() {
+        const language = $('#promptLanguage').value;
+        const count = Math.min(100, Math.max(1, Number($('#promptCount').value) || 1));
+        const type = $('#promptQuestionType').value;
+        const topic = $('#promptTopic').value.trim() || (language === 'ar' ? 'الموضوع الذي سيحدده المستخدم' : 'the topic provided by the user');
+        const languageText = language === 'ar' ? 'العربية الفصحى' : 'English';
+        const typeText = {
+          mcq: language === 'ar' ? 'اختيار من متعدد، مع 4 خيارات وتحديد الإجابة الصحيحة' : 'multiple choice, with 4 options and the correct answer',
+          tf: language === 'ar' ? 'صح أو خطأ مع تحديد الإجابة الصحيحة' : 'True/False with the correct answer',
+          essay: language === 'ar' ? 'مقالي مع نموذج إجابة' : 'essay with a model answer',
+          mixed: language === 'ar' ? 'مختلط من اختيار من متعدد وصح أو خطأ ومقالي' : 'mixed: multiple choice, True/False, and essay'
+        }[type];
+        return language === 'ar'
+          ? `أنشئ اختباراً من ${count} سؤالاً باللغة ${languageText} عن الموضوع التالي: ${topic}.
+
+نوع الأسئلة: ${typeText}.
+
+التزم بالتعليمات التالية:
+1. اجعل الأسئلة واضحة ومتنوعة ومبنية على الموضوع.
+2. حافظ على الدقة العلمية وعدم اختراع معلومات غير مرتبطة بالموضوع.
+3. اكتب الإجابة الصحيحة والشرح المختصر لكل سؤال.
+4. رقّم الأسئلة من 1 إلى ${count} بالترتيب.
+5. أعد النتيجة بصيغة منظمة جاهزة للاستخدام في اختبار.`
+          : `Create a ${count}-question exam in ${languageText} about the following topic: ${topic}.
+
+Question type: ${typeText}.
+
+Follow these rules:
+1. Make the questions clear, varied, and grounded in the topic.
+2. Keep the content accurate and do not invent unrelated facts.
+3. Include the correct answer and a brief explanation for every question.
+4. Number the questions from 1 to ${count} in order.
+5. Return a clean, structured result ready to use as an exam.`;
       }
 
       async function copyPromptText(prompt) {
@@ -4174,23 +4179,20 @@ require __DIR__ . '/_header.php';
         }
       }
 
-      $('#closePromptModal').addEventListener('click', closePromptPicker);
-      $('#cancelPrompt').addEventListener('click', closePromptPicker);
-      promptOverlay.addEventListener('click', event => { if (event.target === promptOverlay) closePromptPicker(); });
-      $('#promptSelectAll').addEventListener('click', () => {
-        promptSelectedIds = promptSelectedIds.size === promptQuestions.length
-          ? new Set()
-          : new Set(promptQuestions.map(q => String(q.id)));
-        renderPromptQuestionPicker();
-      });
+      $('#closePromptModal').addEventListener('click', closePromptBuilder);
+      $('#cancelPrompt').addEventListener('click', closePromptBuilder);
+      promptOverlay.addEventListener('click', event => { if (event.target === promptOverlay) closePromptBuilder(); });
       $('#buildPrompt').addEventListener('click', async () => {
-        if (!promptSelectedIds.size) {
-          toast('اختر سؤالاً واحداً على الأقل لتوليد البرومت', { danger: true });
+        const countInput = $('#promptCount');
+        const count = Number(countInput.value);
+        if (!Number.isInteger(count) || count < 1 || count > 100) {
+          toast('أدخل عدد أسئلة بين 1 و100', { danger: true });
+          countInput.focus();
           return;
         }
-        await copyPromptText(buildSelectedPrompt());
-        closePromptPicker();
-        toast('تم توليد البرومت ونسخه بالترتيب المحدد');
+        await copyPromptText(buildGeneralPrompt());
+        closePromptBuilder();
+        toast('تم إنشاء البرومت ونسخه بنجاح');
       });
 
       function bindShuffleButtons() {
@@ -4235,17 +4237,7 @@ require __DIR__ . '/_header.php';
         if (promptBtn && !promptBtn.dataset.bound) {
           promptBtn.dataset.bound = 'true';
           promptBtn.addEventListener('click', () => {
-            if (!state.partId) {
-              toast('اختر اختباراً أولاً لتوليد البرومت', { danger: true });
-              return;
-            }
-
-            const list = questions[state.partId] || [];
-            if (!list.length) {
-              toast('لا توجد أسئلة في هذا الاختبار', { danger: true });
-              return;
-            }
-            openPromptPicker(list);
+            openPromptBuilder();
           });
         }
       }
@@ -4266,7 +4258,7 @@ require __DIR__ . '/_header.php';
         if (!state.partId) {
           if (searchRow) searchRow.style.display = 'none';
           if (statsRow) statsRow.style.display = 'none';
-          if (toolbarRow) toolbarRow.style.display = state.subjectId ? 'flex' : 'none';
+          if (toolbarRow) toolbarRow.style.display = 'flex';
           if (qIndex) qIndex.innerHTML = `<div class="qplaceholder-box"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg><p>اختر اختباراً</p></div>`;
           if (qDetail) qDetail.innerHTML = `<div class="qplaceholder-box"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>اختر اختباراً أولاً</p><span class="hint">ثم اختر سؤالاً من القائمة لعرض تفاصيله</span></div>`;
           currentDetailQId = null;
