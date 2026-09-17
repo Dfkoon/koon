@@ -3209,10 +3209,9 @@ require __DIR__ . '/_header.php';
         <div class="reg-f-field">
           <div class="reg-f-label"><span>نوع الاختبار</span></div>
           <select id="promptQuestionType">
-            <option value="mcq">اختيار من متعدد</option>
-            <option value="tf">صح أو خطأ</option>
-            <option value="essay">مقالي</option>
-            <option value="mixed">مختلط</option>
+            <option value="mcq">اختيار من متعدد (mcq)</option>
+            <option value="true_false">صح أو خطأ (true_false)</option>
+            <option value="multi_select">اختيار متعدد الإجابات (multi_select)</option>
           </select>
         </div>
         <div class="reg-f-field">
@@ -4133,35 +4132,56 @@ require __DIR__ . '/_header.php';
         const language = $('#promptLanguage').value;
         const count = Math.min(100, Math.max(1, Number($('#promptCount').value) || 1));
         const type = $('#promptQuestionType').value;
-        const topic = $('#promptTopic').value.trim() || (language === 'ar' ? 'الموضوع الذي سيحدده المستخدم' : 'the topic provided by the user');
-        const languageText = language === 'ar' ? 'العربية الفصحى' : 'English';
-        const typeText = {
-          mcq: language === 'ar' ? 'اختيار من متعدد، مع 4 خيارات وتحديد الإجابة الصحيحة' : 'multiple choice, with 4 options and the correct answer',
-          tf: language === 'ar' ? 'صح أو خطأ مع تحديد الإجابة الصحيحة' : 'True/False with the correct answer',
-          essay: language === 'ar' ? 'مقالي مع نموذج إجابة' : 'essay with a model answer',
-          mixed: language === 'ar' ? 'مختلط من اختيار من متعدد وصح أو خطأ ومقالي' : 'mixed: multiple choice, True/False, and essay'
+        const topic = $('#promptTopic').value.trim() || 'الموضوع الموجود في المحتوى المرفق';
+        const correctTf = language === 'ar' ? 'صحيح أو خطأ' : 'True or False';
+        const typeLabel = {
+          mcq: 'اختيار من متعدد (mcq)',
+          true_false: 'صح أم خطأ (true_false)',
+          multi_select: 'اختيار متعدد الإجابات (multi_select)'
         }[type];
-        return language === 'ar'
-          ? `أنشئ اختباراً من ${count} سؤالاً باللغة ${languageText} عن الموضوع التالي: ${topic}.
+        const typeRules = {
+          mcq: `نوع السؤال: "mcq" فقط.
+- option_1 وoption_2 وoption_3 وoption_4 خيارات مختلفة.
+- option_5 فارغ تماماً.
+- correct_answer رقم الخيار الصحيح فقط: 1 أو 2 أو 3 أو 4.`,
+          true_false: `نوع السؤال: "true_false" فقط.
+- option_1 إلى option_5 تترك فارغة تماماً.
+- correct_answer تكون "${correctTf}" حسب لغة الاختبار.`,
+          multi_select: `نوع السؤال: "multi_select" فقط.
+- option_1 إلى option_4 خيارات مختلفة.
+- option_5 فارغ تماماً.
+- correct_answer أرقام الخيارات الصحيحة مفصولة بفاصلة، مثل: "1,3" أو "2,4".`
+        }[type];
+        return `الدور: خبير في تصميم الاختبارات ومطور بيانات CSV لدعم اللغة العربية (UTF-8 with BOM).
 
-نوع الأسئلة: ${typeText}.
+المهمة: قراءة المحتوى المرفق وتوليد بنك أسئلة بصيغة CSV لنوع "${typeLabel}" فقط.
 
-التزم بالتعليمات التالية:
-1. اجعل الأسئلة واضحة ومتنوعة ومبنية على الموضوع.
-2. حافظ على الدقة العلمية وعدم اختراع معلومات غير مرتبطة بالموضوع.
-3. اكتب الإجابة الصحيحة والشرح المختصر لكل سؤال.
-4. رقّم الأسئلة من 1 إلى ${count} بالترتيب.
-5. أعد النتيجة بصيغة منظمة جاهزة للاستخدام في اختبار.`
-          : `Create a ${count}-question exam in ${languageText} about the following topic: ${topic}.
+شروط وإعدادات الملف:
+- عدد الأسئلة المطلوب: ${count} سؤالاً.
+- لغة الاختبار: ${language === 'ar' ? 'العربية الفصحى' : 'English'}.
+- موضوع الاختبار: ${topic}.
+- الدرجات (points): درجة واحدة لكل سؤال (إجمالي العلامات = عدد الأسئلة).
+- مصدر المعلومات: نص الكتاب أو المحتوى المرفق فقط دون أي إضافات خارجية.
+- تفاصيل العناوين: ممنوع ذكر اسم الدرس أو الوحدة أو العناوين الفرعية تماماً.
 
-Question type: ${typeText}.
+${typeRules}
 
-Follow these rules:
-1. Make the questions clear, varied, and grounded in the topic.
-2. Keep the content accurate and do not invent unrelated facts.
-3. Include the correct answer and a brief explanation for every question.
-4. Number the questions from 1 to ${count} in order.
-5. Return a clean, structured result ready to use as an exam.`;
+مواصفات CSV:
+- استخدم الأعمدة التالية بالترتيب الدقيق:
+id,type,difficulty,points,question_text,hint,explanation,status,option_1,option_2,option_3,option_4,option_5,correct_answer
+- id يترك فارغاً تماماً.
+- difficulty تكون واحدة من: easy أو medium أو hard.
+- points تكون "1".
+- status تكون "published".
+- explanation شرح مختصر ودقيق للإجابة من المحتوى المرفق.
+- لا تضف أي أعمدة أخرى.
+
+التنفيذ:
+1. اكتب كود Python يقرأ المحتوى المرفق ويستخرج البيانات.
+2. أنشئ ملف CSV مشفراً بـ UTF-8 with BOM باستخدام encoding="utf-8-sig".
+3. اجعل الملف قابلاً للتنزيل مباشرة، وزودني برابط التنزيل المباشر.
+4. أعد ${count} سؤالاً بالضبط.
+5. لا تضع Markdown أو شرحاً خارج ملف CSV عند إنشاء البيانات.`;
       }
 
       async function copyPromptText(prompt) {
