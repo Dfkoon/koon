@@ -2846,14 +2846,6 @@ require __DIR__ . '/_header.php';
           </svg>
           استيراد CSV
         </button>
-        <button class="btn btn-primary" id="syncFirestoreBtn"
-          style="background:#1B3A2E;color:#fff;border-color:#1B3A2E;">
-          <svg class="icon" viewBox="0 0 24 24" width="14" height="14">
-            <path
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          مزامنة للموقع الرسمي
-        </button>
         <button class="btn btn-outline" id="shuffleQuestionsBtn">
           <svg class="icon" viewBox="0 0 24 24" width="14" height="14">
             <path d="M4 4l16 16M20 4L4 20" />
@@ -4693,21 +4685,6 @@ require __DIR__ . '/_header.php';
         const file = csvInput.files && csvInput.files[0];
         if (!file) return;
         await uploadCsvQuestions(file);
-      });
-
-      $('#syncFirestoreBtn')?.addEventListener('click', async () => {
-        if (!state.partId) {
-          toast('يرجى اختيار مادة واختبار أولاً للمزامنة', { danger: true });
-          return;
-        }
-        toast('جارٍ رفع ومزامنة أسئلة هذا الاختبار إلى الموقع الرسمي...');
-        const res = await apiCall('sync_to_firestore', { partId: state.partId });
-        if (res && res.success) {
-          const qCount = res.counts?.questions || 0;
-          toast(`✅ تمت مزامنة ${qCount} سؤالاً بنجاح إلى الموقع الرسمي!`);
-        } else {
-          toast('تعذرت المزامنة السحابية: تأكد من إعداد مفتاح Firebase', { danger: true });
-        }
       });
 
       // ================= Question modal logic =================
