@@ -1254,7 +1254,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'print_sheet') {
         </div>
 
         <script>
-                                                        windo w.on                                     load = function () {
+                                                            windo w.on                                     load = function () {
                 window.print();
             };
         </script>
@@ -2215,16 +2215,15 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
 
                                 <!-- موافقة مشاركة البيانات (أزرار تفاعلية مباشرة) -->
                                 <td style="text-align:center; min-width:160px;">
-                                    <div style="display:inline-flex; align-items:center; gap:5px; background:#f8fafc; padding:3px 6px; border-radius:9px; border:1px solid #e2e8f0;">
-                                        <button type="button" 
-                                            onclick="updateDataSharingConsent(<?= $m['id'] ?>, 1)"
+                                    <div
+                                        style="display:inline-flex; align-items:center; gap:5px; background:#f8fafc; padding:3px 6px; border-radius:9px; border:1px solid #e2e8f0;">
+                                        <button type="button" onclick="updateDataSharingConsent(<?= $m['id'] ?>, 1)"
                                             id="consent_btn_yes_<?= $m['id'] ?>"
                                             style="padding:4px 9px; font-size:11.5px; border-radius:7px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:3px; <?= ((int) $m['data_sharing_consent'] === 1) ? 'background:#16a34a; color:#fff; font-weight:800; border:1px solid #15803d; box-shadow:0 1px 3px rgba(22,163,74,0.3);' : 'background:#fff; color:#475569; font-weight:600; border:1px solid #cbd5e1;' ?>"
                                             title="تحديد: موافق على مشاركة البيانات">
                                             <span>✓ موافق</span>
                                         </button>
-                                        <button type="button" 
-                                            onclick="updateDataSharingConsent(<?= $m['id'] ?>, 0)"
+                                        <button type="button" onclick="updateDataSharingConsent(<?= $m['id'] ?>, 0)"
                                             id="consent_btn_no_<?= $m['id'] ?>"
                                             style="padding:4px 9px; font-size:11.5px; border-radius:7px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:3px; <?= ($m['data_sharing_consent'] !== null && $m['data_sharing_consent'] !== '' && (int) $m['data_sharing_consent'] === 0) ? 'background:#dc2626; color:#fff; font-weight:800; border:1px solid #b91c1c; box-shadow:0 1px 3px rgba(220,38,38,0.3);' : 'background:#fff; color:#475569; font-weight:600; border:1px solid #cbd5e1;' ?>"
                                             title="تحديد: غير موافق على مشاركة البيانات">
@@ -3592,6 +3591,8 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
         openModal('editMaterialModal');
     }
 
+    const dataSharingConsentOverrides = Object.create(null);
+
     async function updateDataSharingConsent(id, consent) {
         const btnYes = document.getElementById('consent_btn_yes_' + id);
         const btnNo = document.getElementById('consent_btn_no_' + id);
@@ -3638,14 +3639,21 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
             const data = await res.json();
             if (!data.success) {
                 alert('تعذر تحديث الموافقة: ' + (data.error || 'حدث خطأ'));
+                return;
             }
+            dataSharingConsentOverrides[String(id)] = Number(consent);
         } catch (err) {
             console.error('Error updating consent:', err);
+            alert('تعذر تحديث الموافقة: ' + (err.message || 'خطأ غير معروف'));
         }
     }
 
     function openSlipModal(item) {
-        const isConsentApproved = Number(item.data_sharing_consent) === 1;
+        const consentKey = String(item.id);
+        const consentValue = Object.prototype.hasOwnProperty.call(dataSharingConsentOverrides, consentKey)
+            ? dataSharingConsentOverrides[consentKey]
+            : item.data_sharing_consent;
+        const isConsentApproved = Number(consentValue) === 1;
         document.getElementById('slip_id').innerText = '#' + item.id;
         document.getElementById('slip_material_name').innerText = item.material_name || '—';
         document.getElementById('slip_course_code').innerText = item.course_code || '—';
