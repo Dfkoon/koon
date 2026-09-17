@@ -464,13 +464,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $questionTextAr = $qTextAr !== '' ? $qTextAr : $qTextEn;
       $questionTextEn = $qTextEn !== '' ? $qTextEn : $qTextAr;
 
+      $partSlug = $partId;
       if (find_duplicate_quiz_question_id($db, $partSlug, $questionTextAr, $questionTextEn) !== null) {
         $skipped++;
         continue;
       }
 
       $subjectSlug = $subjectId;
-      $partSlug = $partId;
       $statusValue = ($status !== '' ? $status : 'published');
       $pointsValue = (float) ($points !== '' ? $points : 1);
 
@@ -3302,14 +3302,38 @@ require __DIR__ . '/_header.php';
 
         try {
           const res = await fetch('tests.php', { method: 'POST', body: form });
-          const data = await res.json();
+          const responseText = await res.text();
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('CSV import returned non-JSON response:', responseText.slice(0, 1000));
+            throw new Error(`رد السيرفر غير صالح (${res.status}). ${responseText.replace(/<[^>]*>/g, ' ').trim().slice(0, 180)}`);
+          }
+          if (!res.ok) {
+            const reason = data?.error || `فشل الطلب برمز HTTP ${res.status}`;
+            throw new Error(`فشل رفع الملف: ${reason}`);
+          }
           if (!data || !data.success) {
-            throw new Error((data && data.error) ? data.error : 'فشل استيراد الملف');
+            const details = Array.isArray(data?.errors) && data.errors.length
+              ? ` السبب: ${data.errors.slice(0, 3).join(' | ')}`
+              : '';
+            throw new Error(`فشل رفع الملف: ${data?.error || 'سبب غير محدد'}${details}`);
           }
 
-          toast(`تم استيراد ${data.imported || 0} سؤالاً بنجاح${data.skipped ? '، وتم تخطي ' + data.skipped + ' سؤالاً' : ''}`);
+          const imported = Number(data.imported || 0);
+          const skipped = Number(data.skipped || 0);
           if (data.errors && data.errors.length) {
             console.warn('CSV import warnings:', data.errors.slice(0, 5));
+          }
+          if (imported > 0) {
+            toast(`تمت إضافة ${imported} سؤالاً بنجاح${skipped ? `، وتم تخطي ${skipped} سؤالاً` : ''}`);
+          } else {
+            const reason = Array.isArray(data.errors) && data.errors.length
+              ? data.errors.slice(0, 3).join(' | ')
+              : 'لم يتم العثور على صفوف صالحة في ملف CSV';
+            toast(`لم تتم إضافة أي سؤال. السبب: ${reason}`, { danger: true });
+            return;
           }
           if (questions[state.partId]) {
             questions[state.partId] = [];
