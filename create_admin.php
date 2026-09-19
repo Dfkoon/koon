@@ -32,10 +32,11 @@ $hash = password_hash($tempPassword, PASSWORD_DEFAULT);
 
 try {
     $stmt = $db->prepare('
-        INSERT INTO users (username, password_hash, must_change_password, totp_enabled)
-        VALUES (?, ?, 1, 0)
+        INSERT INTO users (username, password_hash, full_name, role, permissions, must_change_password, totp_enabled)
+        VALUES (?, ?, ?, "admin", "[\"*\"]", 0, 0)
+        ON CONFLICT(username) DO UPDATE SET password_hash=excluded.password_hash, role="admin", permissions="[\"*\"]", locked_until=0, failed_attempts=0
     ');
-    $stmt->execute([$username, $hash]);
+    $stmt->execute([$username, $hash, $username]);
     echo "تم إنشاء المستخدم '{$username}' بنجاح.\n";
     echo "عند أول تسجيل دخول سيُطلب منه تغيير كلمة المرور ثم ربط تطبيق Authenticator.\n";
 } catch (PDOException $e) {
