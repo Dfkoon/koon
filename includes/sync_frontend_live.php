@@ -1050,6 +1050,16 @@ function sync_quizzes_to_frontend(?PDO $db = null, bool $syncFirestore = false):
     $jsContent .= "export const quizData = " . json_encode($quizDataObj, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . ";\n\n";
     $jsContent .= "export const quizCategories = " . json_encode($quizCategoriesArr, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . ";\n";
 
+    // حماية ملفات quizData.js من المسح إذا كانت جداول قاعدة البيانات فارغة
+    if (empty($dbParts) && empty($dbQuestions)) {
+        error_log('sync_quizzes_to_frontend: skipping write because database quiz tables are empty');
+        return [
+            'success' => false,
+            'reason' => 'skipped_empty_db',
+            'files' => [],
+        ];
+    }
+
     $updatedFiles = [];
     foreach ($targetFiles as $targetFile) {
         if (is_dir(dirname($targetFile))) {

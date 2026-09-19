@@ -141,6 +141,14 @@ try {
   }
 } catch (Throwable $migrationErr) {}
 
+require_once __DIR__ . '/../includes/seed_quizzes.php';
+try {
+  $qCountCheck = (int) $db->query('SELECT count(*) FROM quiz_questions')->fetchColumn();
+  if ($qCountCheck === 0) {
+    seed_quizzes_from_bundle($db);
+  }
+} catch (Throwable $seedErr) {}
+
 $userId = $_SESSION['user_id'] ?? 0;
 $userStmt = $db->prepare('SELECT * FROM users WHERE id = ?');
 $userStmt->execute([$userId]);
@@ -950,29 +958,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'sync_all_from_site') {
-      $output = [];
-      $retCode = 0;
-      exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/../scripts/sync_quizzes_from_firestore.php') . ' 2>&1', $output, $retCode);
-
-      if ($retCode === 0) {
-        sync_quizzes_to_frontend($db);
-      }
-
+      require_once __DIR__ . '/../includes/seed_quizzes.php';
+      $seedRes = seed_quizzes_from_bundle($db, true);
       $qCount = (int) $db->query('SELECT count(*) FROM quiz_questions')->fetchColumn();
       $pCount = (int) $db->query('SELECT count(*) FROM quiz_parts')->fetchColumn();
       $sCount = (int) $db->query('SELECT count(*) FROM quiz_subjects')->fetchColumn();
 
-      echo json_encode([
-        'success' => $retCode === 0,
+      send_json_response([
+        'success' => ($seedRes['status'] ?? '') === 'success' || $qCount > 0,
         'counts' => [
           'questions' => $qCount,
           'parts' => $pCount,
           'subjects' => $sCount
         ],
-        'error' => $retCode === 0 ? null : 'فشل جلب بيانات الاختبارات من Firestore الرسمي',
-        'log' => implode("\n", $output)
+        'error' => ($seedRes['status'] ?? '') === 'error' ? ($seedRes['message'] ?? 'فشل استيراد الأسئلة') : null,
+        'log' => $seedRes['message'] ?? ''
       ]);
-      exit;
     }
 
     if ($action === 'sync_to_firestore') {
