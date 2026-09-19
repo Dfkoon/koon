@@ -1923,10 +1923,9 @@ if (!function_exists('user_has_permission')) {
         return ($user['role'] ?? '') === 'observer';
     }
 
-    /** التحقق هل يملك المستخدم صلاحية لفتح صفحة/قسم معين */
-    function user_has_permission(string $page_key, ?array $user = null): bool
+    function user_has_permission(string $page_key, $user = null): bool
     {
-        if (empty($user)) {
+        if (!is_array($user) || empty($user)) {
             if (empty($_SESSION['user_id']))
                 return false;
             $db = get_db();

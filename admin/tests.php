@@ -109,7 +109,7 @@ $db->exec("
 $userId = $_SESSION['user_id'] ?? 0;
 $userStmt = $db->prepare('SELECT * FROM users WHERE id = ?');
 $userStmt->execute([$userId]);
-$currentUserData = $userStmt->fetch(PDO::FETCH_ASSOC);
+$currentUserData = $userStmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
 // Allow read-only access for dev key; require permission for authenticated users
 if (!$isReadOnly && !user_has_permission('tests', $currentUserData)) {
