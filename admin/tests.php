@@ -5266,6 +5266,98 @@ id,type,difficulty,points,question_text,hint,explanation,status,option_1,option_
         loadQuestionsForPart(state.partId);
       }
       renderAll();
+
+      // ---------------- Direct Navigation & Auto-Open for Reported Questions ----------------
+      (async function handleReportedQuestionDirectLink() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetQId = (urlParams.get('question_id') || '').trim();
+        const targetQText = (urlParams.get('q_text') || '').trim();
+        const targetCourse = (urlParams.get('course') || '').trim();
+
+        if (!targetQId && !targetQText && !targetCourse) return;
+
+        const norm = s => (s || '').toLowerCase().replace(/[\s\.\?؟!_#\-—\(\)]+/g, '');
+        const nTargetId = norm(targetQId);
+        const nTargetText = norm(targetQText);
+        const nTargetCourse = norm(targetCourse);
+
+        let foundPartId = null;
+        let foundSubjId = null;
+        let foundQuestion = null;
+
+        // Search through all loaded questions in memory
+        for (const [pid, qList] of Object.entries(questions)) {
+          if (!Array.isArray(qList)) continue;
+          for (const q of qList) {
+            const qIdStr = String(q.id || '');
+            const qSourceId = norm(q.source_id || q.sourceId || '');
+            const qAr = norm(q.textAr || '');
+            const qEn = norm(q.textEn || '');
+
+            let match = false;
+            // 1. Match ID
+            if (nTargetId && (qIdStr === targetQId || qSourceId === nTargetId || nTargetId.includes(qIdStr) || (q.code && norm(q.code).includes(nTargetId)))) {
+              match = true;
+            }
+            // 2. Match Question Text
+            if (!match && nTargetText && nTargetText.length >= 4) {
+              if ((qAr && (qAr.includes(nTargetText) || nTargetText.includes(qAr))) ||
+                  (qEn && (qEn.includes(nTargetText) || nTargetText.includes(qEn)))) {
+                match = true;
+              }
+            }
+
+            if (match) {
+              foundQuestion = q;
+              foundPartId = pid;
+              break;
+            }
+          }
+          if (foundQuestion) break;
+        }
+
+        // If not found in questions, match by Course Name in subjects
+        if (!foundPartId && nTargetCourse) {
+          const matchedSubject = subjects.find(s => {
+            const sn = norm(s.name);
+            return sn && (sn.includes(nTargetCourse) || nTargetCourse.includes(sn));
+          });
+          if (matchedSubject && Array.isArray(parts[matchedSubject.id]) && parts[matchedSubject.id].length > 0) {
+            foundSubjId = matchedSubject.id;
+            foundPartId = parts[matchedSubject.id][0].id;
+          }
+        }
+
+        if (foundPartId) {
+          // Locate parent subject
+          if (!foundSubjId) {
+            for (const [sId, pList] of Object.entries(parts)) {
+              if (Array.isArray(pList) && pList.some(p => String(p.id) === String(foundPartId))) {
+                foundSubjId = sId;
+                break;
+              }
+            }
+          }
+
+          if (foundSubjId) state.subjectId = foundSubjId;
+          state.partId = foundPartId;
+          await loadQuestionsForPart(foundPartId);
+          renderAll();
+
+          if (foundQuestion) {
+            setTimeout(() => {
+              openModal(foundQuestion.id);
+              toast(`🎯 تم الانتقال المباشر وتحديد السؤال المبلغ عنه: #${foundQuestion.id}`);
+            }, 350);
+          } else if (targetQText) {
+            questionSearchTerm = targetQText.slice(0, 30);
+            const qSearchInput = $('#qSearchInput');
+            if (qSearchInput) qSearchInput.value = questionSearchTerm;
+            renderQuestions();
+            toast(`🔍 تم فتح كويز المادة وتطبيق البحث عن السؤال المبلغ عنه: "${targetQText.slice(0, 25)}..."`);
+          }
+        }
+      })();
     })();
   </script>
 

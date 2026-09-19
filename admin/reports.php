@@ -402,14 +402,12 @@ require __DIR__ . '/_header.php';
                                     🛠️ حل/معالجة
                                 </button>
 
-                                <?php if (!empty($rp['question_id'])): ?>
-                                    <!-- رابط بنك الأسئلة -->
-                                    <a href="tests.php?question_id=<?= urlencode($rp['question_id']) ?>&report_id=<?= $rp['id'] ?>"
-                                        target="_blank" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; text-decoration: none;"
-                                        title="معاينة وتعديل في بنك الأسئلة">
-                                        📝 السؤال
-                                    </a>
-                                <?php endif; ?>
+                                <!-- رابط بنك الأسئلة المباشر -->
+                                <a href="tests.php?question_id=<?= urlencode($rp['question_id'] ?? '') ?>&q_text=<?= urlencode($rp['question_title'] ?? '') ?>&course=<?= urlencode($rp['course_name'] ?? '') ?>"
+                                    target="_blank" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; text-decoration: none;"
+                                    title="الانتقال المباشر وتعديل السؤال في بنك الأسئلة">
+                                    📝 السؤال ↗
+                                </a>
 
                                 <!-- زر الحذف -->
                                 <form method="POST" style="display:inline;"
@@ -535,6 +533,15 @@ require __DIR__ . '/_header.php';
                         <strong style="color:#0f172a;">خيارات السؤال:</strong>
                         <div id="res_options_list" style="margin-top:4px;"></div>
                     </div>
+
+                    <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #cbd5e1; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                        <span style="font-size:12px; color:#0369a1; font-weight:700;">💡 لتعديل نص السؤال أو خياراته أو إجابته:</span>
+                        <a id="res_edit_question_btn" href="tests.php" target="_blank" class="btn-primary"
+                            style="background:#0284c7; color:#fff; text-decoration:none; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(2,132,199,.25);">
+                            <span>✏️ فتح وتعديل السؤال في بنك الأسئلة</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        </a>
+                    </div>
                 </div>
 
                 <div>
@@ -608,6 +615,13 @@ require __DIR__ . '/_header.php';
             }
         } else {
             optBox.style.display = 'none';
+        }
+
+        const editBtn = document.getElementById('res_edit_question_btn');
+        if (editBtn) {
+            editBtn.href = 'tests.php?question_id=' + encodeURIComponent(r.question_id || '') + 
+                '&q_text=' + encodeURIComponent(r.question_title || '') + 
+                '&course=' + encodeURIComponent(r.course_name || '');
         }
 
         document.getElementById('res_notes').value = r.resolution_notes || '';
