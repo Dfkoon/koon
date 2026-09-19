@@ -107,7 +107,7 @@ $db->exec("
     );
 ");
 
-// هجرة تلقائية لأعمدة quiz_parts لضمان عدم حدوث خطأ no such column: source_subject_id
+// هجرة تلقائية لأعمدة quiz_parts و quiz_questions لضمان عدم حدوث خطأ no such column
 try {
   $existingPartCols = $db->query("PRAGMA table_info(quiz_parts)")->fetchAll(PDO::FETCH_COLUMN, 1);
   if (!in_array('source_id', $existingPartCols, true)) {
@@ -115,6 +115,29 @@ try {
   }
   if (!in_array('source_subject_id', $existingPartCols, true)) {
     $db->exec("ALTER TABLE quiz_parts ADD COLUMN source_subject_id TEXT;");
+  }
+
+  $existingQCols = $db->query("PRAGMA table_info(quiz_questions)")->fetchAll(PDO::FETCH_COLUMN, 1);
+  $neededCols = [
+    'source_id' => 'TEXT',
+    'source_part_id' => 'TEXT',
+    'source_subject_id' => 'TEXT',
+    'part_slug' => 'TEXT',
+    'subject_slug' => 'TEXT',
+    'cat' => 'TEXT',
+    'points' => 'REAL DEFAULT 1',
+    'type' => 'TEXT',
+    'diff' => 'TEXT',
+    'text_ar' => 'TEXT',
+    'text_en' => 'TEXT',
+    'code' => 'TEXT',
+    'explanation_ar' => 'TEXT',
+    'model_answer' => 'TEXT',
+  ];
+  foreach ($neededCols as $col => $colDef) {
+    if (!in_array($col, $existingQCols, true)) {
+      $db->exec("ALTER TABLE quiz_questions ADD COLUMN {$col} {$colDef};");
+    }
   }
 } catch (Throwable $migrationErr) {}
 
@@ -555,7 +578,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   require_once __DIR__ . '/../includes/sync_frontend_live.php';
 
   $action = $input['action'] ?? '';
-  header('Content-Type: application/json; charset=utf-8');
+  ob_start();
+
+  if (!function_exists('send_json_response')) {
+    function send_json_response(array $data, int $statusCode = 200): void {
+      while (ob_get_level() > 0) {
+        ob_end_clean();
+      }
+      http_response_code($statusCode);
+      header('Content-Type: application/json; charset=utf-8');
+      echo json_encode($data, JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+  }
 
   try {
     if ($action === 'save_question') {
@@ -585,17 +620,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       }
 
-      $partRow = $db->prepare('SELECT id, slug, subject_id, source_subject_id FROM quiz_parts WHERE slug = ? OR id = ? LIMIT 1');
-      $partRow->execute([$partId, $partId]);
-      $partInfo = $partRow->fetch(PDO::FETCH_ASSOC) ?: ['id' => 1, 'slug' => (string) $partId, 'subject_id' => '', 'source_subject_id' => ''];
+      try {
+        $partRow = $db->prepare('SELECT id, slug, subject_id, source_subject_id FROM quiz_parts WHERE slug = ? OR id = ? LIMIT 1');
+        $partRow->execute([$partId, $partId]);
+        $partInfo = $partRow->fetch(PDO::FETCH_ASSOC) ?: ['id' => 1, 'slug' => (string) $partId, 'subject_id' => '', 'source_subject_id' => ''];
+      } catch (Throwable $pe) {
+        $partRow = $db->prepare('SELECT id, slug, subject_id FROM quiz_parts WHERE slug = ? OR id = ? LIMIT 1');
+        $partRow->execute([$partId, $partId]);
+        $partInfo = $partRow->fetch(PDO::FETCH_ASSOC) ?: ['id' => 1, 'slug' => (string) $partId, 'subject_id' => ''];
+        $partInfo['source_subject_id'] = '';
+      }
       $intPartId = (int) ($partInfo['id'] ?: 1);
       $resolvedPartSlug = trim((string) ($partId ?: ($partInfo['slug'] ?? '')));
       $resolvedSubjectId = trim((string) ($subjectId ?: ($partInfo['source_subject_id'] ?: ($partInfo['subject_id'] ?? ''))));
 
       $duplicateId = find_duplicate_quiz_question_id($db, $resolvedPartSlug, $textAr, $textEn, $id);
       if ($duplicateId !== null) {
-        echo json_encode(['success' => false, 'error' => 'هذا السؤال موجود مسبقاً في نفس الاختبار.', 'duplicate_id' => $duplicateId], JSON_UNESCAPED_UNICODE);
-        exit;
+        send_json_response(['success' => false, 'error' => 'هذا السؤال موجود مسبقاً في نفس الاختبار.', 'duplicate_id' => $duplicateId]);
       }
 
       if ($id > 0) {
@@ -632,11 +673,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           $modelAnswer,
           $id
         ]);
-        $questionStmt = $db->prepare('SELECT * FROM quiz_questions WHERE id = ? LIMIT 1');
-        $questionStmt->execute([$id]);
-        $firestoreSynced = firestoreSyncQuestionToFirestore($db, $questionStmt->fetch(PDO::FETCH_ASSOC));
-        sync_quizzes_to_frontend($db);
-        echo json_encode(['success' => true, 'id' => $id, 'firestore_synced' => $firestoreSynced]);
+        $firestoreSynced = false;
+        try {
+          $questionStmt = $db->prepare('SELECT * FROM quiz_questions WHERE id = ? LIMIT 1');
+          $questionStmt->execute([$id]);
+          $qRow = $questionStmt->fetch(PDO::FETCH_ASSOC);
+          if ($qRow) {
+            $firestoreSynced = firestoreSyncQuestionToFirestore($db, $qRow);
+          }
+        } catch (Throwable $fsE) {
+          error_log('Firestore sync error on update question: ' . $fsE->getMessage());
+        }
+        try {
+          sync_quizzes_to_frontend($db);
+        } catch (Throwable $syncE) {
+          error_log('Sync quizzes to frontend error: ' . $syncE->getMessage());
+        }
+        send_json_response(['success' => true, 'id' => $id, 'firestore_synced' => $firestoreSynced]);
       } else {
         $stmt = $db->prepare('INSERT INTO quiz_questions (
                     part_id, question_text, question_text_en, question_type, options_json, correct_answer,
@@ -675,13 +728,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           $modelAnswer
         ]);
         $newId = (int) $db->lastInsertId();
-        $questionStmt = $db->prepare('SELECT * FROM quiz_questions WHERE id = ? LIMIT 1');
-        $questionStmt->execute([$newId]);
-        $firestoreSynced = firestoreSyncQuestionToFirestore($db, $questionStmt->fetch(PDO::FETCH_ASSOC));
-        sync_quizzes_to_frontend($db);
-        echo json_encode(['success' => true, 'id' => $newId, 'firestore_synced' => $firestoreSynced]);
+        $firestoreSynced = false;
+        try {
+          $questionStmt = $db->prepare('SELECT * FROM quiz_questions WHERE id = ? LIMIT 1');
+          $questionStmt->execute([$newId]);
+          $qRow = $questionStmt->fetch(PDO::FETCH_ASSOC);
+          if ($qRow) {
+            $firestoreSynced = firestoreSyncQuestionToFirestore($db, $qRow);
+          }
+        } catch (Throwable $fsE) {
+          error_log('Firestore sync error on insert question: ' . $fsE->getMessage());
+        }
+        try {
+          sync_quizzes_to_frontend($db);
+        } catch (Throwable $syncE) {
+          error_log('Sync quizzes to frontend error: ' . $syncE->getMessage());
+        }
+        send_json_response(['success' => true, 'id' => $newId, 'firestore_synced' => $firestoreSynced]);
       }
-      exit;
     }
 
     if ($action === 'delete_question') {
@@ -938,12 +1002,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       exit;
     }
 
-    echo json_encode(['success' => false, 'error' => 'Unknown action']);
-    exit;
-  } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-    exit;
+    send_json_response(['success' => false, 'error' => 'Unknown action']);
+  } catch (Throwable $e) {
+    send_json_response(['success' => false, 'error' => $e->getMessage()], 500);
   }
 }
 
@@ -3292,7 +3353,17 @@ require __DIR__ . '/_header.php';
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, csrf: csrfToken, ...payload })
           });
-          return await res.json();
+          const text = await res.text();
+          try {
+            return JSON.parse(text);
+          } catch (pe) {
+            console.error('Non-JSON response:', text);
+            const cleanText = text.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+            return {
+              success: false,
+              error: cleanText ? ('خطأ في الاستجابة: ' + cleanText.slice(0, 150)) : ('استجابة غير صالحة من الخادم (كود ' + res.status + ')')
+            };
+          }
         } catch (e) {
           console.error('API Error:', e);
           return { success: false, error: e.message };
