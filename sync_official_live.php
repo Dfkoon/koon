@@ -237,8 +237,8 @@ function pull_official_coordinators(PDO $db): int
          ON CONFLICT(id) DO UPDATE SET
             name = excluded.name, phone = excluded.phone, gender = excluded.gender,
             faculty = excluded.faculty, major = excluded.major, role_type = excluded.role_type,
-            bio = excluded.bio, tasks_count = excluded.tasks_count, tasks_completed = excluded.tasks_completed,
-            is_active = excluded.is_active, joined_at = excluded.joined_at, notes = excluded.notes'
+            bio = excluded.bio, tasks_count = excluded.tasks_count, tasks_completed = excluded.tasks_completed
+            -- لا نكتب فوق is_active أو notes حتى لا تُعيد السحابة إلغاء تفعيل المنسقين الذين فعّلهم الأدمن محلياً'
     );
     $deletedCoordinator = $db->prepare("SELECT 1 FROM deleted_records WHERE source_table = 'coordinators' AND source_id = ? LIMIT 1");
     $synced = 0;

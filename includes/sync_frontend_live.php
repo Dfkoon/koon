@@ -1330,12 +1330,28 @@ function pull_pending_donations_from_firestore(?PDO $db = null): int
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 
     $stmtUpdate = $db->prepare('UPDATE material_exchanges SET 
-        donor_name = ?, donor_phone_alt = ?, donor_email = ?, delivery_week = ?, description = ?,
-        status = ?, booker_name = ?, booker_phone = ?, booker_gender = ?, booked_at = ?,
-        data_sharing_consent = ?,
-        delivery_status = CASE WHEN ? = \'completed\' THEN \'completed\' WHEN ? = \'reserved\' THEN \'scheduled\' ELSE delivery_status END,
+        donor_name = COALESCE(NULLIF(?, ""), donor_name),
+        donor_phone_alt = COALESCE(NULLIF(?, ""), donor_phone_alt),
+        donor_email = COALESCE(NULLIF(?, ""), donor_email),
+        delivery_week = COALESCE(NULLIF(?, ""), delivery_week),
+        description = COALESCE(NULLIF(?, ""), description),
+        status = CASE 
+            WHEN status IN (\'completed\', \'cancelled\', \'scheduled\') THEN status 
+            ELSE ? 
+        END,
+        booker_name = COALESCE(?, booker_name),
+        booker_phone = COALESCE(?, booker_phone),
+        booker_gender = COALESCE(?, booker_gender),
+        booked_at = COALESCE(?, booked_at),
+        data_sharing_consent = COALESCE(?, data_sharing_consent),
+        delivery_status = CASE 
+            WHEN delivery_status IN (\'completed\', \'delivered\', \'scheduled\') THEN delivery_status
+            WHEN ? = \'completed\' THEN \'completed\' 
+            WHEN ? = \'reserved\' THEN \'scheduled\' 
+            ELSE delivery_status 
+        END,
         updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?');
+        WHERE id = ? AND archive_key IS NULL');
 
     $importedCount = 0;
 
