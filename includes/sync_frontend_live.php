@@ -90,6 +90,290 @@ function firestoreRequestHeaders(): string
     return "Content-Type: application/json\r\n" . ($token ? "Authorization: Bearer {$token}\r\n" : '');
 }
 
+function ensure_question_reports_columns(PDO $db): void
+{
+    $columns = $db->query('PRAGMA table_info(question_reports)')->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (!in_array('firestore_id', $columns, true)) {
+        $db->exec('ALTER TABLE question_reports ADD COLUMN firestore_id TEXT');
+        $db->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_qr_firestore_id ON question_reports(firestore_id)');
+    }
+    if (!in_array('options_json', $columns, true)) {
+        $db->exec('ALTER TABLE question_reports ADD COLUMN options_json TEXT');
+    }
+    if (!in_array('correct_answer', $columns, true)) {
+        $db->exec('ALTER TABLE question_reports ADD COLUMN correct_answer TEXT');
+    }
+    if (!in_array('quiz_id', $columns, true)) {
+        $db->exec('ALTER TABLE question_reports ADD COLUMN quiz_id TEXT');
+    }
+}
+
+function pull_question_reports_from_firestore(?PDO $db = null): int
+{
+    $db ??= get_db();
+    ensure_question_reports_columns($db);
+
+    $url = firestoreRequestUrl('question_reports?pageSize=300');
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'header' => firestoreRequestHeaders(),
+            'timeout' => 5,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $response = @file_get_contents($url, false, $context);
+    $payload = json_decode(is_string($response) ? $response : '', true);
+    if (!is_array($payload) || empty($payload['documents'])) {
+        return 0;
+    }
+
+    $decodeFsValue = static function ($field) use (&$decodeFsValue): mixed {
+        if (!is_array($field)) return $field;
+        foreach (['stringValue', 'integerValue', 'doubleValue', 'booleanValue', 'timestampValue'] as $type) {
+            if (array_key_exists($type, $field)) return $field[$type];
+        }
+        if (isset($field['arrayValue']['values'])) {
+            $arr = [];
+            foreach ($field['arrayValue']['values'] as $v) $arr[] = $decodeFsValue($v);
+            return $arr;
+        }
+        if (isset($field['mapValue']['fields'])) {
+            $m = [];
+            foreach ($field['mapValue']['fields'] as $k => $v) $m[$k] = $decodeFsValue($v);
+            return $m;
+        }
+        return null;
+    };
+
+    $synced = 0;
+    foreach ($payload['documents'] as $document) {
+        $firestoreId = basename((string) ($document['name'] ?? ''));
+        if ($firestoreId === '') continue;
+
+        $rawFields = $document['fields'] ?? [];
+        $fields = [];
+        foreach ($rawFields as $key => $val) {
+            $fields[$key] = $decodeFsValue($val);
+        }
+
+        // Title and question text
+        $qTitle = trim((string) ($fields['questionAr'] ?? '')) ?: trim((string) ($fields['questionEn'] ?? '')) ?: trim((string) ($fields['text'] ?? '')) ?: 'بلاغ سؤال';
+        $qTitle = preg_replace('/^Report:\s*(\[[^\]]+\]\s*)?/u', '', $qTitle);
+
+        $courseName = trim((string) ($fields['subjectName'] ?? '')) ?: trim((string) ($fields['quizTitle'] ?? '')) ?: trim((string) ($fields['courseName'] ?? '')) ?: 'عام';
+        $qId = trim((string) ($fields['questionId'] ?? ''));
+        $quizId = trim((string) ($fields['quizId'] ?? ''));
+        $reporterName = trim((string) ($fields['reporterName'] ?? '')) ?: 'طالب';
+        $reporterContact = trim((string) ($fields['reporterContact'] ?? ''));
+        
+        $reportType = trim((string) ($fields['reportType'] ?? 'wrong_answer'));
+        if ($reportType === 'incorrect_answer') $reportType = 'wrong_answer';
+
+        $reason = trim((string) ($fields['reason'] ?? '')) ?: trim((string) ($fields['studentNote'] ?? '')) ?: 'ملاحظة حول السؤال';
+        $details = trim((string) ($fields['studentNote'] ?? '')) ?: trim((string) ($fields['details'] ?? ''));
+        $status = trim((string) ($fields['status'] ?? 'pending')) ?: 'pending';
+        $correctAnswer = trim((string) ($fields['correctAnswer'] ?? ''));
+        $optionsJson = !empty($fields['options']) ? json_encode($fields['options'], JSON_UNESCAPED_UNICODE) : null;
+
+        $createdAt = date('Y-m-d H:i:s');
+        if (!empty($fields['createdAt'])) {
+            try {
+                $createdAt = (new DateTimeImmutable((string) $fields['createdAt']))->format('Y-m-d H:i:s');
+            } catch (Throwable) {}
+        } elseif (!empty($document['createTime'])) {
+            try {
+                $createdAt = (new DateTimeImmutable((string) $document['createTime']))->format('Y-m-d H:i:s');
+            } catch (Throwable) {}
+        }
+
+        $stmt = $db->prepare('SELECT id, status FROM question_reports WHERE firestore_id = ? LIMIT 1');
+        $stmt->execute([$firestoreId]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing) {
+            $update = $db->prepare('UPDATE question_reports SET question_title = ?, question_id = ?, course_name = ?, report_type = ?, reason = ?, details = ?, status = COALESCE(?, status), options_json = ?, correct_answer = ?, quiz_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+            $update->execute([$qTitle, $qId, $courseName, $reportType, $reason, $details, $status, $optionsJson, $correctAnswer, $quizId, $existing['id']]);
+        } else {
+            $insert = $db->prepare('INSERT INTO question_reports (reporter_name, reporter_contact, question_title, question_id, course_name, report_type, reason, details, status, created_at, updated_at, firestore_id, options_json, correct_answer, quiz_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)');
+            $insert->execute([$reporterName, $reporterContact, $qTitle, $qId, $courseName, $reportType, $reason, $details, $status, $createdAt, $firestoreId, $optionsJson, $correctAnswer, $quizId]);
+            $synced++;
+
+            // Create admin notification
+            if (function_exists('create_admin_notification')) {
+                create_admin_notification('question_report', 'بلاغ جديد عن سؤال', "وصل بلاغ جديد في مساق $courseName حول: $qTitle", 'reports.php', 'question_reports:' . $firestoreId);
+            }
+        }
+    }
+    return $synced;
+}
+
+/**
+ * تحديث حالة البلاغ في Firestore السحابية فور تعديلها من لوحة التحكم
+ */
+function update_question_report_in_firestore(string $firestoreId, string $status, string $notes = '', string $resolvedBy = ''): bool
+{
+    if ($firestoreId === '') {
+        return false;
+    }
+
+    $url = firestoreRequestUrl('question_reports/' . rawurlencode($firestoreId) . '?updateMask.fieldPaths=status&updateMask.fieldPaths=resolutionNotes&updateMask.fieldPaths=resolvedBy&updateMask.fieldPaths=updatedAt');
+    $headers = firestoreRequestHeaders();
+
+    $fields = [
+        'status' => ['stringValue' => $status],
+        'resolutionNotes' => ['stringValue' => $notes],
+        'resolvedBy' => ['stringValue' => $resolvedBy],
+        'updatedAt' => ['stringValue' => date('c')],
+    ];
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'PATCH',
+            'header' => $headers,
+            'content' => json_encode(['fields' => $fields], JSON_UNESCAPED_UNICODE),
+            'timeout' => 4,
+            'ignore_errors' => true,
+        ]
+    ]);
+
+    $res = @file_get_contents($url, false, $context);
+    return $res !== false;
+}
+
+/**
+ * حذف بلاغ من Firestore السحابية عند حذفه من لوحة التحكم
+ */
+function delete_question_report_in_firestore(string $firestoreId): bool
+{
+    if ($firestoreId === '') return false;
+    $url = firestoreRequestUrl('question_reports/' . rawurlencode($firestoreId));
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'DELETE',
+            'header' => firestoreRequestHeaders(),
+            'timeout' => 4,
+            'ignore_errors' => true,
+        ]
+    ]);
+    $res = @file_get_contents($url, false, $context);
+    return $res !== false;
+}
+
+/**
+ * جلب وتحديث تحليلات الزيارات والمشاهدات الحية من Firestore إلى SQLite
+ */
+function pull_live_analytics_from_firestore(?PDO $db = null, int $pageSize = 300): array
+{
+    $db ??= get_db();
+    $db->exec('CREATE TABLE IF NOT EXISTS analytics_events (id INTEGER PRIMARY KEY AUTOINCREMENT, source_id TEXT UNIQUE NOT NULL, path TEXT NOT NULL, event_type TEXT NOT NULL DEFAULT "visit", visitor_key TEXT, user_agent TEXT, occurred_at TEXT NOT NULL)');
+    $db->exec('CREATE TABLE IF NOT EXISTS page_views (id INTEGER PRIMARY KEY AUTOINCREMENT, page_name TEXT, slug TEXT UNIQUE, views_count INTEGER DEFAULT 0, unique_visitors INTEGER DEFAULT 0, category TEXT, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
+    $db->exec('CREATE TABLE IF NOT EXISTS dashboard_metrics (metric_key TEXT PRIMARY KEY, metric_value INTEGER NOT NULL, source TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)');
+
+    $url = firestoreRequestUrl('page_views?pageSize=' . $pageSize);
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'header' => firestoreRequestHeaders(),
+            'timeout' => 5,
+            'ignore_errors' => true,
+        ]
+    ]);
+
+    $response = @file_get_contents($url, false, $context);
+    $payload = json_decode(is_string($response) ? $response : '', true);
+    if (!is_array($payload) || empty($payload['documents'])) {
+        return ['new_events' => 0, 'total_events' => (int) $db->query('SELECT COUNT(*) FROM analytics_events')->fetchColumn()];
+    }
+
+    $decodeFsVal = static function (array $value): mixed {
+        foreach (['stringValue', 'integerValue', 'doubleValue', 'booleanValue', 'timestampValue'] as $type) {
+            if (array_key_exists($type, $value)) return $value[$type];
+        }
+        return null;
+    };
+
+    $newCount = 0;
+    $eventInsert = $db->prepare('INSERT OR IGNORE INTO analytics_events (source_id, path, event_type, visitor_key, user_agent, occurred_at) VALUES (?, ?, ?, ?, ?, ?)');
+
+    foreach ($payload['documents'] as $document) {
+        $sourceId = basename((string) ($document['name'] ?? ''));
+        if ($sourceId === '') continue;
+
+        $rawFields = $document['fields'] ?? [];
+        $fields = [];
+        foreach ($rawFields as $k => $v) {
+            $fields[$k] = $decodeFsVal($v);
+        }
+
+        $path = (string) ($fields['path'] ?? '/');
+        $visitor = trim((string) ($fields['studentPhone'] ?? ''));
+        if ($visitor === '') {
+            $visitor = trim((string) ($fields['studentName'] ?? ''));
+        }
+        if ($visitor === '') {
+            $visitor = 'Guest';
+        }
+
+        $occurredAt = date('Y-m-d H:i:s');
+        if (!empty($fields['timestamp'])) {
+            try {
+                $occurredAt = (new DateTimeImmutable((string) $fields['timestamp']))->format('Y-m-d H:i:s');
+            } catch (Throwable) {}
+        } elseif (!empty($document['createTime'])) {
+            try {
+                $occurredAt = (new DateTimeImmutable((string) $document['createTime']))->format('Y-m-d H:i:s');
+            } catch (Throwable) {}
+        }
+
+        $eventType = (string) ($fields['type'] ?? 'visit');
+        $userAgent = (string) ($fields['userAgent'] ?? '');
+
+        $eventInsert->execute([$sourceId, $path, $eventType, $visitor, $userAgent, $occurredAt]);
+        if ($eventInsert->rowCount() > 0) {
+            $newCount++;
+        }
+    }
+
+    // Recalculate page_views table if new events arrived
+    if ($newCount > 0 || (int) $db->query('SELECT COUNT(*) FROM page_views')->fetchColumn() === 0) {
+        $allEvents = $db->query('SELECT path, visitor_key, source_id FROM analytics_events')->fetchAll(PDO::FETCH_ASSOC);
+        $pages = [];
+        foreach ($allEvents as $ev) {
+            $p = $ev['path'] ?: '/';
+            $v = $ev['visitor_key'] ?: $ev['source_id'];
+            $pages[$p] ??= ['views' => 0, 'visitors' => []];
+            $pages[$p]['views']++;
+            $pages[$p]['visitors'][$v] = true;
+        }
+
+        $pageInsert = $db->prepare('INSERT INTO page_views (page_name, slug, views_count, unique_visitors, category, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(slug) DO UPDATE SET views_count = excluded.views_count, unique_visitors = excluded.unique_visitors, updated_at = CURRENT_TIMESTAMP');
+        foreach ($pages as $p => $pData) {
+            $meta = function_exists('normalize_page_analytics') ? normalize_page_analytics((string) $p) : ['page_name' => 'صفحة', 'slug' => $p];
+            $category = str_starts_with((string) $p, '/admin') ? 'لوحة التحكم' : 'الموقع الرسمي';
+            $pageInsert->execute([$meta['page_name'], $meta['slug'], $pData['views'], count($pData['visitors']), $category]);
+        }
+    }
+
+    // Update dashboard_metrics cache
+    $totalVisits = (int) $db->query("SELECT COALESCE(SUM(views_count), 0) FROM page_views")->fetchColumn();
+    $matOpens = (int) $db->query("SELECT COUNT(*) FROM analytics_events WHERE event_type = 'material_view'")->fetchColumn();
+    $quizComps = (int) $db->query("SELECT COUNT(*) FROM analytics_events WHERE event_type = 'quiz_completed'")->fetchColumn();
+
+    $saveMetric = $db->prepare("INSERT INTO dashboard_metrics (metric_key, metric_value, source, updated_at) VALUES (?, ?, 'firestore_live', CURRENT_TIMESTAMP) ON CONFLICT(metric_key) DO UPDATE SET metric_value = excluded.metric_value, updated_at = CURRENT_TIMESTAMP");
+    $saveMetric->execute(['total_visits', $totalVisits]);
+    $saveMetric->execute(['material_opens', $matOpens]);
+    $saveMetric->execute(['quiz_completions', $quizComps]);
+
+    return [
+        'new_events' => $newCount,
+        'total_events' => (int) $db->query('SELECT COUNT(*) FROM analytics_events')->fetchColumn(),
+        'total_visits' => $totalVisits,
+        'material_opens' => $matOpens,
+        'quiz_completions' => $quizComps,
+    ];
+}
+
 function firestoreEncodeValue(mixed $val): array
 {
     if (is_null($val)) {

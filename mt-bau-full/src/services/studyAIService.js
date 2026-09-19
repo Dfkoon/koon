@@ -21,22 +21,29 @@ const buildQuizPrompt = (text, lang, count, type) => {
 
     const typeInstructions = {
         mcq: lang === 'ar'
-            ? `أنشئ ${count} سؤال اختيار متعدد (MCQ). لكل سؤال: نص السؤال، 4 يارات (A/B/C/D)، والإجاب الصحيح.`
-            : `Generate ${count} multiple choice questions (MCQ). For each: question text, 4 options (A/B/C/D), correct answer.`,
+        ? `عالج ${count} سؤال اختيار من متعدد (MCQ). أعد صياغة نص السؤال فقط عند الحاجة، وحافظ على ترتيب الأسئلة والخيارات والإجابة الصحيحة كما وردت. إذا لم توجد خيارات، أنشئ 4 خيارات مع إجابة صحيحة مستندة إلى النص.`
+        : `Process ${count} multiple-choice questions (MCQ). Rephrase only the question wording when needed, preserving the original order, options, and correct answer. If options are missing, create 4 options and one text-grounded correct answer.`,
         tf: lang === 'ar'
-            ? `أنشئ ${count} سؤال صح أو خطأ. لكل سؤال: عبار وإجاب (صح/خطأ) مع شرح قصير.`
-            : `Generate ${count} True/False questions. For each: statement, answer (True/False), brief explanation.`,
+        ? `عالج ${count} سؤال صح أو خطأ. أعد صياغة العبارات بوضوح مع الحفاظ على ترتيبها والإجابة الصحيحة كما وردت، وأضف شرحاً قصيراً.`
+        : `Process ${count} True/False questions. Rephrase the statements clearly while preserving their original order and correct answers, and add a brief explanation.`,
         essay: lang === 'ar'
-            ? `أنشئ ${count} سؤال مقالي. لكل سؤال: نص السؤال ونموذج إجاب كامل.`
-            : `Generate ${count} essay questions. For each: question text and a complete model answer.`,
+        ? `عالج ${count} سؤالاً مقاليًا. أعد صياغة الأسئلة مع الحفاظ على ترتيبها، ثم أضف نموذج إجابة دقيقاً مستنداً إلى النص.`
+        : `Process ${count} essay questions. Rephrase the questions while preserving their original order, then add an accurate model answer grounded in the text.`,
         mixed: lang === 'ar'
-            ? `أنشئ ${count} سؤال متنوع (مزيج من MCQ وصح/خطأ ومقالي). وضح نوع كل سؤال.`
-            : `Generate ${count} mixed questions (mix of MCQ, True/False, Essay). Label each type.`,
+        ? `عالج ${count} سؤالاً متنوعاً حسب الأنواع الموجودة في النص. حافظ على ترتيب الأسئلة والخيارات والإجابات الصحيحة، ووضح نوع كل سؤال.`
+        : `Process ${count} mixed questions using the types present in the input. Preserve question order, options, and correct answers, and label each type.`,
     };
 
     return `${langNote}
 
 ${typeInstructions[type]}
+
+  قواعد مهمة:
+  - استخدم الأسئلة المدخلة كمصدر أساسي، ولا تغيّر ترتيبها.
+  - لا تغيّر أي خيار أو إجابة صحيحة مذكورة في النص.
+  - إذا كان العدد المطلوب أكبر من عدد الأسئلة المدخلة، أكمل بأسئلة جديدة بعد الأسئلة الأصلية فقط.
+  - إذا كان العدد المطلوب أقل، استخدم أول الأسئلة حسب ترتيبها.
+  - أعد ${count} سؤالاً بالضبط.
 
 أرجع النتيج بصيغ JSON فقط بدون أي نص ارجه. الصيغ:
 {

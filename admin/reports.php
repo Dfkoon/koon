@@ -5,10 +5,26 @@
 $page_key = 'reports';
 $page_title = 'إدارة البلاغات والأخطاء';
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/sync_frontend_live.php';
+
 if (empty($_SESSION['authenticated'])) {
     redirect('../login.php');
 }
 $db = get_db();
+
+// مزامنة حية تلقائية من Firestore عند فتح الصفحة أو عند طلب التحديث
+$syncCount = 0;
+$doManualSync = isset($_GET['sync']) && $_GET['sync'] === '1';
+$lastReportsSync = $_SESSION['last_reports_fs_sync'] ?? 0;
+
+if ($doManualSync || (time() - $lastReportsSync) >= 10) {
+    try {
+        $syncCount = pull_question_reports_from_firestore($db);
+        $_SESSION['last_reports_fs_sync'] = time();
+    } catch (Throwable $syncError) {
+        // Continue smoothly if network glitch
+    }
+}
 
 $reportTypes = [
     'wrong_answer' => ['label' => '❌ إجابة نموذجية خاطئة', 'badge' => 'badge-cancelled'],
@@ -26,6 +42,9 @@ $statusLabels = [
 ];
 
 $flash = null;
+if ($doManualSync) {
+    $flash = ['type' => 'success', 'msg' => 'تمت المزامنة الحية مع السحابة وتحديث البلاغات بنجاح ⚡'];
+}
 
 // معالجة الإجراءات
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -68,17 +87,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $resNotes = trim($_POST['resolution_notes'] ?? '');
             $adminUser = $_SESSION['username'] ?? 'المدير العام';
 
+            $getFs = $db->prepare("SELECT firestore_id FROM question_reports WHERE id = ?");
+            $getFs->execute([$id]);
+            $fsId = (string) $getFs->fetchColumn();
+
             $stmt = $db->prepare("UPDATE question_reports SET status = ?, resolution_notes = ?, resolved_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
             $stmt->execute([$status, $resNotes, $adminUser, $id]);
 
+            // مزامنة الحالة مع السحابة في الوقت الفعلي
+            if ($fsId !== '') {
+                update_question_report_in_firestore($fsId, $status, $resNotes, $adminUser);
+            }
+
             log_activity("معالجة وتحديث حالة البلاغ #$id إلى ($status)", 'reports');
-            $flash = ['type' => 'success', 'msg' => 'تم تحديث حالة البلاغ وحفظ تقرير المعالجة'];
+            $flash = ['type' => 'success', 'msg' => 'تم تحديث حالة البلاغ ومزامنته مع السحابة بنجاح ✅'];
         }
 
         // 3. حذف بلاغ
         elseif ($action === 'delete') {
             $id = (int) ($_POST['id'] ?? 0);
+
+            $getFs = $db->prepare("SELECT firestore_id FROM question_reports WHERE id = ?");
+            $getFs->execute([$id]);
+            $fsId = (string) $getFs->fetchColumn();
+
             archive_delete('question_reports', $id, 'حذف بلاغ');
+
+            if ($fsId !== '') {
+                delete_question_report_in_firestore($fsId);
+            }
 
             log_activity("حذف البلاغ #$id", 'reports');
             $flash = ['type' => 'success', 'msg' => 'تم حذف البلاغ نهائياً 🗑️'];
@@ -206,22 +243,37 @@ require __DIR__ . '/_header.php';
 <div class="panel-box">
     <div class="panel-box-header"
         style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
             <div class="sidebar-logo" style="width: 32px; height: 32px; font-size: 16px;">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                     <line x1="4" y1="22" x2="4" y2="15" />
                 </svg>
             </div>
-            <h3 class="panel-box-title" style="margin:0;">سجل بلاغات الأسئلة والأخطاء الأكاديمية</h3>
+            <div>
+                <h3 class="panel-box-title" style="margin:0;">سجل بلاغات الأسئلة والأخطاء الأكاديمية</h3>
+                <span style="font-size:11px; color:#64748b;">مربوط مباشرة مع بنك الأسئلة واختبارات الطلاب</span>
+            </div>
         </div>
-        <button type="button" class="btn-primary" onclick="openAddModal()">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            تسجيل بلاغ يدوي
-        </button>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="display:inline-flex; align-items:center; gap:6px; font-size:11px; background:#ecfdf5; color:#047857; padding:4px 10px; border-radius:20px; font-weight:700; border:1px solid #a7f3d0;">
+                <span style="width:7px; height:7px; border-radius:50%; background:#10b981; display:inline-block; box-shadow:0 0 0 2px rgba(16,185,129,0.3);"></span>
+                تزامن سحابي مباشر
+            </span>
+            <a href="reports.php?sync=1" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 12px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+                مزامنة حية الآن ⚡
+            </a>
+            <button type="button" class="btn-primary" onclick="openAddModal()" style="display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 12px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                تسجيل بلاغ يدوي
+            </button>
+        </div>
     </div>
 
     <!-- شريط الفلاتر والبحث -->
@@ -341,14 +393,23 @@ require __DIR__ . '/_header.php';
                         <td style="color: #64748b; font-size: 11px; white-space: nowrap;">
                             <?= date('Y/m/d H:i', strtotime($rp['created_at'])) ?>
                         </td>
-                        <td style="text-align: center;">
-                            <div style="display: flex; gap: 4px; justify-content: center;">
-                                <!-- زر المعالجة والحل -->
+                                <td style="text-align: center;">
+                            <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                                <!-- زر المعالجة السريعة داخل الصفحة -->
                                 <button type="button" class="btn-primary" style="padding: 4px 8px; font-size: 11px;"
-                                    onclick='openReportForReview(<?= json_encode($rp, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'
-                                    title="معالجة وتحديث البلاغ">
-                                    🛠️ معالجة
+                                    onclick='openResolveModal(<?= json_encode($rp, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'
+                                    title="معالجة وتحديث حالة البلاغ">
+                                    🛠️ حل/معالجة
                                 </button>
+
+                                <?php if (!empty($rp['question_id'])): ?>
+                                    <!-- رابط بنك الأسئلة -->
+                                    <a href="tests.php?question_id=<?= urlencode($rp['question_id']) ?>&report_id=<?= $rp['id'] ?>"
+                                        target="_blank" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; text-decoration: none;"
+                                        title="معاينة وتعديل في بنك الأسئلة">
+                                        📝 السؤال
+                                    </a>
+                                <?php endif; ?>
 
                                 <!-- زر الحذف -->
                                 <form method="POST" style="display:inline;"
@@ -357,7 +418,7 @@ require __DIR__ . '/_header.php';
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?= $rp['id'] ?>">
                                     <button type="submit" class="btn-danger" style="padding: 4px 8px; font-size: 11px;"
-                                        title="حذف">
+                                        title="حذف البلاغ">
                                         🗑️
                                     </button>
                                 </form>
@@ -453,9 +514,9 @@ require __DIR__ . '/_header.php';
 
 <!-- Modal: معالجة وتحديث البلاغ -->
 <div id="resolveModal" class="modal-overlay" style="display:none;">
-    <div class="modal-box" style="max-width: 550px;">
+    <div class="modal-box" style="max-width: 600px;">
         <div class="modal-header">
-            <h3>معالجة وتصحيح البلاغ</h3>
+            <h3>معالجة وتصحيح البلاغ (مباشر ومزامن)</h3>
             <button type="button" class="modal-close" onclick="closeResolveModal()">×</button>
         </div>
         <form method="POST">
@@ -464,12 +525,16 @@ require __DIR__ . '/_header.php';
             <input type="hidden" name="id" id="res_id">
 
             <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
-                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    <div style="font-weight: 700; color: #0f172a;" id="res_title"></div>
-                    <div style="font-size: 11px; color: #475569; margin-top: 4px;" id="res_meta"></div>
+                <div style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-weight: 700; color: #0f172a; font-size: 14px; line-height: 1.5;" id="res_title"></div>
+                    <div style="font-size: 11px; color: #0284c7; margin-top: 6px;" id="res_meta"></div>
                     <div style="font-size: 11px; color: #475569; margin-top: 4px;" id="res_reporter"></div>
-                    <div style="font-size: 12px; color: #b91c1c; margin-top: 4px;" id="res_reason"></div>
-                    <div style="font-size: 11px; color: #475569; margin-top: 4px;" id="res_details"></div>
+                    <div style="font-size: 12px; color: #b91c1c; margin-top: 6px; font-weight:600;" id="res_reason"></div>
+                    <div style="font-size: 12px; color: #334155; margin-top: 4px; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;" id="res_details"></div>
+                    <div id="res_options_box" style="display:none; margin-top:8px; font-size:11px; color:#475569;">
+                        <strong style="color:#0f172a;">خيارات السؤال:</strong>
+                        <div id="res_options_list" style="margin-top:4px;"></div>
+                    </div>
                 </div>
 
                 <div>
@@ -479,7 +544,7 @@ require __DIR__ . '/_header.php';
                 </div>
 
                 <div>
-                    <label class="form-label">تحديث حالة البلاغ</label>
+                    <label class="form-label">تحديث حالة البلاغ (يتم مزامنتها مع السحابة فوراً)</label>
                     <select name="status" id="res_status" class="form-select">
                         <option value="resolved">تم الحل والتصحيح (Resolved) ✓</option>
                         <option value="dismissed">مستبعد / السؤال صحيح بعد المراجعة (Dismissed)</option>
@@ -490,7 +555,7 @@ require __DIR__ . '/_header.php';
 
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeResolveModal()">إلغاء</button>
-                <button type="submit" class="btn-primary">حفظ إجراء المعالجة</button>
+                <button type="submit" class="btn-primary">حفظ وتحديث في السحابة ✅</button>
             </div>
         </form>
     </div>
@@ -503,27 +568,53 @@ require __DIR__ . '/_header.php';
     function openResolveModal(r) {
         document.getElementById('res_id').value = r.id;
         document.getElementById('res_title').textContent = 'سؤال #' + (r.question_id || r.id) + ' · ' + r.question_title;
-        document.getElementById('res_meta').textContent = 'المادة: ' + (r.course_name || 'عام') + ' · نوع البلاغ: ' + (r.report_type || 'عام');
+        document.getElementById('res_meta').textContent = 'المادة / الكويز: ' + (r.course_name || 'عام') + ' · نوع البلاغ: ' + (r.report_type || 'عام');
         document.getElementById('res_reporter').textContent = 'المبلّغ: ' + (r.reporter_name || 'طالب') + (r.reporter_contact ? ' · التواصل: ' + r.reporter_contact : '');
-        document.getElementById('res_reason').textContent = '⚠️ ' + r.reason;
-        document.getElementById('res_details').textContent = r.details ? 'التفاصيل: ' + r.details : '';
+        document.getElementById('res_reason').textContent = '⚠️ سبب البلاغ: ' + (r.reason || 'ملاحظة');
+        
+        const detailsElem = document.getElementById('res_details');
+        if (r.details) {
+            detailsElem.textContent = 'ملاحظة وتفاصيل الطالب: ' + r.details;
+            detailsElem.style.display = 'block';
+        } else {
+            detailsElem.style.display = 'none';
+        }
+
+        const optBox = document.getElementById('res_options_box');
+        const optList = document.getElementById('res_options_list');
+        optList.innerHTML = '';
+        if (r.options_json) {
+            try {
+                const opts = JSON.parse(r.options_json);
+                if (Array.isArray(opts) && opts.length > 0) {
+                    opts.forEach((o, i) => {
+                        const oText = o.textAr || o.textEn || o.text || ('خيار ' + (i + 1));
+                        const isCorrect = o.correct || (r.correct_answer && (r.correct_answer === o.id || r.correct_answer === String(i)));
+                        const item = document.createElement('div');
+                        item.style.padding = '3px 6px';
+                        item.style.margin = '2px 0';
+                        item.style.borderRadius = '4px';
+                        item.style.background = isCorrect ? '#dcfce7' : '#f1f5f9';
+                        item.style.color = isCorrect ? '#166534' : '#334155';
+                        item.textContent = (isCorrect ? '✓ ' : '• ') + oText;
+                        optList.appendChild(item);
+                    });
+                    optBox.style.display = 'block';
+                } else {
+                    optBox.style.display = 'none';
+                }
+            } catch (e) {
+                optBox.style.display = 'none';
+            }
+        } else {
+            optBox.style.display = 'none';
+        }
+
         document.getElementById('res_notes').value = r.resolution_notes || '';
         document.getElementById('res_status').value = r.status || 'resolved';
         document.getElementById('resolveModal').style.display = 'flex';
     }
-    function openReportForReview(r) {
-        if (r.question_id) {
-            const params = new URLSearchParams({
-                question_id: r.question_id,
-                report_id: r.id,
-                report_reason: r.reason || '',
-                report_details: r.details || ''
-            });
-            window.location.href = 'tests.php?' + params.toString();
-            return;
-        }
-        openResolveModal(r);
-    }
+
     function closeResolveModal() { document.getElementById('resolveModal').style.display = 'none'; }
 
     window.onclick = function (event) {

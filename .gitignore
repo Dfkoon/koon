@@ -4,6 +4,9 @@
 *.sqlite.before-*
 .official-live-sync
 firebase-service-account.json
+* 2.*
+mt-bau-full/* 2.*
+mt-bau-full/src/* 2.*
 
 # مجلدات لها repo منفصل أو غير مطلوب رفعها
 0000/

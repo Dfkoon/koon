@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../config/firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import './AdminAnalytics.css';
 
@@ -45,32 +45,32 @@ export default function AdminAnalytics() {
   const [ratings, setRatings] = useState([]);
   const [serviceReqs, setServiceReqs] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [timeRange, setTimeRange] = useState('monthly'); // daily | weekly | monthly | yearly
   const [ratingsTab, setRatingsTab] = useState('star'); // star | difficulty
   const [tablePage, setTablePage] = useState(1);
   const rowsPerPage = 6;
 
   useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        const [pvSnap, ratSnap, reqSnap] = await Promise.all([
-          getDocs(query(collection(db, 'page_views'), orderBy('timestamp', 'desc'), limit(5000))).catch(() => ({ docs: [] })),
-          getDocs(query(collection(db, 'material_ratings'), orderBy('timestamp', 'desc'), limit(2000))).catch(() => ({ docs: [] })),
-          getDocs(query(collection(db, 'service_requests'), orderBy('createdAt', 'desc'), limit(1000))).catch(() => ({ docs: [] }))
-        ]);
-
-        setPageViews(pvSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-        setRatings(ratSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-        setServiceReqs(reqSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      } catch (err) {
-        console.error('Failed to load analytics dashboard data:', err);
-      } finally {
+    const subscribe = (collectionName, sortField, setter, label) => onSnapshot(
+      query(collection(db, collectionName), orderBy(sortField, 'desc'), limit(collectionName === 'page_views' ? 5000 : collectionName === 'material_ratings' ? 2000 : 1000)),
+      snapshot => {
+        setter(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+        setLoading(false);
+      },
+      error => {
+        console.error(`Failed to subscribe to ${label}:`, error);
         setLoading(false);
       }
-    };
+    );
 
-    fetchAllData();
+    const unsubscribers = [
+      subscribe('page_views', 'timestamp', setPageViews, 'page views'),
+      subscribe('material_ratings', 'timestamp', setRatings, 'material ratings'),
+      subscribe('service_requests', 'createdAt', setServiceReqs, 'service requests'),
+    ];
+
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
   }, []);
 
   // ── Calculated Metrics ──
@@ -230,7 +230,7 @@ export default function AdminAnalytics() {
 
       {/* ── Upper Main Section: Large Curve Chart + Donut Ring Chart ── */}
       <div className="anv-main-charts-row">
-        
+
         {/* Left Curve Line Chart Card */}
         <div className="anv-card anv-chart-card">
           <div className="anv-chart-card-header">
@@ -379,7 +379,7 @@ export default function AdminAnalytics() {
 
       {/* ── Middle Row: Four Glowing Gradient Metric Cards ── */}
       <div className="anv-vibrant-cards-row">
-        
+
         {/* Card 1: Vibrant Purple */}
         <div className="anv-vcard anv-vcard-purple">
           <div className="anv-vc-header">
@@ -474,7 +474,7 @@ export default function AdminAnalytics() {
               <h3 className="anv-card-title">📊 تفاصيل تقييمات واختيارات المواد</h3>
               <p className="anv-card-desc">ترتيب المواد الأكثر تفاعلاً وتقييماً من الطلاب</p>
             </div>
-            
+
             {/* Table Search / Controls */}
             <div className="anv-table-actions">
               <button

@@ -499,11 +499,20 @@ const AIStudyTools = () => {
                       <div className="ast-opt-group">
                         <label>{isRtl ? 'عدد الأسئلة' : 'Number of Questions'}</label>
                         <div className="ast-count-btns">
-                          {[5, 10, 15, 20].map(n => (
+                          {[2, 5, 10, 15, 20, 30].map(n => (
                             <button key={n} className={`ast-count-btn ${questionCount === n ? 'active' : ''}`} onClick={() => setQuestionCount(n)}>
                               {n}
                             </button>
                           ))}
+                          <input
+                            className="ast-count-input"
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={questionCount}
+                            onChange={e => setQuestionCount(Math.min(100, Math.max(1, Number(e.target.value) || 1)))}
+                            aria-label={isRtl ? 'عدد الأسئلة المخصص' : 'Custom question count'}
+                          />
                         </div>
                       </div>
                       <div className="ast-opt-group">

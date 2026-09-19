@@ -371,6 +371,19 @@
 }
 
 .ast-count-btn:hover, .ast-qtype-btn:hover { border-color: var(--primary); color: var(--primary); }
+.ast-count-input {
+  width: 76px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: center;
+  font-family: inherit;
+}
+.ast-count-input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
 .ast-count-btn.active, .ast-qtype-btn.active {
   background: var(--primary);
   border-color: var(--primary);

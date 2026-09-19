@@ -2,12 +2,24 @@
 $page_key = 'stats';
 $page_title = 'الإحصائيات ونشاط المنسقين';
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/sync_frontend_live.php';
 
 if (empty($_SESSION['authenticated'])) {
     redirect('../login.php');
 }
 
 $db = get_db();
+
+// مزامنة حية أولية وسريعة من Firestore عند فتح الصفحة
+if (empty($_SESSION['last_stats_fs_sync']) || (time() - $_SESSION['last_stats_fs_sync']) >= 12 || !empty($_GET['sync'])) {
+    try {
+        pull_live_analytics_from_firestore($db, 250);
+        pull_question_reports_from_firestore($db);
+        $_SESSION['last_stats_fs_sync'] = time();
+    } catch (Throwable $e) {
+        // Fall back seamlessly
+    }
+}
 
 // ← جلب بيانات المستخدم الحالي وتحديد الصلاحية (admin فقط)
 $currentUserId = $_SESSION['user_id'] ?? 0;
@@ -454,6 +466,38 @@ require __DIR__ . '/_header.php';
 
 ?>
 
+<!-- شريط المزامنة والبث المباشر الفوري -->
+<div class="live-stream-header-bar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color:#fff; padding:14px 22px; border-radius:14px; margin-bottom:24px; box-shadow:0 8px 24px rgba(15,23,42,0.18); border:1px solid rgba(255,255,255,0.08);">
+    <div style="display:flex; align-items:center; gap:14px;">
+        <span class="live-pulse-dot" style="position:relative; width:12px; height:12px; background:#10b981; border-radius:50%; display:inline-block; box-shadow:0 0 14px #10b981;"></span>
+        <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <h3 style="margin:0; font-size:16px; font-weight:800; color:#fff;">بث مباشر لحركة المنصة والإحصائيات الحية</h3>
+                <span style="font-size:11px; background:rgba(16,185,129,0.2); color:#34d399; padding:2px 8px; border-radius:20px; border:1px solid rgba(52,211,153,0.3); font-weight:700;">🔴 LIVE SYNC</span>
+            </div>
+            <p style="margin:3px 0 0; font-size:12px; color:#94a3b8;">تحديث لحظي ومستمر للزيارات والمشاهدات وبلاغات الأسئلة مباشرة من السحابة</p>
+        </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="background:rgba(255,255,255,0.07); padding:6px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.12); font-size:12px; display:flex; align-items:center; gap:8px;">
+            <span style="color:#94a3b8;">النشطون الآن:</span>
+            <strong id="live-active-now" style="color:#38bdf8; font-size:16px;"><?= $activeCount ?: 1 ?></strong>
+            <span style="font-size:11px; color:#cbd5e1;">طالب/مشرف</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.07); padding:6px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.12); font-size:12px; display:flex; align-items:center; gap:6px;">
+            <span style="color:#94a3b8;">تحديث بعد:</span>
+            <strong id="live-countdown" style="color:#fbbf24; font-size:15px;">15</strong>
+            <span style="font-size:11px; color:#94a3b8;">ثانية</span>
+        </div>
+        <button type="button" id="btn-force-refresh" class="btn-primary" style="background:#2563eb; border-color:#1d4ed8; font-size:12px; padding:8px 16px; border-radius:10px; display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:700;" onclick="triggerLiveStatsRefresh(true)">
+            <svg id="sync-icon-spin" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            تحديث فوري ⚡
+        </button>
+    </div>
+</div>
+
 <!-- بطاقات الإحصائيات السريعة -->
 <div class="stats-kpi-grid">
     <div class="stats-card">
@@ -468,7 +512,7 @@ require __DIR__ . '/_header.php';
                 </svg>
             </div>
         </div>
-        <div class="stats-number"><?= number_format($officialMetrics['total_visits']) ?></div>
+        <div class="stats-number" id="kpi-total-visits"><?= number_format($officialMetrics['total_visits']) ?></div>
         <div class="stats-footer">
             <span class="trend-up">بيانات رسمية</span>
             <span>من لوحة المنصة</span>
@@ -485,7 +529,7 @@ require __DIR__ . '/_header.php';
                 </svg>
             </div>
         </div>
-        <div class="stats-number"><?= number_format($officialMetrics['material_opens']) ?></div>
+        <div class="stats-number" id="kpi-material-opens"><?= number_format($officialMetrics['material_opens']) ?></div>
         <div class="stats-footer">
             <span class="trend-up">بيانات رسمية</span>
             <span>من لوحة المنصة</span>
@@ -503,7 +547,7 @@ require __DIR__ . '/_header.php';
                 </svg>
             </div>
         </div>
-        <div class="stats-number"><?= number_format($officialMetrics['quiz_completions']) ?></div>
+        <div class="stats-number" id="kpi-quiz-completions"><?= number_format($officialMetrics['quiz_completions']) ?></div>
         <div class="stats-footer">
             <span class="badge-online-pulse">بيانات رسمية من بنك الأسئلة</span>
         </div>
@@ -520,7 +564,7 @@ require __DIR__ . '/_header.php';
                 </svg>
             </div>
         </div>
-        <div class="stats-number"><?= number_format($officialMetrics['suggestions']) ?></div>
+        <div class="stats-number" id="kpi-suggestions"><?= number_format($officialMetrics['suggestions']) ?></div>
         <div class="stats-footer">
             <span class="trend-up">بيانات رسمية</span>
         </div>
@@ -531,8 +575,8 @@ require __DIR__ . '/_header.php';
             <span class="stats-card-title">بلاغات معلقة</span>
             <div class="stats-icon-box icon-gold">⚑</div>
         </div>
-        <div class="stats-number"><?= number_format($officialMetrics['pending_reports']) ?></div>
-        <div class="stats-footer"><span class="trend-up">تحتاج مراجعة</span></div>
+        <div class="stats-number" id="kpi-pending-reports" style="color: #dc2626;"><?= number_format($officialMetrics['pending_reports']) ?></div>
+        <div class="stats-footer"><span class="trend-up"><a href="reports.php" style="color:inherit; text-decoration:none;">تحتاج مراجعة ⟵</a></span></div>
     </div>
 
     <div class="stats-card">
@@ -540,7 +584,7 @@ require __DIR__ . '/_header.php';
             <span class="stats-card-title">طلبات الخدمات والنماذج</span>
             <div class="stats-icon-box icon-blue">⚙</div>
         </div>
-        <div class="stats-number"><?= number_format($officialMetrics['service_requests']) ?></div>
+        <div class="stats-number" id="kpi-service-requests"><?= number_format($officialMetrics['service_requests']) ?></div>
         <div class="stats-footer"><span class="trend-up">مستلمة من الموقع الرسمي</span></div>
     </div>
 </div>
@@ -630,6 +674,33 @@ require __DIR__ . '/_header.php';
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- بث تدفق الزيارات والأحداث الحية لحظة بلحظة -->
+<!-- ========================================== -->
+<div class="stats-section-box" style="margin-top: 24px;">
+    <div class="sec-header">
+        <div class="sec-title-wrap">
+            <div class="sec-icon-box" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="2"></circle>
+                    <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+                </svg>
+            </div>
+            <div>
+                <h2 class="sec-title">تدفق الزيارات والنشاط الحي للطلبة (Live Activity Stream)</h2>
+                <p class="sec-sub">رصد مباشر ومستمر لتحركات الطلاب، فتح المواد، وإكمال الاختبارات عبر السحابة فور حدوثها</p>
+            </div>
+        </div>
+        <div class="sec-actions">
+            <span class="pill-badge pill-green" id="live-stream-status-badge">🟢 البث المباشر متصل</span>
+        </div>
+    </div>
+
+    <div id="live-events-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(310px, 1fr)); gap:12px; padding:18px 20px;">
+        <!-- سيتم توليد أحدث الزيارات هنا ديناميكياً من البث الحي -->
     </div>
 </div>
 
@@ -2459,6 +2530,164 @@ $viewsPoints = $buildLine($chartViews);
             justify-content: flex-start;
         }
     }
+    .live-event-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        transition: all 0.25s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+    .live-event-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+        border-color: #cbd5e1;
+    }
+    .live-event-card.is-new {
+        animation: pulseGreen 1.2s ease;
+        border-color: #34d399;
+    }
+    @keyframes pulseGreen {
+        0% { background: #ecfdf5; box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.4); }
+        100% { background: #ffffff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03); }
+    }
+    .live-badge-type {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        display: inline-block;
+    }
+    .type-visit { background: #eff6ff; color: #2563eb; }
+    .type-material_view { background: #f5f3ff; color: #7c3aed; }
+    .type-quiz_completed { background: #f0fdf4; color: #16a34a; }
 </style>
+
+<script>
+(() => {
+    let countdownSec = 15;
+    let isFetching = false;
+    const countdownEl = document.getElementById('live-countdown');
+    const syncIcon = document.getElementById('sync-icon-spin');
+    const liveEventsBox = document.getElementById('live-events-container');
+
+    function animateNumber(elementId, targetValue) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        const current = parseInt(el.textContent.replace(/[^\d]/g, ''), 10) || 0;
+        if (current === targetValue) return;
+
+        const diff = targetValue - current;
+        const steps = 20;
+        const stepVal = diff / steps;
+        let step = 0;
+
+        const timer = setInterval(() => {
+            step++;
+            const val = Math.round(current + (stepVal * step));
+            el.textContent = val.toLocaleString('ar-EG');
+            if (step >= steps) {
+                clearInterval(timer);
+                el.textContent = targetValue.toLocaleString('ar-EG');
+            }
+        }, 20);
+    }
+
+    window.triggerLiveStatsRefresh = async function(isManual = false) {
+        if (isFetching) return;
+        isFetching = true;
+        countdownSec = 15;
+        if (countdownEl) countdownEl.textContent = '15';
+        if (syncIcon) syncIcon.style.animation = 'spin 0.8s linear infinite';
+
+        try {
+            const url = 'api_live_stats.php' + (isManual ? '?force=1' : '');
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) throw new Error('Network error');
+            const data = await res.json();
+            if (!data || !data.success) return;
+
+            // 1. Update Active Users
+            const activeNowEl = document.getElementById('live-active-now');
+            if (activeNowEl && data.active_users_now !== undefined) {
+                activeNowEl.textContent = data.active_users_now;
+            }
+
+            // 2. Update KPI Metrics
+            if (data.metrics) {
+                animateNumber('kpi-total-visits', data.metrics.total_visits);
+                animateNumber('kpi-material-opens', data.metrics.material_opens);
+                animateNumber('kpi-quiz-completions', data.metrics.quiz_completions);
+                animateNumber('kpi-suggestions', data.metrics.suggestions);
+                animateNumber('kpi-pending-reports', data.metrics.pending_reports);
+                animateNumber('kpi-service-requests', data.metrics.service_requests);
+            }
+
+            // 3. Render Live Events Stream
+            if (liveEventsBox && Array.isArray(data.latest_events)) {
+                if (data.latest_events.length === 0) {
+                    liveEventsBox.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:#94a3b8; padding:20px;">لا توجد أحداث زيارات حديثة حتى الآن</div>';
+                } else {
+                    const html = data.latest_events.map(ev => {
+                        let typeClass = 'type-visit';
+                        let typeIcon = '🌐';
+                        if (ev.type === 'material_view') {
+                            typeClass = 'type-material_view';
+                            typeIcon = '📚';
+                        } else if (ev.type === 'quiz_completed') {
+                            typeClass = 'type-quiz_completed';
+                            typeIcon = '🎯';
+                        }
+
+                        let deviceIcon = '💻';
+                        if (ev.device === 'هاتف ذكي') deviceIcon = '📱';
+                        else if (ev.device === 'جهاز لوحي') deviceIcon = '📲';
+
+                        return `
+                            <div class="live-event-card">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span class="live-badge-type ${typeClass}">${typeIcon} ${ev.type_label}</span>
+                                    <span style="font-size:11px; color:#94a3b8; font-family:monospace;">${ev.time_human}</span>
+                                </div>
+                                <div style="font-weight:700; color:#0f172a; font-size:12px; margin-top:4px; direction:ltr; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${ev.path}">
+                                    ${ev.path}
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#64748b; margin-top:2px;">
+                                    <span>👤 ${ev.visitor}</span>
+                                    <span>${deviceIcon} ${ev.device}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    liveEventsBox.innerHTML = html;
+                }
+            }
+
+        } catch (err) {
+            console.warn('Live stats refresh error:', err);
+        } finally {
+            isFetching = false;
+            if (syncIcon) syncIcon.style.animation = '';
+        }
+    };
+
+    // Countdown interval
+    setInterval(() => {
+        countdownSec--;
+        if (countdownEl) countdownEl.textContent = Math.max(0, countdownSec);
+        if (countdownSec <= 0) {
+            triggerLiveStatsRefresh(false);
+        }
+    }, 1000);
+
+    // Initial Load
+    document.addEventListener('DOMContentLoaded', () => {
+        triggerLiveStatsRefresh(false);
+    });
+})();
+</script>
 
 <?php require __DIR__ . '/_footer.php'; ?>

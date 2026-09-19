@@ -166,13 +166,28 @@ try {
             </div>
 
             <nav class="sidebar-nav">
-                <?php foreach ($allowedMenu as $item): ?>
+                <?php 
+                $sidebarPendingReportsCount = 0;
+                try {
+                    $sidebarPendingReportsCount = (int) $db->query("SELECT COUNT(*) FROM question_reports WHERE status IN ('pending', 'new', '') OR status IS NULL")->fetchColumn();
+                } catch (Exception $e) {}
+                foreach ($allowedMenu as $item): 
+                    $badgeCount = 0;
+                    if ($item['key'] === 'reports') {
+                        $badgeCount = $sidebarPendingReportsCount;
+                    } elseif (isset($menuNotificationCounts[$item['file']])) {
+                        $badgeCount = (int) $menuNotificationCounts[$item['file']];
+                    }
+                ?>
                     <a href="<?= htmlspecialchars($item['file']) ?>"
                         class="sidebar-link <?= $item['key'] === $page_key ? 'active' : '' ?> <?= $item['ready'] ? '' : 'is-stub' ?>">
                         <span class="sidebar-icon">
                             <?= get_menu_svg_icon($item['icon_key'] ?? $item['key']) ?>
                         </span>
                         <span><?= htmlspecialchars($item['label']) ?></span>
+                        <?php if ($badgeCount > 0): ?>
+                            <span style="margin-right:auto; background:#ef4444; color:#fff; font-size:11px; font-weight:800; padding:1px 7px; border-radius:12px; box-shadow:0 0 8px rgba(239,68,68,0.4);"><?= $badgeCount ?></span>
+                        <?php endif; ?>
                         <?php if (!$item['ready']): ?><span class="stub-dot" title="قيد الإنشاء"></span><?php endif; ?>
                     </a>
                 <?php endforeach; ?>
