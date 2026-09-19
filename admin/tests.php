@@ -106,6 +106,18 @@ $db->exec("
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 ");
+
+// هجرة تلقائية لأعمدة quiz_parts لضمان عدم حدوث خطأ no such column: source_subject_id
+try {
+  $existingPartCols = $db->query("PRAGMA table_info(quiz_parts)")->fetchAll(PDO::FETCH_COLUMN, 1);
+  if (!in_array('source_id', $existingPartCols, true)) {
+    $db->exec("ALTER TABLE quiz_parts ADD COLUMN source_id TEXT;");
+  }
+  if (!in_array('source_subject_id', $existingPartCols, true)) {
+    $db->exec("ALTER TABLE quiz_parts ADD COLUMN source_subject_id TEXT;");
+  }
+} catch (Throwable $migrationErr) {}
+
 $userId = $_SESSION['user_id'] ?? 0;
 $userStmt = $db->prepare('SELECT * FROM users WHERE id = ?');
 $userStmt->execute([$userId]);

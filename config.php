@@ -491,6 +491,12 @@ if (!function_exists('get_db')) {
             if (!in_array('sort_order', $partCols, true)) {
                 $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN sort_order INTEGER DEFAULT 0;");
             }
+            if (!in_array('source_id', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN source_id TEXT;");
+            }
+            if (!in_array('source_subject_id', $partCols, true)) {
+                $pdo->exec("ALTER TABLE quiz_parts ADD COLUMN source_subject_id TEXT;");
+            }
             // هجرة أعمدة study_materials الجديدة
             $materialCols2 = $pdo->query("PRAGMA table_info(study_materials)")->fetchAll(PDO::FETCH_COLUMN, 1);
             if (!in_array('downloads_count', $materialCols2, true)) {
