@@ -1925,21 +1925,28 @@ if (!function_exists('user_has_permission')) {
 
     function user_has_permission(string $page_key, $user = null): bool
     {
+        // إذا كانت الجلسة مسجلة بدور admin أو super_admin فالصلاحية كاملة فوراً
+        if (($_SESSION['role'] ?? '') === 'admin' || ($_SESSION['role'] ?? '') === 'super_admin' || strtoupper((string)($_SESSION['username'] ?? '')) === 'HUSSIEN') {
+            return true;
+        }
+
         if (!is_array($user) || empty($user)) {
             if (empty($_SESSION['user_id']))
                 return false;
             $db = get_db();
-            $stmt = $db->prepare('SELECT role, permissions FROM users WHERE id = ?');
+            $stmt = $db->prepare('SELECT id, username, role, permissions FROM users WHERE id = ?');
             $stmt->execute([$_SESSION['user_id']]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$user)
                 return false;
         }
 
-        $role = $user['role'] ?? 'coordinator';
+        $role = $user['role'] ?? ($_SESSION['role'] ?? 'coordinator');
         $uid = (int) ($user['id'] ?? ($_SESSION['user_id'] ?? 0));
-        // المشرف العام أو المستخدم الرئيسي رقم 1 له وصول كامل لجميع الصفحات
-        if ($role === 'admin' || $role === 'super_admin' || $uid === 1 || ($user['username'] ?? '') === 'HUSSIEN') {
+        $uname = strtoupper((string) ($user['username'] ?? ($_SESSION['username'] ?? '')));
+
+        // المشرف العام أو المستخدم الرئيسي رقم 1 أو حسين له وصول كامل لجميع الصفحات
+        if ($role === 'admin' || $role === 'super_admin' || $uid === 1 || $uname === 'HUSSIEN') {
             return true;
         }
 
