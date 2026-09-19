@@ -29,8 +29,8 @@ final class TOTP
         return "otpauth://totp/{$label}?{$params}";
     }
 
-    /** التحقق من رمز مكوّن من 6 أرقام مع سماحية انزياح زمني بسيطة (خطوة واحدة قبل/بعد) */
-    public static function verify(string $secret, string $code, int $window = 1): bool
+    /** التحقق من رمز مكوّن من 6 أرقام مع سماحية انزياح زمني (سماحية نافذة زمنية مرنة لتفاوت توقيت السيرفر والهاتف) */
+    public static function verify(string $secret, string $code, int $window = 4): bool
     {
         $code = trim($code);
         if (!preg_match('/^\d{6}$/', $code)) {
