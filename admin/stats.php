@@ -406,10 +406,10 @@ foreach ($topAttemptedQuizzesRaw as $item) {
                (SELECT SUM(COALESCE(qq.points, qq.marks, 1)) FROM quiz_questions qq WHERE qq.part_id = qp.id OR qq.part_slug = qp.slug) as part_total_marks
         FROM quiz_parts qp 
         LEFT JOIN quiz_subjects qs ON qs.id = qp.subject_id 
-        WHERE qp.slug = ? OR qp.source_id = ? 
+        WHERE qp.slug = ? 
         LIMIT 1
     ");
-    $part->execute([$slug, $slug]);
+    $part->execute([$slug]);
     $partRow = $part->fetch(PDO::FETCH_ASSOC);
     
     $cleanTitle = $partRow['title'] ?? '';
