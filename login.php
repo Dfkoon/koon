@@ -73,7 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['authenticated'] = true;
                 $_SESSION['user_id'] = (int) $user['id'];
                 $_SESSION['username'] = $user['username'];
-                $_SESSION['role'] = $user['role'];
+                // المستخدم الأول (id=1) يكون دائماً admin بغض النظر عن قاعدة البيانات
+                $_SESSION['role'] = ((int) $user['id'] === 1) ? 'admin' : $user['role'];
                 $_SESSION['last_activity_time'] = time();
                 touch_user_activity();
                 check_and_register_user_device((int) $user['id'], $user['username']);

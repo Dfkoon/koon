@@ -23,7 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check($_POST['csrf'] ?? '')) {
         $_SESSION['authenticated'] = true;
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
-        $_SESSION['role'] = $user['role'];
+        // المستخدم الأول (id=1) يكون دائماً admin بغض النظر عن قاعدة البيانات
+        $_SESSION['role'] = ((int) $user['id'] === 1) ? 'admin' : $user['role'];
         $_SESSION['last_activity_time'] = time();
         unset($_SESSION['pending_user_id'], $_SESSION['pending_username']);
         session_regenerate_id(true);
