@@ -3,9 +3,11 @@
  * scripts/restore_from_backup.php
  * يسترجع الملاحظات والتعليمات والأسئلة والبيانات من النسخة الاحتياطية إلى قاعدة البيانات الحالية
  */
+require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/config.php';
 
 $db = get_db();
+$baseDir = dirname(__DIR__);
 $baseDir = __DIR__;
 
 $backupFiles = glob($baseDir . '/.backups/*.sqlite');
@@ -20,7 +22,8 @@ echo "🔍 جاري فحص أحدث نسخة احتياطية: " . basename($bac
 
 try {
     $bDb = new PDO('sqlite:' . $backupFile);
-    $bDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->exec("PRAGMA foreign_keys = OFF;");
+    $bDb->exec("PRAGMA foreign_keys = OFF;");
 
     // 1. استرجاع الملاحظات والتعليمات (quiz_admin_guides)
     $hasGuides = (int) $bDb->query("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='quiz_admin_guides'")->fetchColumn();
@@ -50,7 +53,29 @@ try {
         }
     }
 
-    // 2. استرجاع أي أسئلة واختبارات إضافية
+    // 2. استرجاع الأجزاء والاختبارات
+    $hasParts = (int) $bDb->query("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='quiz_parts'")->fetchColumn();
+    if ($hasParts > 0) {
+        $parts = $bDb->query("SELECT * FROM quiz_parts")->fetchAll(PDO::FETCH_ASSOC);
+        $insertPart = $db->prepare("INSERT OR IGNORE INTO quiz_parts (
+            id, slug, subject_id, name, title, title_en, icon, color, category,
+            duration_minutes, time_limit, pass_mark, pass_score, force_english,
+            status, source_id, source_subject_id, sort_order, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+        foreach ($parts as $p) {
+            $insertPart->execute([
+                $p['id'], $p['slug'] ?: (string) $p['id'], $p['subject_id'] ?? '',
+                $p['name'] ?? '', $p['title'] ?? '', $p['title_en'] ?? '',
+                $p['icon'] ?? 'doc', $p['color'] ?? '#1B3A2E', $p['category'] ?? 'Quiz',
+                $p['duration_minutes'] ?? 30, $p['time_limit'] ?? 30, $p['pass_mark'] ?? 60,
+                $p['pass_score'] ?? 60, $p['force_english'] ?? 0, 'active',
+                $p['source_id'] ?? ($p['slug'] ?: (string) $p['id']),
+                $p['source_subject_id'] ?? ($p['subject_id'] ?? ''), $p['sort_order'] ?? 0
+            ]);
+        }
+    }
+
+    // 3. استرجاع أي أسئلة إضافية
     $hasQuestions = (int) $bDb->query("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='quiz_questions'")->fetchColumn();
     if ($hasQuestions > 0) {
         $qCount = (int) $bDb->query("SELECT count(*) FROM quiz_questions")->fetchColumn();
@@ -70,24 +95,28 @@ try {
             )");
             $restoredQ = 0;
             foreach ($questions as $q) {
-                $insertQ->execute([
-                    $q['id'], $q['part_id'] ?? 1, $q['question_text'] ?? ($q['text_ar'] ?? ''),
-                    $q['question_text_en'] ?? ($q['text_en'] ?? ''), $q['question_type'] ?? ($q['type'] ?? 'mcq'),
-                    $q['options_json'] ?? '[]', $q['correct_answer'] ?? '', $q['marks'] ?? ($q['points'] ?? 1),
-                    $q['explanation'] ?? ($q['explanation_ar'] ?? ''), $q['image_url'] ?? '',
-                    $q['code_block'] ?? ($q['code'] ?? ''), $q['source_part_id'] ?? ($q['part_slug'] ?? ''),
-                    $q['source_subject_id'] ?? ($q['subject_slug'] ?? ''), $q['part_slug'] ?? '',
-                    $q['subject_slug'] ?? '', $q['cat'] ?? 'Db', $q['points'] ?? ($q['marks'] ?? 1),
-                    $q['type'] ?? ($q['question_type'] ?? 'mcq'), $q['diff'] ?? 'med',
-                    $q['text_ar'] ?? ($q['question_text'] ?? ''), $q['text_en'] ?? ($q['question_text_en'] ?? ''),
-                    $q['code'] ?? ($q['code_block'] ?? ''), $q['explanation_ar'] ?? ($q['explanation'] ?? ''),
-                    $q['model_answer'] ?? '', $q['sort_order'] ?? 0
-                ]);
-                $restoredQ++;
+                try {
+                    $insertQ->execute([
+                        $q['id'], $q['part_id'] ?? 1, $q['question_text'] ?? ($q['text_ar'] ?? ''),
+                        $q['question_text_en'] ?? ($q['text_en'] ?? ''), $q['question_type'] ?? ($q['type'] ?? 'mcq'),
+                        $q['options_json'] ?? '[]', $q['correct_answer'] ?? '', $q['marks'] ?? ($q['points'] ?? 1),
+                        $q['explanation'] ?? ($q['explanation_ar'] ?? ''), $q['image_url'] ?? '',
+                        $q['code_block'] ?? ($q['code'] ?? ''), $q['source_part_id'] ?? ($q['part_slug'] ?? ''),
+                        $q['source_subject_id'] ?? ($q['subject_slug'] ?? ''), $q['part_slug'] ?? '',
+                        $q['subject_slug'] ?? '', $q['cat'] ?? 'Db', $q['points'] ?? ($q['marks'] ?? 1),
+                        $q['type'] ?? ($q['question_type'] ?? 'mcq'), $q['diff'] ?? 'med',
+                        $q['text_ar'] ?? ($q['question_text'] ?? ''), $q['text_en'] ?? ($q['question_text_en'] ?? ''),
+                        $q['code'] ?? ($q['code_block'] ?? ''), $q['explanation_ar'] ?? ($q['explanation'] ?? ''),
+                        $q['model_answer'] ?? '', $q['sort_order'] ?? 0
+                    ]);
+                    $restoredQ++;
+                } catch (Throwable $qErr) {}
             }
             echo "✅ تم دمج {$restoredQ} سؤال من النسخة الاحتياطية بنجاح!\n";
         }
     }
+
+    $db->exec("PRAGMA foreign_keys = ON;");
 
     $currTotalQ = (int) $db->query("SELECT count(*) FROM quiz_questions")->fetchColumn();
     $currTotalP = (int) $db->query("SELECT count(*) FROM quiz_parts")->fetchColumn();
