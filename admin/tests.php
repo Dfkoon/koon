@@ -326,6 +326,25 @@ $adminGuide = $db->query('SELECT * FROM quiz_admin_guides WHERE id = 1')->fetch(
   'attachment_name' => null,
 ];
 
+if (empty($adminGuide['content'])) {
+  $backupFiles = glob(__DIR__ . '/../.backups/*.sqlite');
+  if (!empty($backupFiles)) {
+    rsort($backupFiles);
+    foreach ($backupFiles as $bf) {
+      try {
+        $bDb = new PDO('sqlite:' . $bf);
+        $bGuide = $bDb->query('SELECT * FROM quiz_admin_guides WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
+        if (!empty($bGuide['content']) || !empty($bGuide['attachment_url'])) {
+          $db->prepare('INSERT INTO quiz_admin_guides (id, title, content, attachment_url, attachment_type, attachment_name, updated_by, updated_at) VALUES (1, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET title=excluded.title, content=excluded.content, attachment_url=excluded.attachment_url, attachment_type=excluded.attachment_type, attachment_name=excluded.attachment_name, updated_by=excluded.updated_by, updated_at=CURRENT_TIMESTAMP')
+            ->execute([$bGuide['title'] ?: 'ملاحظات وتعليمات بنك الأسئلة', $bGuide['content'], $bGuide['attachment_url'], $bGuide['attachment_type'], $bGuide['attachment_name'], (int) ($bGuide['updated_by'] ?? 1)]);
+          $adminGuide = $bGuide;
+          break;
+        }
+      } catch (Throwable $be) {}
+    }
+  }
+}
+
 // ---------------- Handle AJAX API actions ----------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!empty($_FILES['csvFile']) || (($_POST['action'] ?? '') === 'import_questions_csv')) {
@@ -3346,6 +3365,8 @@ require __DIR__ . '/_header.php';
       const initialParts = <?= json_encode($dbParts, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
       const initialQuestions = <?= json_encode($dbQuestions, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
       const csrfToken = <?= json_encode(csrf_token()) ?>;
+      const serverTotalQuestions = <?= (int) ($db->query('SELECT count(*) FROM quiz_questions')->fetchColumn() ?: 0) ?>;
+      const serverTotalPoints = <?= (float) ($db->query('SELECT SUM(points) FROM quiz_questions')->fetchColumn() ?: 0) ?>;
 
       async function apiCall(action, payload = {}) {
         try {
@@ -3847,14 +3868,16 @@ require __DIR__ . '/_header.php';
 
       // ---------------- Tally / masthead ----------------
       function renderTally() {
-        let testCount = 0, qCount = 0, ptsSum = 0;
+        let testCount = 0, sessionQCount = 0, sessionPts = 0;
         Object.values(parts).forEach(list => testCount += list.length);
-        Object.values(questions).forEach(list => { qCount += list.length; list.forEach(q => ptsSum += (q.points || 0)); });
+        Object.values(questions).forEach(list => { sessionQCount += list.length; list.forEach(q => sessionPts += (q.points || 0)); });
+        const displayQCount = serverTotalQuestions > 0 ? serverTotalQuestions : sessionQCount;
+        const displayPts = serverTotalPoints > 0 ? serverTotalPoints : sessionPts;
         $('#tally').innerHTML = `
       <div class="tally-item"><b>${subjects.length}</b><span>مادة</span></div>
       <div class="tally-item"><b>${testCount}</b><span>اختبار</span></div>
-      <div class="tally-item"><b>${qCount}</b><span>سؤال</span></div>
-      <div class="tally-item"><b>${ptsSum}</b><span>علامة</span></div>
+      <div class="tally-item"><b>${displayQCount.toLocaleString('ar-EG')}</b><span>سؤال</span></div>
+      <div class="tally-item"><b>${displayPts.toLocaleString('ar-EG')}</b><span>علامة</span></div>
     `;
       }
 
@@ -4706,11 +4729,11 @@ id,type,difficulty,points,question_text,hint,explanation,status,option_1,option_
           if (Array.isArray(list)) allQs.push(...list);
         });
 
-        const totalCount = allQs.length;
+        const totalCount = serverTotalQuestions > 0 ? serverTotalQuestions : allQs.length;
         const easyCount = allQs.filter(q => (q.diff || 'med') === 'easy').length;
         const medCount = allQs.filter(q => (q.diff || 'med') === 'med').length;
         const hardCount = allQs.filter(q => (q.diff || 'med') === 'hard').length;
-        const totalPts = allQs.reduce((s, q) => s + (q.points || 0), 0);
+        const totalPts = serverTotalPoints > 0 ? serverTotalPoints : allQs.reduce((s, q) => s + (q.points || 0), 0);
 
         let totalTests = 0;
         Object.values(parts).forEach(list => { totalTests += list.length; });
