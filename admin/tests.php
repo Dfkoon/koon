@@ -1007,8 +1007,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'load_questions') {
       $partSlug = trim($input['partId'] ?? '');
-      $stmt = $db->prepare('SELECT id, part_slug as partId, subject_slug as subjectId, cat, points, type, diff, text_ar as textAr, text_en as textEn, code, options_json, correct_answer as correctAnswer, explanation_ar as explanationAr, model_answer as modelAnswer, image_url as imageUrl FROM quiz_questions WHERE part_slug = ? ORDER BY sort_order, id');
-      $stmt->execute([$partSlug]);
+      $stmt = $db->prepare('SELECT id, part_slug as partId, subject_slug as subjectId, cat, points, type, diff,
+              COALESCE(NULLIF(text_ar, ""), question_text, "") as textAr,
+              COALESCE(NULLIF(text_en, ""), question_text_en, "") as textEn,
+              COALESCE(NULLIF(code, ""), code_block, "") as code,
+              options_json,
+              correct_answer as correctAnswer,
+              COALESCE(NULLIF(explanation_ar, ""), explanation, "") as explanationAr,
+              model_answer as modelAnswer,
+              image_url as imageUrl
+              FROM quiz_questions 
+              WHERE part_slug = ? OR source_part_id = ? OR CAST(part_id AS TEXT) = ? OR part_id IN (SELECT id FROM quiz_parts WHERE slug = ?)
+              ORDER BY sort_order, id');
+      $stmt->execute([$partSlug, $partSlug, $partSlug, $partSlug]);
       $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
       foreach ($rows as &$qr) {
         $qr['points'] = (float) ($qr['points'] ?: 1);
@@ -1018,8 +1029,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($qr['options_json']);
       }
       unset($qr);
-      echo json_encode(['success' => true, 'questions' => $rows]);
-      exit;
+      send_json_response(['success' => true, 'questions' => $rows]);
     }
 
     send_json_response(['success' => false, 'error' => 'Unknown action']);
@@ -1045,25 +1055,8 @@ foreach ($dbPartsRows as $pr) {
   $dbParts[$sid][] = $pr;
 }
 
-
-$dbQuestionsRows = $db->query('SELECT id, part_slug as partId, subject_slug as subjectId, cat, points, type, diff, text_ar as textAr, text_en as textEn, code, options_json, correct_answer as correctAnswer, explanation_ar as explanationAr, model_answer as modelAnswer, image_url as imageUrl FROM quiz_questions ORDER BY sort_order, id')->fetchAll(PDO::FETCH_ASSOC);
+// Questions are fetched dynamically per part via AJAX to keep page loading ultra-fast
 $dbQuestions = [];
-foreach ($dbQuestionsRows as $qr) {
-  $pid = $qr['partId'] ?: 'part_' . (int) $qr['id'];
-  $qr['points'] = (float) ($qr['points'] ?: 1);
-  try {
-    $qr['options'] = !empty($qr['options_json']) ? json_decode($qr['options_json'], true) : [];
-    if (!is_array($qr['options']))
-      $qr['options'] = [];
-  } catch (Exception $e) {
-    $qr['options'] = [];
-  }
-  unset($qr['options_json']);
-  if (!isset($dbQuestions[$pid])) {
-    $dbQuestions[$pid] = [];
-  }
-  $dbQuestions[$pid][] = $qr;
-}
 
 require __DIR__ . '/_header.php';
 
@@ -3868,14 +3861,18 @@ require __DIR__ . '/_header.php';
 
       // ---------------- Tally / masthead ----------------
       function renderTally() {
+        let testCount = 0, qCount = 0, ptsSum = 0;
         let testCount = 0, sessionQCount = 0, sessionPts = 0;
         Object.values(parts).forEach(list => testCount += list.length);
+        Object.values(questions).forEach(list => { qCount += list.length; list.forEach(q => ptsSum += (q.points || 0)); });
         Object.values(questions).forEach(list => { sessionQCount += list.length; list.forEach(q => sessionPts += (q.points || 0)); });
         const displayQCount = serverTotalQuestions > 0 ? serverTotalQuestions : sessionQCount;
         const displayPts = serverTotalPoints > 0 ? serverTotalPoints : sessionPts;
         $('#tally').innerHTML = `
       <div class="tally-item"><b>${subjects.length}</b><span>مادة</span></div>
       <div class="tally-item"><b>${testCount}</b><span>اختبار</span></div>
+      <div class="tally-item"><b>${qCount}</b><span>سؤال</span></div>
+      <div class="tally-item"><b>${ptsSum}</b><span>علامة</span></div>
       <div class="tally-item"><b>${displayQCount.toLocaleString('ar-EG')}</b><span>سؤال</span></div>
       <div class="tally-item"><b>${displayPts.toLocaleString('ar-EG')}</b><span>علامة</span></div>
     `;
@@ -4729,10 +4726,12 @@ id,type,difficulty,points,question_text,hint,explanation,status,option_1,option_
           if (Array.isArray(list)) allQs.push(...list);
         });
 
+        const totalCount = allQs.length;
         const totalCount = serverTotalQuestions > 0 ? serverTotalQuestions : allQs.length;
         const easyCount = allQs.filter(q => (q.diff || 'med') === 'easy').length;
         const medCount = allQs.filter(q => (q.diff || 'med') === 'med').length;
         const hardCount = allQs.filter(q => (q.diff || 'med') === 'hard').length;
+        const totalPts = allQs.reduce((s, q) => s + (q.points || 0), 0);
         const totalPts = serverTotalPoints > 0 ? serverTotalPoints : allQs.reduce((s, q) => s + (q.points || 0), 0);
 
         let totalTests = 0;

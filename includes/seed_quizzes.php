@@ -34,52 +34,62 @@ function seed_quizzes_from_bundle(PDO $db, bool $force = false): array
                 if ($hasTable > 0) {
                     $bQCount = (int) $bDb->query('SELECT count(*) FROM quiz_questions')->fetchColumn();
                     if ($bQCount > 0) {
-                        $bSubjects = $bDb->query('SELECT * FROM quiz_subjects')->fetchAll(PDO::FETCH_ASSOC) ?: [];
-                        $subInsert = $db->prepare('INSERT OR IGNORE INTO quiz_subjects (id, name, name_en, icon, sort_order) VALUES (?, ?, ?, ?, ?)');
-                        foreach ($bSubjects as $bs) {
-                            $subInsert->execute([$bs['id'], $bs['name'], $bs['name_en'] ?? $bs['name'], $bs['icon'] ?? 'book', $bs['sort_order'] ?? 0]);
-                        }
-
-                        $bParts = $bDb->query('SELECT * FROM quiz_parts')->fetchAll(PDO::FETCH_ASSOC) ?: [];
-                        foreach ($bParts as $bp) {
-                            $partSlug = $bp['slug'] ?: (string) $bp['id'];
-                            $checkP = $db->prepare('SELECT id FROM quiz_parts WHERE slug = ? OR id = ? LIMIT 1');
-                            $checkP->execute([$partSlug, $bp['id']]);
-                            if (!$checkP->fetchColumn()) {
-                                $db->prepare('INSERT INTO quiz_parts (id, slug, subject_id, name, title, title_en, icon, color, category, duration_minutes, time_limit, pass_mark, pass_score, force_english, status, source_id, source_subject_id, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)')
-                                    ->execute([
-                                        $bp['id'], $partSlug, $bp['subject_id'] ?? '', $bp['name'] ?? '', $bp['title'] ?? '', $bp['title_en'] ?? '',
-                                        $bp['icon'] ?? 'doc', $bp['color'] ?? '#1B3A2E', $bp['category'] ?? 'Quiz', $bp['duration_minutes'] ?? 30,
-                                        $bp['time_limit'] ?? 30, $bp['pass_mark'] ?? 60, $bp['pass_score'] ?? 60, $bp['force_english'] ?? 0,
-                                        'active', $bp['source_id'] ?? $partSlug, $bp['source_subject_id'] ?? ($bp['subject_id'] ?? ''), $bp['sort_order'] ?? 0
-                                    ]);
+                        $db->exec("PRAGMA foreign_keys = OFF;");
+                        $db->beginTransaction();
+                        try {
+                            $bSubjects = $bDb->query('SELECT * FROM quiz_subjects')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                            $subInsert = $db->prepare('INSERT OR IGNORE INTO quiz_subjects (id, name, name_en, icon, sort_order) VALUES (?, ?, ?, ?, ?)');
+                            foreach ($bSubjects as $bs) {
+                                $subInsert->execute([$bs['id'], $bs['name'], $bs['name_en'] ?? $bs['name'], $bs['icon'] ?? 'book', $bs['sort_order'] ?? 0]);
                             }
-                        }
 
-                        $bQuestions = $bDb->query('SELECT * FROM quiz_questions')->fetchAll(PDO::FETCH_ASSOC) ?: [];
-                        $qInsert = $db->prepare('INSERT OR IGNORE INTO quiz_questions (
-                            id, part_id, question_text, question_text_en, question_type, options_json,
-                            correct_answer, marks, explanation, image_url, code_block, source_part_id,
-                            source_subject_id, part_slug, subject_slug, cat, points, type, diff,
-                            text_ar, text_en, code, explanation_ar, model_answer, sort_order, created_at, updated_at
-                        ) VALUES (
-                            ?, ?, ?, ?, ?, ?,
-                            ?, ?, ?, ?, ?, ?,
-                            ?, ?, ?, ?, ?, ?, ?,
-                            ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-                        )');
-                        foreach ($bQuestions as $bq) {
-                            $qInsert->execute([
-                                $bq['id'], $bq['part_id'] ?? 1, $bq['question_text'] ?? ($bq['text_ar'] ?? ''), $bq['question_text_en'] ?? ($bq['text_en'] ?? ''),
-                                $bq['question_type'] ?? ($bq['type'] ?? 'mcq'), $bq['options_json'] ?? '[]', $bq['correct_answer'] ?? '',
-                                $bq['marks'] ?? ($bq['points'] ?? 1), $bq['explanation'] ?? ($bq['explanation_ar'] ?? ''), $bq['image_url'] ?? '',
-                                $bq['code_block'] ?? ($bq['code'] ?? ''), $bq['source_part_id'] ?? ($bq['part_slug'] ?? ''),
-                                $bq['source_subject_id'] ?? ($bq['subject_slug'] ?? ''), $bq['part_slug'] ?? '', $bq['subject_slug'] ?? '',
-                                $bq['cat'] ?? 'Db', $bq['points'] ?? ($bq['marks'] ?? 1), $bq['type'] ?? ($bq['question_type'] ?? 'mcq'),
-                                $bq['diff'] ?? 'med', $bq['text_ar'] ?? ($bq['question_text'] ?? ''), $bq['text_en'] ?? ($bq['question_text_en'] ?? ''),
-                                $bq['code'] ?? ($bq['code_block'] ?? ''), $bq['explanation_ar'] ?? ($bq['explanation'] ?? ''),
-                                $bq['model_answer'] ?? '', $bq['sort_order'] ?? 0
-                            ]);
+                            $bParts = $bDb->query('SELECT * FROM quiz_parts')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                            foreach ($bParts as $bp) {
+                                $partSlug = $bp['slug'] ?: (string) $bp['id'];
+                                $checkP = $db->prepare('SELECT id FROM quiz_parts WHERE slug = ? OR id = ? LIMIT 1');
+                                $checkP->execute([$partSlug, $bp['id']]);
+                                if (!$checkP->fetchColumn()) {
+                                    $db->prepare('INSERT INTO quiz_parts (id, slug, subject_id, name, title, title_en, icon, color, category, duration_minutes, time_limit, pass_mark, pass_score, force_english, status, source_id, source_subject_id, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)')
+                                        ->execute([
+                                            $bp['id'], $partSlug, $bp['subject_id'] ?? '', $bp['name'] ?? '', $bp['title'] ?? '', $bp['title_en'] ?? '',
+                                            $bp['icon'] ?? 'doc', $bp['color'] ?? '#1B3A2E', $bp['category'] ?? 'Quiz', $bp['duration_minutes'] ?? 30,
+                                            $bp['time_limit'] ?? 30, $bp['pass_mark'] ?? 60, $bp['pass_score'] ?? 60, $bp['force_english'] ?? 0,
+                                            'active', $bp['source_id'] ?? $partSlug, $bp['source_subject_id'] ?? ($bp['subject_id'] ?? ''), $bp['sort_order'] ?? 0
+                                        ]);
+                                }
+                            }
+
+                            $bQuestions = $bDb->query('SELECT * FROM quiz_questions')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                            $qInsert = $db->prepare('INSERT OR IGNORE INTO quiz_questions (
+                                id, part_id, question_text, question_text_en, question_type, options_json,
+                                correct_answer, marks, explanation, image_url, code_block, source_part_id,
+                                source_subject_id, part_slug, subject_slug, cat, points, type, diff,
+                                text_ar, text_en, code, explanation_ar, model_answer, sort_order, created_at, updated_at
+                            ) VALUES (
+                                ?, ?, ?, ?, ?, ?,
+                                ?, ?, ?, ?, ?, ?,
+                                ?, ?, ?, ?, ?, ?, ?,
+                                ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                            )');
+                            foreach ($bQuestions as $bq) {
+                                $qInsert->execute([
+                                    $bq['id'], $bq['part_id'] ?? 1, $bq['question_text'] ?? ($bq['text_ar'] ?? ''), $bq['question_text_en'] ?? ($bq['text_en'] ?? ''),
+                                    $bq['question_type'] ?? ($bq['type'] ?? 'mcq'), $bq['options_json'] ?? '[]', $bq['correct_answer'] ?? '',
+                                    $bq['marks'] ?? ($bq['points'] ?? 1), $bq['explanation'] ?? ($bq['explanation_ar'] ?? ''), $bq['image_url'] ?? '',
+                                    $bq['code_block'] ?? ($bq['code'] ?? ''), $bq['source_part_id'] ?? ($bq['part_slug'] ?? ''),
+                                    $bq['source_subject_id'] ?? ($bq['subject_slug'] ?? ''), $bq['part_slug'] ?? '', $bq['subject_slug'] ?? '',
+                                    $bq['cat'] ?? 'Db', $bq['points'] ?? ($bq['marks'] ?? 1), $bq['type'] ?? ($bq['question_type'] ?? 'mcq'),
+                                    $bq['diff'] ?? 'med', $bq['text_ar'] ?? ($bq['question_text'] ?? ''), $bq['text_en'] ?? ($bq['question_text_en'] ?? ''),
+                                    $bq['code'] ?? ($bq['code_block'] ?? ''), $bq['explanation_ar'] ?? ($bq['explanation'] ?? ''),
+                                    $bq['model_answer'] ?? '', $bq['sort_order'] ?? 0
+                                ]);
+                            }
+                            $db->commit();
+                        } catch (Throwable $innerErr) {
+                            if ($db->inTransaction()) $db->rollBack();
+                            error_log('Error restoring from backup: ' . $innerErr->getMessage());
+                        } finally {
+                            $db->exec("PRAGMA foreign_keys = ON;");
                         }
                     }
                 }

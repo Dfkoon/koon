@@ -1,27 +1,48 @@
 <?php
 /**
  * scripts/restore_from_backup.php
+ * restore_backup.php
  * يسترجع الملاحظات والتعليمات والأسئلة والبيانات من النسخة الاحتياطية إلى قاعدة البيانات الحالية
  */
-require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/config.php';
+if (file_exists(__DIR__ . '/config.php')) {
+    require_once __DIR__ . '/config.php';
+} elseif (file_exists(__DIR__ . '/../config.php')) {
+    require_once __DIR__ . '/../config.php';
+}
 
 $db = get_db();
-$baseDir = dirname(__DIR__);
 $baseDir = __DIR__;
 
 $backupFiles = glob($baseDir . '/.backups/*.sqlite');
+
+// فحص ملفات database.sqlite.before-* أيضاً (قد تكون أحدث)
+$beforeFiles = glob($baseDir . '/database.sqlite.before-*');
+if (!empty($beforeFiles)) {
+    $backupFiles = array_merge($backupFiles ?: [], $beforeFiles);
+}
+
 if (empty($backupFiles)) {
     echo "❌ لم يتم العثور على ملفات نسخ احتياطية في مجلد .backups\n";
+    echo "❌ لم يتم العثور على ملفات نسخ احتياطية في مجلد .backups أو ملفات database.sqlite.before-*\n";
     exit(1);
 }
 
 rsort($backupFiles);
+// ترتيب حسب تاريخ التعديل (الأحدث أولاً)
+usort($backupFiles, fn($a, $b) => filemtime($b) - filemtime($a));
 $backupFile = $backupFiles[0];
 echo "🔍 جاري فحص أحدث نسخة احتياطية: " . basename($backupFile) . " (حجم: " . round(filesize($backupFile) / 1024 / 1024, 2) . " MB)\n";
+echo "🔍 جاري فحص أحدث نسخة احتياطية: " . basename($backupFile) . " (حجم: " . round(filesize($backupFile) / 1024 / 1024, 2) . " MB, تعديل: " . date('Y-m-d H:i', filemtime($backupFile)) . ")\n";
+if (count($backupFiles) > 1) {
+    echo "ℹ️ ملفات احتياطية متاحة:\n";
+    foreach ($backupFiles as $f) {
+        echo "   - " . basename($f) . " (" . date('Y-m-d H:i', filemtime($f)) . ")\n";
+    }
+}
 
 try {
     $bDb = new PDO('sqlite:' . $backupFile);
+    $bDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $db->exec("PRAGMA foreign_keys = OFF;");
     $bDb->exec("PRAGMA foreign_keys = OFF;");
 
@@ -53,6 +74,7 @@ try {
         }
     }
 
+    // 2. استرجاع أي أسئلة واختبارات إضافية
     // 2. استرجاع الأجزاء والاختبارات
     $hasParts = (int) $bDb->query("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='quiz_parts'")->fetchColumn();
     if ($hasParts > 0) {
@@ -95,6 +117,20 @@ try {
             )");
             $restoredQ = 0;
             foreach ($questions as $q) {
+                $insertQ->execute([
+                    $q['id'], $q['part_id'] ?? 1, $q['question_text'] ?? ($q['text_ar'] ?? ''),
+                    $q['question_text_en'] ?? ($q['text_en'] ?? ''), $q['question_type'] ?? ($q['type'] ?? 'mcq'),
+                    $q['options_json'] ?? '[]', $q['correct_answer'] ?? '', $q['marks'] ?? ($q['points'] ?? 1),
+                    $q['explanation'] ?? ($q['explanation_ar'] ?? ''), $q['image_url'] ?? '',
+                    $q['code_block'] ?? ($q['code'] ?? ''), $q['source_part_id'] ?? ($q['part_slug'] ?? ''),
+                    $q['source_subject_id'] ?? ($q['subject_slug'] ?? ''), $q['part_slug'] ?? '',
+                    $q['subject_slug'] ?? '', $q['cat'] ?? 'Db', $q['points'] ?? ($q['marks'] ?? 1),
+                    $q['type'] ?? ($q['question_type'] ?? 'mcq'), $q['diff'] ?? 'med',
+                    $q['text_ar'] ?? ($q['question_text'] ?? ''), $q['text_en'] ?? ($q['question_text_en'] ?? ''),
+                    $q['code'] ?? ($q['code_block'] ?? ''), $q['explanation_ar'] ?? ($q['explanation'] ?? ''),
+                    $q['model_answer'] ?? '', $q['sort_order'] ?? 0
+                ]);
+                $restoredQ++;
                 try {
                     $insertQ->execute([
                         $q['id'], $q['part_id'] ?? 1, $q['question_text'] ?? ($q['text_ar'] ?? ''),
