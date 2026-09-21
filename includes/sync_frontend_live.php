@@ -1422,6 +1422,8 @@ function pull_pending_donations_from_firestore(?PDO $db = null): int
                 $consentValue = $mFields['takerInfo']['mapValue']['fields']['dataSharingConsent']['booleanValue'] ? 1 : 0;
             } elseif (isset($fields['dataSharingConsent']['booleanValue'])) {
                 $consentValue = $fields['dataSharingConsent']['booleanValue'] ? 1 : 0;
+            } elseif (isset($fields['dataSharingConsent']['integerValue'])) {
+                $consentValue = (int) $fields['dataSharingConsent']['integerValue'];
             }
 
             // التحقق من وجود السجل مسبقاً

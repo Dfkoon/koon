@@ -2232,15 +2232,16 @@ function renderDonationMaterialsTable($sectionKey, $title, $subtitle, $items, $t
                                             <td style="text-align:center; min-width:160px;">
                                                 <div
                                                     style="display:inline-flex; align-items:center; gap:5px; background:#f8fafc; padding:3px 6px; border-radius:9px; border:1px solid #e2e8f0;">
+                                                    <?php $isConsentApproved = isset($m['data_sharing_consent']) && $m['data_sharing_consent'] !== null && $m['data_sharing_consent'] !== '' ? ((int) $m['data_sharing_consent'] === 1) : true; ?>
                                                     <button type="button" onclick="updateDataSharingConsent(<?= $m['id'] ?>, 1)"
                                                         id="consent_btn_yes_<?= $m['id'] ?>"
-                                                        style="padding:4px 9px; font-size:11.5px; border-radius:7px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:3px; <?= ((int) $m['data_sharing_consent'] === 1) ? 'background:#16a34a; color:#fff; font-weight:800; border:1px solid #15803d; box-shadow:0 1px 3px rgba(22,163,74,0.3);' : 'background:#fff; color:#475569; font-weight:600; border:1px solid #cbd5e1;' ?>"
+                                                        style="padding:4px 9px; font-size:11.5px; border-radius:7px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:3px; <?= $isConsentApproved ? 'background:#16a34a; color:#fff; font-weight:800; border:1px solid #15803d; box-shadow:0 1px 3px rgba(22,163,74,0.3);' : 'background:#fff; color:#475569; font-weight:600; border:1px solid #cbd5e1;' ?>"
                                                         title="تحديد: موافق على مشاركة البيانات">
                                                         <span>✓ موافق</span>
                                                     </button>
                                                     <button type="button" onclick="updateDataSharingConsent(<?= $m['id'] ?>, 0)"
                                                         id="consent_btn_no_<?= $m['id'] ?>"
-                                                        style="padding:4px 9px; font-size:11.5px; border-radius:7px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:3px; <?= ($m['data_sharing_consent'] !== null && $m['data_sharing_consent'] !== '' && (int) $m['data_sharing_consent'] === 0) ? 'background:#dc2626; color:#fff; font-weight:800; border:1px solid #b91c1c; box-shadow:0 1px 3px rgba(220,38,38,0.3);' : 'background:#fff; color:#475569; font-weight:600; border:1px solid #cbd5e1;' ?>"
+                                                        style="padding:4px 9px; font-size:11.5px; border-radius:7px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:3px; <?= !$isConsentApproved ? 'background:#dc2626; color:#fff; font-weight:800; border:1px solid #b91c1c; box-shadow:0 1px 3px rgba(220,38,38,0.3);' : 'background:#fff; color:#475569; font-weight:600; border:1px solid #cbd5e1;' ?>"
                                                         title="تحديد: غير موافق على مشاركة البيانات">
                                                         <span>✕ غير موافق</span>
                                                     </button>

@@ -113,6 +113,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
     const [loading, setLoading] = useState(false);
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [agreedToBookingTerms, setAgreedToBookingTerms] = useState(false);
+    const [agreedToDataSharing, setAgreedToDataSharing] = useState(true);
     const [showTermsConfirmModal, setShowTermsConfirmModal] = useState(null);
 
     const [systemSettings, setSystemSettings] = useState({
@@ -1346,6 +1347,7 @@ const MaterialExchange = ({ isEmbedded = false }) => {
                 deliveryWeekCustom: formData.deliveryWeekCustom?.trim() || '',
                 materials: formData.materials,
                 hideContactInfo: !!formData.hideContactInfo,
+                dataSharingConsent: !!agreedToDataSharing,
                 status: 'pending',
                 createdAt: serverTimestamp()
             };
@@ -4550,6 +4552,10 @@ Please contact us to coordinate the pickup.Thank you.`;
                                     )}
                                 </div>
                                 <label className="terms-label agreement-checkbox"><input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} />{isAr ? 'أوافق على الشروط والأحكام' : 'I agree to the terms and conditions'}</label>
+                                <label className="terms-label agreement-checkbox" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <input type="checkbox" checked={agreedToDataSharing} onChange={e => setAgreedToDataSharing(e.target.checked)} />
+                                    <span>{isAr ? 'أوافق على مشاركة بياناتي مع الحاجز/المتبرع أثناء التسليم فقط للعرض عبر باركود التسليم، ولا يتم امتلاك البيانات الشخصية إطلاقاً.' : 'I agree to share my details with the booker/donor upon delivery for barcode view only, personal data is never retained.'}</span>
+                                </label>
                                 <button type="submit" className="submit-btn" disabled={loading || !agreedToTerms}>{loading ? (isAr ? 'جارٍ الإرسال...' : 'Submitting...') : (isAr ? 'نشر المواد' : 'Publish Materials')}</button>
                             </form>
                         )}

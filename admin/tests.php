@@ -3861,18 +3861,16 @@ require __DIR__ . '/_header.php';
 
       // ---------------- Tally / masthead ----------------
       function renderTally() {
-        let testCount = 0, qCount = 0, ptsSum = 0;
         let testCount = 0, sessionQCount = 0, sessionPts = 0;
         Object.values(parts).forEach(list => testCount += list.length);
-        Object.values(questions).forEach(list => { qCount += list.length; list.forEach(q => ptsSum += (q.points || 0)); });
         Object.values(questions).forEach(list => { sessionQCount += list.length; list.forEach(q => sessionPts += (q.points || 0)); });
         const displayQCount = serverTotalQuestions > 0 ? serverTotalQuestions : sessionQCount;
         const displayPts = serverTotalPoints > 0 ? serverTotalPoints : sessionPts;
-        $('#tally').innerHTML = `
+        const tallyEl = $('#tally');
+        if (!tallyEl) return;
+        tallyEl.innerHTML = `
       <div class="tally-item"><b>${subjects.length}</b><span>مادة</span></div>
       <div class="tally-item"><b>${testCount}</b><span>اختبار</span></div>
-      <div class="tally-item"><b>${qCount}</b><span>سؤال</span></div>
-      <div class="tally-item"><b>${ptsSum}</b><span>علامة</span></div>
       <div class="tally-item"><b>${displayQCount.toLocaleString('ar-EG')}</b><span>سؤال</span></div>
       <div class="tally-item"><b>${displayPts.toLocaleString('ar-EG')}</b><span>علامة</span></div>
     `;
@@ -4726,12 +4724,10 @@ id,type,difficulty,points,question_text,hint,explanation,status,option_1,option_
           if (Array.isArray(list)) allQs.push(...list);
         });
 
-        const totalCount = allQs.length;
         const totalCount = serverTotalQuestions > 0 ? serverTotalQuestions : allQs.length;
         const easyCount = allQs.filter(q => (q.diff || 'med') === 'easy').length;
         const medCount = allQs.filter(q => (q.diff || 'med') === 'med').length;
         const hardCount = allQs.filter(q => (q.diff || 'med') === 'hard').length;
-        const totalPts = allQs.reduce((s, q) => s + (q.points || 0), 0);
         const totalPts = serverTotalPoints > 0 ? serverTotalPoints : allQs.reduce((s, q) => s + (q.points || 0), 0);
 
         let totalTests = 0;
