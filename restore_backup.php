@@ -74,8 +74,46 @@ try {
         }
     }
 
-    // 2. استرجاع أي أسئلة واختبارات إضافية
-    // 2. استرجاع الأجزاء والاختبارات
+    // 2. استرجاع المواد الدراسية (study_materials)
+    $hasMaterials = (int) $bDb->query("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='study_materials'")->fetchColumn();
+    if ($hasMaterials > 0) {
+        $mCount = (int) $bDb->query("SELECT count(*) FROM study_materials WHERE status = 'active'")->fetchColumn();
+        echo "📚 عدد المواد الدراسية في النسخة الاحتياطية: {$mCount}\n";
+        if ($mCount > 0) {
+            // إضافة الأعمدة المفقودة إن لزم
+            $existingCols = $db->query("PRAGMA table_info(study_materials)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            foreach (['semester' => 'TEXT DEFAULT "first"', 'academic_year' => 'TEXT DEFAULT "all_levels"'] as $col => $type) {
+                if (!in_array($col, $existingCols)) {
+                    $db->exec("ALTER TABLE study_materials ADD COLUMN $col $type");
+                }
+            }
+            $materials = $bDb->query("SELECT * FROM study_materials WHERE status = 'active'")->fetchAll(PDO::FETCH_ASSOC);
+            $insertM = $db->prepare("INSERT OR IGNORE INTO study_materials 
+                (id, title, course_name, course_code, faculty, major, requirement_category, material_type,
+                 semester, academic_year, instructor, file_url, file_type, status, description,
+                 contributor_name, downloads_count, views_count, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $restoredM = 0;
+            foreach ($materials as $m) {
+                try {
+                    $insertM->execute([
+                        $m['id'], $m['title'], $m['course_name'], $m['course_code'] ?? '',
+                        $m['faculty'] ?? '', $m['major'] ?? '', $m['major'] ?? '',
+                        $m['material_type'] ?? 'summary',
+                        $m['semester'] ?? 'first', $m['academic_year'] ?? 'all_levels',
+                        $m['instructor'] ?? '', $m['file_url'] ?? '', $m['file_type'] ?? 'pdf',
+                        $m['status'] ?? 'active', $m['description'] ?? '',
+                        $m['contributor_name'] ?? '', $m['downloads_count'] ?? 0, $m['views_count'] ?? 0,
+                        $m['created_at'] ?? date('Y-m-d H:i:s'), $m['updated_at'] ?? date('Y-m-d H:i:s'),
+                    ]);
+                    $restoredM++;
+                } catch (Throwable $me) {}
+            }
+            echo "✅ تم دمج {$restoredM} مادة دراسية من النسخة الاحتياطية بنجاح!\n";
+        }
+    }
+
+    // 3. استرجاع الأجزاء والاختبارات
     $hasParts = (int) $bDb->query("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='quiz_parts'")->fetchColumn();
     if ($hasParts > 0) {
         $parts = $bDb->query("SELECT * FROM quiz_parts")->fetchAll(PDO::FETCH_ASSOC);
