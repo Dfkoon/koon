@@ -190,15 +190,85 @@ try {
         }
     }
 
+    // 4. استرجاع وتفعيل حسابات المنسقين
+    $hasCoords = (int) $bDb->query("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='coordinators'")->fetchColumn();
+    if ($hasCoords > 0) {
+        $coords = $bDb->query("SELECT * FROM coordinators")->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($coords)) {
+            $cInsert = $db->prepare("INSERT OR REPLACE INTO coordinators (
+                id, name, phone, gender, faculty, major, role_type, bio,
+                tasks_count, tasks_completed, is_active, joined_at, last_active_at,
+                notes, user_id, points, lifetime_points, badge_level, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)");
+            foreach ($coords as $c) {
+                $cInsert->execute([
+                    $c['id'], $c['name'], $c['phone'] ?? '', $c['gender'] ?? 'male',
+                    $c['faculty'] ?? '', $c['major'] ?? '', $c['role_type'] ?? 'coordinator',
+                    $c['bio'] ?? '', (int) ($c['tasks_count'] ?? 0), (int) ($c['tasks_completed'] ?? 0),
+                    $c['joined_at'] ?? date('Y-m-d'), $c['last_active_at'] ?? null,
+                    $c['notes'] ?? '', $c['user_id'] ?? null, (int) ($c['points'] ?? 0),
+                    (int) ($c['lifetime_points'] ?? 0), $c['badge_level'] ?? 'bronze'
+                ]);
+            }
+            echo "✅ تم استرجاع " . count($coords) . " منسق وتفعيلهم بنجاح!\n";
+        }
+    }
+    // تفعيل جميع المنسقين بدون استثناء
+    $db->exec("UPDATE coordinators SET is_active = 1;");
+    $totalActiveCoords = (int) $db->query("SELECT count(*) FROM coordinators WHERE is_active = 1")->fetchColumn();
+    echo "👥 إجمالي المنسقين النشطين حالياً: {$totalActiveCoords}\n";
+
+    // 5. استرجاع وتأمين حسابات المستخدمين وكلمات المرور السابقة
+    $hasUsers = (int) $bDb->query("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='users'")->fetchColumn();
+    if ($hasUsers > 0) {
+        $uList = $bDb->query("SELECT * FROM users")->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($uList)) {
+            $uInsert = $db->prepare("INSERT INTO users (
+                id, username, full_name, email, role, password_hash,
+                totp_secret, totp_enabled, must_change_password, failed_attempts,
+                locked_until, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, CURRENT_TIMESTAMP)
+            ON CONFLICT(username) DO UPDATE SET
+                full_name = excluded.full_name,
+                role = excluded.role,
+                password_hash = excluded.password_hash,
+                must_change_password = 0,
+                failed_attempts = 0,
+                locked_until = 0");
+            foreach ($uList as $u) {
+                $uInsert->execute([
+                    $u['id'], $u['username'], $u['full_name'] ?? $u['username'],
+                    $u['email'] ?? '', $u['role'] ?? 'coordinator',
+                    $u['password_hash'], $u['totp_secret'] ?? null, (int) ($u['totp_enabled'] ?? 0)
+                ]);
+            }
+            echo "✅ تم استرجاع وتأمين " . count($uList) . " حساب مستخدم بكلمات المرور السابقة بنجاح!\n";
+        }
+    }
+    // تصفير أي محاولات فاشلة وفك الأقفال عن جميع الحسابات
+    $db->exec("UPDATE users SET failed_attempts = 0, locked_until = 0, must_change_password = 0;");
+
+    // 6. استرجاع كافة الأسئلة والمواد من حزمة البيانات الشاملة (quizData.js - 1,395 سؤالاً عبر 59 مادة)
+    require_once __DIR__ . '/includes/seed_quizzes.php';
+    echo "🔄 جاري دمج بنك الأسئلة الشامل (1,395 سؤالاً عبر 59 مادة)...\n";
+    $seedRes = seed_quizzes_from_bundle($db, true);
+    if (($seedRes['status'] ?? '') === 'success' || ($seedRes['status'] ?? '') === 'skipped') {
+        echo "✅ تم دمج وتحديث بنك الأسئلة بالكامل: {$seedRes['questions']} سؤال عبر {$seedRes['parts']} اختبار في {$seedRes['subjects']} مادة!\n";
+    }
+
     $db->exec("PRAGMA foreign_keys = ON;");
 
     $currTotalQ = (int) $db->query("SELECT count(*) FROM quiz_questions")->fetchColumn();
     $currTotalP = (int) $db->query("SELECT count(*) FROM quiz_parts")->fetchColumn();
     $currTotalS = (int) $db->query("SELECT count(*) FROM quiz_subjects")->fetchColumn();
+    $currTotalM = (int) $db->query("SELECT count(*) FROM study_materials")->fetchColumn();
+    $currTotalC = (int) $db->query("SELECT count(*) FROM coordinators WHERE is_active = 1")->fetchColumn();
     echo "\n🎉 إجمالي البيانات في قاعدة البيانات الحالية:\n";
-    echo "- المواد: {$currTotalS}\n";
+    echo "- المواد الدراسية: {$currTotalM}\n";
+    echo "- مواد الاختبارات: {$currTotalS}\n";
     echo "- الاختبارات: {$currTotalP}\n";
     echo "- الأسئلة: {$currTotalQ}\n";
+    echo "- المنسقين النشطين: {$currTotalC}\n";
 
 } catch (Throwable $e) {
     echo "❌ خطأ أثناء الاسترجاع: " . $e->getMessage() . "\n";
