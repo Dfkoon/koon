@@ -129,18 +129,22 @@ function pull_question_reports_from_firestore(?PDO $db = null): int
     }
 
     $decodeFsValue = static function ($field) use (&$decodeFsValue): mixed {
-        if (!is_array($field)) return $field;
+        if (!is_array($field))
+            return $field;
         foreach (['stringValue', 'integerValue', 'doubleValue', 'booleanValue', 'timestampValue'] as $type) {
-            if (array_key_exists($type, $field)) return $field[$type];
+            if (array_key_exists($type, $field))
+                return $field[$type];
         }
         if (isset($field['arrayValue']['values'])) {
             $arr = [];
-            foreach ($field['arrayValue']['values'] as $v) $arr[] = $decodeFsValue($v);
+            foreach ($field['arrayValue']['values'] as $v)
+                $arr[] = $decodeFsValue($v);
             return $arr;
         }
         if (isset($field['mapValue']['fields'])) {
             $m = [];
-            foreach ($field['mapValue']['fields'] as $k => $v) $m[$k] = $decodeFsValue($v);
+            foreach ($field['mapValue']['fields'] as $k => $v)
+                $m[$k] = $decodeFsValue($v);
             return $m;
         }
         return null;
@@ -149,7 +153,8 @@ function pull_question_reports_from_firestore(?PDO $db = null): int
     $synced = 0;
     foreach ($payload['documents'] as $document) {
         $firestoreId = basename((string) ($document['name'] ?? ''));
-        if ($firestoreId === '') continue;
+        if ($firestoreId === '')
+            continue;
 
         $rawFields = $document['fields'] ?? [];
         $fields = [];
@@ -166,9 +171,10 @@ function pull_question_reports_from_firestore(?PDO $db = null): int
         $quizId = trim((string) ($fields['quizId'] ?? ''));
         $reporterName = trim((string) ($fields['reporterName'] ?? '')) ?: 'طالب';
         $reporterContact = trim((string) ($fields['reporterContact'] ?? ''));
-        
+
         $reportType = trim((string) ($fields['reportType'] ?? 'wrong_answer'));
-        if ($reportType === 'incorrect_answer') $reportType = 'wrong_answer';
+        if ($reportType === 'incorrect_answer')
+            $reportType = 'wrong_answer';
 
         $reason = trim((string) ($fields['reason'] ?? '')) ?: trim((string) ($fields['studentNote'] ?? '')) ?: 'ملاحظة حول السؤال';
         $details = trim((string) ($fields['studentNote'] ?? '')) ?: trim((string) ($fields['details'] ?? ''));
@@ -180,11 +186,13 @@ function pull_question_reports_from_firestore(?PDO $db = null): int
         if (!empty($fields['createdAt'])) {
             try {
                 $createdAt = (new DateTimeImmutable((string) $fields['createdAt']))->format('Y-m-d H:i:s');
-            } catch (Throwable) {}
+            } catch (Throwable) {
+            }
         } elseif (!empty($document['createTime'])) {
             try {
                 $createdAt = (new DateTimeImmutable((string) $document['createTime']))->format('Y-m-d H:i:s');
-            } catch (Throwable) {}
+            } catch (Throwable) {
+            }
         }
 
         $stmt = $db->prepare('SELECT id, status FROM question_reports WHERE firestore_id = ? LIMIT 1');
@@ -246,7 +254,8 @@ function update_question_report_in_firestore(string $firestoreId, string $status
  */
 function delete_question_report_in_firestore(string $firestoreId): bool
 {
-    if ($firestoreId === '') return false;
+    if ($firestoreId === '')
+        return false;
     $url = firestoreRequestUrl('question_reports/' . rawurlencode($firestoreId));
     $context = stream_context_create([
         'http' => [
@@ -288,7 +297,8 @@ function pull_live_analytics_from_firestore(?PDO $db = null, int $pageSize = 300
 
     $decodeFsVal = static function (array $value): mixed {
         foreach (['stringValue', 'integerValue', 'doubleValue', 'booleanValue', 'timestampValue'] as $type) {
-            if (array_key_exists($type, $value)) return $value[$type];
+            if (array_key_exists($type, $value))
+                return $value[$type];
         }
         return null;
     };
@@ -298,7 +308,8 @@ function pull_live_analytics_from_firestore(?PDO $db = null, int $pageSize = 300
 
     foreach ($payload['documents'] as $document) {
         $sourceId = basename((string) ($document['name'] ?? ''));
-        if ($sourceId === '') continue;
+        if ($sourceId === '')
+            continue;
 
         $rawFields = $document['fields'] ?? [];
         $fields = [];
@@ -319,11 +330,13 @@ function pull_live_analytics_from_firestore(?PDO $db = null, int $pageSize = 300
         if (!empty($fields['timestamp'])) {
             try {
                 $occurredAt = (new DateTimeImmutable((string) $fields['timestamp']))->format('Y-m-d H:i:s');
-            } catch (Throwable) {}
+            } catch (Throwable) {
+            }
         } elseif (!empty($document['createTime'])) {
             try {
                 $occurredAt = (new DateTimeImmutable((string) $document['createTime']))->format('Y-m-d H:i:s');
-            } catch (Throwable) {}
+            } catch (Throwable) {
+            }
         }
 
         $eventType = (string) ($fields['type'] ?? 'visit');
@@ -1206,8 +1219,8 @@ function sync_coordinators_to_firestore(?PDO $db = null): array
             'major' => (string) ($c['major'] ?? ''),
             'role' => (string) ($c['role_type'] ?? 'coordinator'),
             'bio' => (string) ($c['bio'] ?? ''),
-            'active' => true,
-            'is_active' => 1,
+            'active' => (int) ($c['is_active'] ?? 0) === 1,
+            'is_active' => (int) ($c['is_active'] ?? 0),
             'tasks_completed' => (int) ($c['tasks_completed'] ?? 0),
             'updatedAt' => date('c')
         ]);
@@ -1229,6 +1242,9 @@ function sync_all_quizzes_to_firestore(?PDO $db = null, ?string $partSlugFilter 
     $syncedSubjects = 0;
     $syncedParts = 0;
     $syncedQuestions = 0;
+    $failedSubjects = 0;
+    $failedParts = 0;
+    $failedQuestions = 0;
 
     // 1. مزامنة المواد
     try {
@@ -1236,9 +1252,12 @@ function sync_all_quizzes_to_firestore(?PDO $db = null, ?string $partSlugFilter 
         foreach ($subjects as $sId) {
             if (sync_quiz_subject_to_firestore($db, (string) $sId)) {
                 $syncedSubjects++;
+            } else {
+                $failedSubjects++;
             }
         }
     } catch (Throwable $e) {
+        $failedSubjects++;
     }
 
     // 2. مزامنة أجزاء الاختبارات
@@ -1254,9 +1273,12 @@ function sync_all_quizzes_to_firestore(?PDO $db = null, ?string $partSlugFilter 
             $pSlug = (string) ($p['slug'] ?: $p['id']);
             if (sync_quiz_part_to_firestore($db, $pSlug)) {
                 $syncedParts++;
+            } else {
+                $failedParts++;
             }
         }
     } catch (Throwable $e) {
+        $failedParts++;
     }
 
     // 3. مزامنة الأسئلة
@@ -1271,9 +1293,12 @@ function sync_all_quizzes_to_firestore(?PDO $db = null, ?string $partSlugFilter 
         foreach ($qIds as $qId) {
             if (sync_quiz_question_to_firestore($db, (int) $qId)) {
                 $syncedQuestions++;
+            } else {
+                $failedQuestions++;
             }
         }
     } catch (Throwable $e) {
+        $failedQuestions += count($qIds ?? []);
     }
 
     return [
@@ -1281,6 +1306,9 @@ function sync_all_quizzes_to_firestore(?PDO $db = null, ?string $partSlugFilter 
         'subjects' => $syncedSubjects,
         'parts' => $syncedParts,
         'questions' => $syncedQuestions,
+        'failed_subjects' => $failedSubjects,
+        'failed_parts' => $failedParts,
+        'failed_questions' => $failedQuestions,
     ];
 }
 
