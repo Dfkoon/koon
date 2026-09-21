@@ -1042,13 +1042,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Only subjects + parts on load; questions are fetched on-demand via AJAX
 $dbSubjectsRows = $db->query('SELECT id, name, name_en, icon FROM quiz_subjects ORDER BY sort_order, name')->fetchAll(PDO::FETCH_ASSOC);
 
-$dbPartsRows = $db->query('SELECT COALESCE(NULLIF(slug, ""), CAST(id AS TEXT)) as id, subject_id, name, title_en as titleEn, icon, color, category, time_limit as timeLimit, pass_score as passScore, force_english as forceEnglish FROM quiz_parts ORDER BY sort_order, name')->fetchAll(PDO::FETCH_ASSOC);
+$dbPartsRows = $db->query('
+  SELECT 
+    COALESCE(NULLIF(p.slug, ""), CAST(p.id AS TEXT)) as id, 
+    p.subject_id, 
+    p.name, 
+    p.title_en as titleEn, 
+    p.icon, 
+    p.color, 
+    p.category, 
+    p.time_limit as timeLimit, 
+    p.pass_score as passScore, 
+    p.force_english as forceEnglish,
+    (
+      SELECT count(*) FROM quiz_questions q 
+      WHERE q.part_slug = p.slug 
+         OR q.source_part_id = p.slug 
+         OR q.part_id = p.id 
+         OR CAST(q.part_id AS TEXT) = p.slug
+    ) as qCount,
+    (
+      SELECT COALESCE(SUM(points), 0) FROM quiz_questions q 
+      WHERE q.part_slug = p.slug 
+         OR q.source_part_id = p.slug 
+         OR q.part_id = p.id 
+         OR CAST(q.part_id AS TEXT) = p.slug
+    ) as ptsTotal
+  FROM quiz_parts p 
+  ORDER BY p.sort_order, p.name
+')->fetchAll(PDO::FETCH_ASSOC);
 $dbParts = [];
 foreach ($dbPartsRows as $pr) {
   $sid = $pr['subject_id'] ?: 'other';
   $pr['forceEnglish'] = (bool) $pr['forceEnglish'];
   $pr['timeLimit'] = (int) ($pr['timeLimit'] ?: 30);
   $pr['passScore'] = (float) ($pr['passScore'] ?: 60);
+  $pr['qCount'] = (int) ($pr['qCount'] ?? 0);
+  $pr['ptsTotal'] = (float) ($pr['ptsTotal'] ?? 0);
   if (!isset($dbParts[$sid])) {
     $dbParts[$sid] = [];
   }
@@ -4084,8 +4114,9 @@ require __DIR__ . '/_header.php';
         box.innerHTML = `
       <div class="search-box"><input type="text" id="partSearchInput" value="${esc(partSearchTerm)}" placeholder="ابحث في الاختبارات..."><span class="ic">${ICONS.search}</span></div>
       ${visible.map(p => {
-          const qN = (questions[p.id] || []).length;
-          const ptsN = (questions[p.id] || []).reduce((a, q) => a + (q.points || 0), 0);
+          const isLoaded = questions[p.id] !== undefined;
+          const qN = isLoaded ? (questions[p.id] || []).length : (p.qCount !== undefined ? p.qCount : 0);
+          const ptsN = isLoaded ? (questions[p.id] || []).reduce((a, q) => a + (q.points || 0), 0) : (p.ptsTotal !== undefined ? p.ptsTotal : 0);
           return `
       <div class="row-card ${state.partId === p.id ? 'active' : ''}" data-id="${p.id}">
         <div class="row-text">

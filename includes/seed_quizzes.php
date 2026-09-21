@@ -297,8 +297,9 @@ function seed_quizzes_from_bundle(PDO $db, bool $force = false): array
         $updateQStmt = $db->prepare('UPDATE quiz_questions SET
             part_id = ?, question_text = ?, question_text_en = ?, question_type = ?, options_json = ?,
             correct_answer = ?, marks = ?, explanation = ?, image_url = ?, code_block = ?,
-            part_slug = ?, subject_slug = ?, points = ?, text_ar = ?, text_en = ?, code = ?,
-            explanation_ar = ?, model_answer = ?, updated_at = CURRENT_TIMESTAMP
+            part_slug = ?, subject_slug = ?, cat = ?, points = ?, type = ?, diff = "med",
+            text_ar = ?, text_en = ?, code = ?, explanation_ar = ?, model_answer = ?,
+            source_part_id = ?, source_subject_id = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?');
 
         $insertedQuestions = 0;
@@ -342,12 +343,16 @@ function seed_quizzes_from_bundle(PDO $db, bool $force = false): array
                         $code,
                         $partSlug,
                         $subId,
+                        'Db',
                         $points,
+                        $qType,
                         $textAr,
                         $textEn,
                         $code,
                         $explanation,
                         $modelAnswer,
+                        $partSlug,
+                        $subId,
                         $rawId
                     ]);
                 } else {
