@@ -155,20 +155,6 @@ try {
             )");
             $restoredQ = 0;
             foreach ($questions as $q) {
-                $insertQ->execute([
-                    $q['id'], $q['part_id'] ?? 1, $q['question_text'] ?? ($q['text_ar'] ?? ''),
-                    $q['question_text_en'] ?? ($q['text_en'] ?? ''), $q['question_type'] ?? ($q['type'] ?? 'mcq'),
-                    $q['options_json'] ?? '[]', $q['correct_answer'] ?? '', $q['marks'] ?? ($q['points'] ?? 1),
-                    $q['explanation'] ?? ($q['explanation_ar'] ?? ''), $q['image_url'] ?? '',
-                    $q['code_block'] ?? ($q['code'] ?? ''), $q['source_part_id'] ?? ($q['part_slug'] ?? ''),
-                    $q['source_subject_id'] ?? ($q['subject_slug'] ?? ''), $q['part_slug'] ?? '',
-                    $q['subject_slug'] ?? '', $q['cat'] ?? 'Db', $q['points'] ?? ($q['marks'] ?? 1),
-                    $q['type'] ?? ($q['question_type'] ?? 'mcq'), $q['diff'] ?? 'med',
-                    $q['text_ar'] ?? ($q['question_text'] ?? ''), $q['text_en'] ?? ($q['question_text_en'] ?? ''),
-                    $q['code'] ?? ($q['code_block'] ?? ''), $q['explanation_ar'] ?? ($q['explanation'] ?? ''),
-                    $q['model_answer'] ?? '', $q['sort_order'] ?? 0
-                ]);
-                $restoredQ++;
                 try {
                     $insertQ->execute([
                         $q['id'], $q['part_id'] ?? 1, $q['question_text'] ?? ($q['text_ar'] ?? ''),
@@ -201,14 +187,16 @@ try {
                 notes, user_id, points, lifetime_points, badge_level, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)");
             foreach ($coords as $c) {
-                $cInsert->execute([
-                    $c['id'], $c['name'], $c['phone'] ?? '', $c['gender'] ?? 'male',
-                    $c['faculty'] ?? '', $c['major'] ?? '', $c['role_type'] ?? 'coordinator',
-                    $c['bio'] ?? '', (int) ($c['tasks_count'] ?? 0), (int) ($c['tasks_completed'] ?? 0),
-                    $c['joined_at'] ?? date('Y-m-d'), $c['last_active_at'] ?? null,
-                    $c['notes'] ?? '', $c['user_id'] ?? null, (int) ($c['points'] ?? 0),
-                    (int) ($c['lifetime_points'] ?? 0), $c['badge_level'] ?? 'bronze'
-                ]);
+                try {
+                    $cInsert->execute([
+                        $c['id'], $c['name'], $c['phone'] ?? '', $c['gender'] ?? 'male',
+                        $c['faculty'] ?? '', $c['major'] ?? '', $c['role_type'] ?? 'coordinator',
+                        $c['bio'] ?? '', (int) ($c['tasks_count'] ?? 0), (int) ($c['tasks_completed'] ?? 0),
+                        $c['joined_at'] ?? date('Y-m-d'), $c['last_active_at'] ?? null,
+                        $c['notes'] ?? '', $c['user_id'] ?? null, (int) ($c['points'] ?? 0),
+                        (int) ($c['lifetime_points'] ?? 0), $c['badge_level'] ?? 'bronze'
+                    ]);
+                } catch (Throwable $ce) {}
             }
             echo "✅ تم استرجاع " . count($coords) . " منسق وتفعيلهم بنجاح!\n";
         }
@@ -223,26 +211,37 @@ try {
     if ($hasUsers > 0) {
         $uList = $bDb->query("SELECT * FROM users")->fetchAll(PDO::FETCH_ASSOC);
         if (!empty($uList)) {
+            $checkUserStmt = $db->prepare("SELECT id FROM users WHERE username = ? OR id = ? LIMIT 1");
+            $uUpdate = $db->prepare("UPDATE users SET full_name = ?, role = ?, password_hash = ?, must_change_password = 0, failed_attempts = 0, locked_until = 0 WHERE id = ?");
             $uInsert = $db->prepare("INSERT INTO users (
                 id, username, full_name, email, role, password_hash,
                 totp_secret, totp_enabled, must_change_password, failed_attempts,
                 locked_until, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, CURRENT_TIMESTAMP)
-            ON CONFLICT(username) DO UPDATE SET
-                full_name = excluded.full_name,
-                role = excluded.role,
-                password_hash = excluded.password_hash,
-                must_change_password = 0,
-                failed_attempts = 0,
-                locked_until = 0");
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, CURRENT_TIMESTAMP)");
+
+            $restoredUsers = 0;
             foreach ($uList as $u) {
-                $uInsert->execute([
-                    $u['id'], $u['username'], $u['full_name'] ?? $u['username'],
-                    $u['email'] ?? '', $u['role'] ?? 'coordinator',
-                    $u['password_hash'], $u['totp_secret'] ?? null, (int) ($u['totp_enabled'] ?? 0)
-                ]);
+                try {
+                    $checkUserStmt->execute([$u['username'], $u['id']]);
+                    $existingUserId = $checkUserStmt->fetchColumn();
+                    if ($existingUserId) {
+                        $uUpdate->execute([
+                            $u['full_name'] ?? $u['username'],
+                            $u['role'] ?? 'coordinator',
+                            $u['password_hash'],
+                            $existingUserId
+                        ]);
+                    } else {
+                        $uInsert->execute([
+                            $u['id'], $u['username'], $u['full_name'] ?? $u['username'],
+                            $u['email'] ?? '', $u['role'] ?? 'coordinator',
+                            $u['password_hash'], $u['totp_secret'] ?? null, (int) ($u['totp_enabled'] ?? 0)
+                        ]);
+                    }
+                    $restoredUsers++;
+                } catch (Throwable $ue) {}
             }
-            echo "✅ تم استرجاع وتأمين " . count($uList) . " حساب مستخدم بكلمات المرور السابقة بنجاح!\n";
+            echo "✅ تم استرجاع وتأمين {$restoredUsers} حساب مستخدم بكلمات المرور السابقة بنجاح!\n";
         }
     }
     // تصفير أي محاولات فاشلة وفك الأقفال عن جميع الحسابات
