@@ -59,6 +59,111 @@ try {
 $actionTypes = $db->query('SELECT DISTINCT action_type FROM coordinator_audit_log ORDER BY action_type')->fetchAll(PDO::FETCH_COLUMN);
 require __DIR__ . '/_header.php';
 ?>
+<style>
+    .coord-records-hero {
+        background: linear-gradient(135deg, #0f2f4a 0%, #075985 58%, #0e7490 100%);
+        color: #fff;
+        border-radius: 16px;
+        padding: 24px 26px;
+        margin-bottom: 18px;
+        box-shadow: 0 12px 28px rgba(7, 89, 133, .18);
+    }
+
+    .coord-records-hero h2 {
+        margin: 0 0 6px;
+        font-size: 21px;
+    }
+
+    .coord-records-hero p {
+        margin: 0;
+        color: #dbeafe;
+        font-size: 13px;
+    }
+
+    .coord-records-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 20px;
+    }
+
+    .coord-records-kpi {
+        background: rgba(255, 255, 255, .12);
+        border: 1px solid rgba(255, 255, 255, .18);
+        border-radius: 12px;
+        padding: 12px 14px;
+    }
+
+    .coord-records-kpi strong {
+        display: block;
+        font-size: 22px;
+    }
+
+    .coord-records-kpi span {
+        color: #dbeafe;
+        font-size: 11px;
+    }
+
+    .coord-records-section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .coord-records-section-title small {
+        color: #64748b;
+        font-weight: 600;
+    }
+
+    .coord-status-summary {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 0 0 12px;
+    }
+
+    .coord-status-chip {
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .coord-status-chip.done {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .coord-status-chip.waiting {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    @media (max-width: 800px) {
+        .coord-records-kpis {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+</style>
+<?php
+$quizTotal = count($quizParts);
+$quizDone = count(array_filter($quizParts, static fn($part) => (int) $part['question_count'] > 0));
+$quizWaiting = $quizTotal - $quizDone;
+$auditTotal = count($auditRows);
+?>
+<section class="coord-records-hero">
+    <h2>سجل المنسقين ومراقبة المحتوى</h2>
+    <p>كل عملية ينفذها المنسق محفوظة بالوقت والحساب والجهاز، مع متابعة جاهزية بنوك الأسئلة وطلبات الطلاب.</p>
+    <div class="coord-records-kpis">
+        <div class="coord-records-kpi"><strong><?= $auditTotal ?></strong><span>عملية في العرض الحالي</span></div>
+        <div class="coord-records-kpi"><strong><?= $quizDone ?></strong><span>اختبارًا تمت إضافة أسئلته</span></div>
+        <div class="coord-records-kpi"><strong><?= $quizWaiting ?></strong><span>اختبارًا بانتظار الأسئلة</span></div>
+        <div class="coord-records-kpi">
+            <strong><?= $quizTotal ? round(($quizDone / $quizTotal) * 100) : 0 ?>%</strong><span>جاهزية بنك
+                الاختبارات</span></div>
+    </div>
+</section>
 <div class="panel-box" style="margin-bottom:18px;">
     <div class="panel-box-header">
         <h2 class="panel-box-title">سجل المنسقين وحالة المحتوى</h2><span class="panel-box-count">للأدمن فقط</span>
@@ -129,11 +234,16 @@ require __DIR__ . '/_header.php';
 
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px;">
     <div class="panel-box">
-        <div class="panel-box-header">
-            <h3 class="panel-box-title">حالة الاختبارات وبنوك الأسئلة</h3><span
-                class="panel-box-count"><?= count($quizParts) ?></span>
+        <div class="panel-box-header coord-records-section-title">
+            <div>
+                <h3 class="panel-box-title">حالة الاختبارات وبنوك الأسئلة</h3><small>تابع ما تم تجهيزه وما يحتاج
+                    تدخلاً</small>
+            </div><span class="panel-box-count"><?= count($quizParts) ?></span>
         </div>
         <div class="table-wrapper">
+            <div class="coord-status-summary" style="padding:12px 14px 0;"><span class="coord-status-chip done">تمت
+                    الإضافة: <?= $quizDone ?></span><span class="coord-status-chip waiting">بانتظار الإضافة:
+                    <?= $quizWaiting ?></span></div>
             <table class="data-table">
                 <thead>
                     <tr>

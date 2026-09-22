@@ -888,6 +888,16 @@ require __DIR__ . '/_header.php';
                     </button>
                 </form>
 
+                <a href="coordinator_records.php?coordinator_id=<?= (int) $c['id'] ?>" class="btn-action"
+                    style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#0369a1;border:1px solid #bae6fd;text-decoration:none;"
+                    title="عرض سجل أعمال المنسق">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18" />
+                        <path d="m7 16 4-5 3 3 5-7" />
+                    </svg>
+                    السجل
+                </a>
+
                 <!-- تاريخ الانضمام -->
                 <?php if ($c['joined_at']): ?>
                     <span style="font-size:10.5px;color:#94a3b8;">منذ <?= date('Y-m', strtotime($c['joined_at'])) ?></span>
