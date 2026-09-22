@@ -53,5 +53,6 @@ return [
     ['key' => 'activity', 'label' => 'سجل النشاط', 'icon_key' => 'activity', 'file' => 'activity_log.php', 'ready' => true],
     ['key' => 'faq', 'label' => 'نشمي والأسئلة الشائعة', 'icon_key' => 'faq', 'file' => 'faq.php', 'ready' => true],
     ['key' => 'coordinators', 'label' => 'المنسقون', 'icon_key' => 'coordinators', 'file' => 'coordinators.php', 'ready' => true],
+    ['key' => 'coordinator_records', 'label' => 'سجل المنسقين وحالة المحتوى', 'icon_key' => 'activity', 'file' => 'coordinator_records.php', 'ready' => true],
     ['key' => 'deleted', 'label' => 'المحذوفات والأرشيف', 'icon_key' => 'deleted', 'file' => 'deleted.php', 'ready' => true],
 ];

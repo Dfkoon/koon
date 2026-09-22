@@ -37,6 +37,7 @@ $reportTypes = [
 
 $statusLabels = [
     'pending' => ['label' => 'قيد المتابعة', 'class' => 'badge-pending'],
+    'in_progress' => ['label' => 'جاري العمل عليه', 'class' => 'badge-warning'],
     'resolved' => ['label' => 'تم الحل والتصحيح', 'class' => 'badge-success'],
     'dismissed' => ['label' => 'مستبعد / غير دقيق', 'class' => 'badge-warning'],
 ];
@@ -159,6 +160,7 @@ $stats = $db->query("SELECT
     COUNT(*) AS total,
     SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) AS pending_count,
     SUM(CASE WHEN status='resolved' THEN 1 ELSE 0 END) AS resolved_count,
+    SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) AS in_progress_count,
     SUM(CASE WHEN status='dismissed' THEN 1 ELSE 0 END) AS dismissed_count
 FROM question_reports")->fetch(PDO::FETCH_ASSOC);
 
@@ -256,17 +258,21 @@ require __DIR__ . '/_header.php';
             </div>
         </div>
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <span style="display:inline-flex; align-items:center; gap:6px; font-size:11px; background:#ecfdf5; color:#047857; padding:4px 10px; border-radius:20px; font-weight:700; border:1px solid #a7f3d0;">
-                <span style="width:7px; height:7px; border-radius:50%; background:#10b981; display:inline-block; box-shadow:0 0 0 2px rgba(16,185,129,0.3);"></span>
+            <span
+                style="display:inline-flex; align-items:center; gap:6px; font-size:11px; background:#ecfdf5; color:#047857; padding:4px 10px; border-radius:20px; font-weight:700; border:1px solid #a7f3d0;">
+                <span
+                    style="width:7px; height:7px; border-radius:50%; background:#10b981; display:inline-block; box-shadow:0 0 0 2px rgba(16,185,129,0.3);"></span>
                 تزامن سحابي مباشر
             </span>
-            <a href="reports.php?sync=1" class="btn-secondary" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 12px;">
+            <a href="reports.php?sync=1" class="btn-secondary"
+                style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 12px;">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
                 </svg>
                 مزامنة حية الآن ⚡
             </a>
-            <button type="button" class="btn-primary" onclick="openAddModal()" style="display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 12px;">
+            <button type="button" class="btn-primary" onclick="openAddModal()"
+                style="display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 12px;">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
@@ -288,6 +294,8 @@ require __DIR__ . '/_header.php';
                 <select name="status" class="form-select" onchange="this.form.submit()">
                     <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>كل الحالات</option>
                     <option value="pending" <?= $statusFilter === 'pending' ? 'selected' : '' ?>>قيد المتابعة</option>
+                    <option value="in_progress" <?= $statusFilter === 'in_progress' ? 'selected' : '' ?>>جاري العمل عليه
+                    </option>
                     <option value="resolved" <?= $statusFilter === 'resolved' ? 'selected' : '' ?>>تم الحل والتصحيح
                     </option>
                     <option value="dismissed" <?= $statusFilter === 'dismissed' ? 'selected' : '' ?>>مستبعد</option>
@@ -393,7 +401,7 @@ require __DIR__ . '/_header.php';
                         <td style="color: #64748b; font-size: 11px; white-space: nowrap;">
                             <?= date('Y/m/d H:i', strtotime($rp['created_at'])) ?>
                         </td>
-                                <td style="text-align: center;">
+                        <td style="text-align: center;">
                             <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
                                 <!-- زر المعالجة السريعة داخل الصفحة -->
                                 <button type="button" class="btn-primary" style="padding: 4px 8px; font-size: 11px;"
@@ -404,7 +412,8 @@ require __DIR__ . '/_header.php';
 
                                 <!-- رابط بنك الأسئلة المباشر -->
                                 <a href="tests.php?question_id=<?= urlencode($rp['question_id'] ?? '') ?>&q_text=<?= urlencode($rp['question_title'] ?? '') ?>&course=<?= urlencode($rp['course_name'] ?? '') ?>"
-                                    target="_blank" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; text-decoration: none;"
+                                    target="_blank" class="btn-secondary"
+                                    style="padding: 4px 8px; font-size: 11px; text-decoration: none;"
                                     title="الانتقال المباشر وتعديل السؤال في بنك الأسئلة">
                                     📝 السؤال ↗
                                 </a>
@@ -473,6 +482,7 @@ require __DIR__ . '/_header.php';
                         <label class="form-label">حالة البلاغ</label>
                         <select name="status" class="form-select">
                             <option value="pending">قيد المتابعة</option>
+                            <option value="in_progress">جاري العمل عليه</option>
                             <option value="resolved">تم الحل</option>
                             <option value="dismissed">مستبعد</option>
                         </select>
@@ -524,22 +534,32 @@ require __DIR__ . '/_header.php';
 
             <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
                 <div style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    <div style="font-weight: 700; color: #0f172a; font-size: 14px; line-height: 1.5;" id="res_title"></div>
+                    <div style="font-weight: 700; color: #0f172a; font-size: 14px; line-height: 1.5;" id="res_title">
+                    </div>
                     <div style="font-size: 11px; color: #0284c7; margin-top: 6px;" id="res_meta"></div>
                     <div style="font-size: 11px; color: #475569; margin-top: 4px;" id="res_reporter"></div>
-                    <div style="font-size: 12px; color: #b91c1c; margin-top: 6px; font-weight:600;" id="res_reason"></div>
-                    <div style="font-size: 12px; color: #334155; margin-top: 4px; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;" id="res_details"></div>
+                    <div style="font-size: 12px; color: #b91c1c; margin-top: 6px; font-weight:600;" id="res_reason">
+                    </div>
+                    <div style="font-size: 12px; color: #334155; margin-top: 4px; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;"
+                        id="res_details"></div>
                     <div id="res_options_box" style="display:none; margin-top:8px; font-size:11px; color:#475569;">
                         <strong style="color:#0f172a;">خيارات السؤال:</strong>
                         <div id="res_options_list" style="margin-top:4px;"></div>
                     </div>
 
-                    <div style="margin-top:12px; padding-top:10px; border-top:1px dashed #cbd5e1; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                        <span style="font-size:12px; color:#0369a1; font-weight:700;">💡 لتعديل نص السؤال أو خياراته أو إجابته:</span>
+                    <div
+                        style="margin-top:12px; padding-top:10px; border-top:1px dashed #cbd5e1; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                        <span style="font-size:12px; color:#0369a1; font-weight:700;">💡 لتعديل نص السؤال أو خياراته أو
+                            إجابته:</span>
                         <a id="res_edit_question_btn" href="tests.php" target="_blank" class="btn-primary"
                             style="background:#0284c7; color:#fff; text-decoration:none; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:800; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(2,132,199,.25);">
                             <span>✏️ فتح وتعديل السؤال في بنك الأسئلة</span>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                <polyline points="15 3 21 3 21 9" />
+                                <line x1="10" y1="14" x2="21" y2="3" />
+                            </svg>
                         </a>
                     </div>
                 </div>
@@ -553,6 +573,7 @@ require __DIR__ . '/_header.php';
                 <div>
                     <label class="form-label">تحديث حالة البلاغ (يتم مزامنتها مع السحابة فوراً)</label>
                     <select name="status" id="res_status" class="form-select">
+                        <option value="in_progress">جاري العمل عليه (In progress)</option>
                         <option value="resolved">تم الحل والتصحيح (Resolved) ✓</option>
                         <option value="dismissed">مستبعد / السؤال صحيح بعد المراجعة (Dismissed)</option>
                         <option value="pending">إبقاء قيد المتابعة (Pending)</option>
@@ -577,9 +598,7 @@ require __DIR__ . '/_header.php';
         document.getElementById('res_title').textContent = 'سؤال #' + (r.question_id || r.id) + ' · ' + r.question_title;
         document.getElementById('res_meta').textContent = 'المادة / الكويز: ' + (r.course_name || 'عام') + ' · نوع البلاغ: ' + (r.report_type || 'عام');
         document.getElementById('res_reporter').textContent = 'المبلّغ: ' + (r.reporter_name || 'طالب') + (r.reporter_contact ? ' · التواصل: ' + r.reporter_contact : '');
-        document.getElementById('res_reason').textContent = '⚠️ سبب البلاغ: ' + (r.reason || 'ملاحظة');
-        
-        const detailsElem = document.getElementById('res_details');
+        document.getElementById('res_reason').textContent = '⚠️ سبب البلاغ: ' + (r.reason || 'ملاحظة');  const detailsElem = document.getElementById('res_details');
         if (r.details) {
             detailsElem.textContent = 'ملاحظة وتفاصيل الطالب: ' + r.details;
             detailsElem.style.display = 'block';
@@ -619,9 +638,9 @@ require __DIR__ . '/_header.php';
 
         const editBtn = document.getElementById('res_edit_question_btn');
         if (editBtn) {
-            editBtn.href = 'tests.php?question_id=' + encodeURIComponent(r.question_id || '') + 
-                '&q_text=' + encodeURIComponent(r.question_title || '') + 
-                '&course=' + encodeURIComponent(r.course_name || '');
+            editBtn.href = 'tests.php?question_id=' + encodeURIComponent(r.question_id || '') +
+               '&q_text=' + encodeURIComponent(r.question_title || '') +
+               '&course=' + encodeURIComponent(r.course_name || '');
         }
 
         document.getElementById('res_notes').value = r.resolution_notes || '';

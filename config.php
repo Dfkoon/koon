@@ -217,6 +217,20 @@ if (!function_exists('get_db')) {
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
 
+                CREATE TABLE IF NOT EXISTS coordinator_audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    coordinator_id INTEGER,
+                    user_id INTEGER NOT NULL,
+                    username TEXT NOT NULL,
+                    action_type TEXT NOT NULL DEFAULT 'general',
+                    action TEXT NOT NULL,
+                    ip_address TEXT,
+                    device_info TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_coord_audit_coordinator ON coordinator_audit_log(coordinator_id, created_at);
+                CREATE INDEX IF NOT EXISTS idx_coord_audit_user ON coordinator_audit_log(user_id, created_at);
+
                 CREATE TABLE IF NOT EXISTS admin_notifications (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     type TEXT NOT NULL DEFAULT 'general',
@@ -1697,6 +1711,17 @@ if (!function_exists('log_activity')) {
 
         $db->prepare('INSERT INTO activity_log (username, action, action_type, ip_address, device_info, created_at) VALUES (?, ?, ?, ?, ?, ?)')
             ->execute([$username, $action, $action_type, $ip, $device, $now]);
+
+        $userId = (int) ($_SESSION['user_id'] ?? 0);
+        if ($userId > 0) {
+            $coordStmt = $db->prepare('SELECT id FROM coordinators WHERE user_id = ? LIMIT 1');
+            $coordStmt->execute([$userId]);
+            $coordinatorId = $coordStmt->fetchColumn();
+            if ($coordinatorId !== false) {
+                $db->prepare('INSERT INTO coordinator_audit_log (coordinator_id, user_id, username, action_type, action, ip_address, device_info, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                    ->execute([(int) $coordinatorId, $userId, (string) $username, $action_type, $action, $ip, $device, $now]);
+            }
+        }
     }
 }
 
@@ -1932,7 +1957,7 @@ if (!function_exists('user_has_permission')) {
     function user_has_permission(string $page_key, $user = null): bool
     {
         // إذا كانت الجلسة مسجلة بدور admin أو super_admin فالصلاحية كاملة فوراً
-        if (($_SESSION['role'] ?? '') === 'admin' || ($_SESSION['role'] ?? '') === 'super_admin' || strtoupper((string)($_SESSION['username'] ?? '')) === 'HUSSIEN') {
+        if (($_SESSION['role'] ?? '') === 'admin' || ($_SESSION['role'] ?? '') === 'super_admin' || strtoupper((string) ($_SESSION['username'] ?? '')) === 'HUSSIEN') {
             return true;
         }
 
