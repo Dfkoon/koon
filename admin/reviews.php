@@ -6,10 +6,21 @@ $page_key = 'reviews';
 $page_title = 'إدارة الآراء والتقييمات';
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/sync_frontend_live.php';
+require_once __DIR__ . '/../sync_official_live.php';
 if (empty($_SESSION['authenticated'])) {
     redirect('../login.php');
 }
 $db = get_db();
+
+$lastReviewsSync = (int) ($_SESSION['last_reviews_fs_sync'] ?? 0);
+if (time() - $lastReviewsSync >= 10) {
+    try {
+        pull_feedback_reviews_from_firestore($db);
+        $_SESSION['last_reviews_fs_sync'] = time();
+    } catch (Throwable $reviewsSyncError) {
+        error_log('Reviews sync failed: ' . $reviewsSyncError->getMessage());
+    }
+}
 
 $facultiesList = [
     'كلية العلوم',

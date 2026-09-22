@@ -272,6 +272,60 @@ function pull_official_coordinators(PDO $db): int
     return $synced;
 }
 
+function pull_feedback_reviews_from_firestore(PDO $db): int
+{
+    $insert = $db->prepare('INSERT INTO feedback_reviews (student_name, student_email, student_phone, faculty, rating, feedback_type, title, content, is_approved, is_pinned, status, created_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM feedback_reviews WHERE student_name = ? AND content = ? AND created_at = ?)');
+    $synced = 0;
+
+    foreach (liveSyncCollection('suggestions') as $row) {
+        $created = liveSyncDate($row['timestamp'] ?? null);
+        $insert->execute([
+            $row['name'] ?? 'طالب',
+            $row['email'] ?? '',
+            $row['phone'] ?? '',
+            'عام',
+            (int) ($row['rating'] ?? 5),
+            $row['type'] ?? 'suggestion',
+            'اقتراح أو رسالة',
+            $row['message'] ?? '',
+            0,
+            0,
+            $row['status'] ?? 'new',
+            $created,
+            $row['name'] ?? 'طالب',
+            $row['message'] ?? '',
+            $created,
+        ]);
+        $synced += $insert->rowCount();
+    }
+
+    foreach (liveSyncCollection('testimonials') as $row) {
+        $created = liveSyncDate($row['createdAt'] ?? null);
+        $content = $row['quote'] ?? $row['content'] ?? $row['message'] ?? '';
+        $name = $row['author'] ?? $row['name'] ?? 'طالب';
+        $insert->execute([
+            $name,
+            $row['email'] ?? '',
+            $row['phone'] ?? '',
+            $row['major'] ?? 'عام',
+            (int) ($row['rating'] ?? 5),
+            'review',
+            $row['role'] ?? 'تقييم',
+            $content,
+            !empty($row['approved']) ? 1 : 0,
+            !empty($row['pinned']) ? 1 : 0,
+            $row['status'] ?? 'new',
+            $created,
+            $name,
+            $content,
+            $created,
+        ]);
+        $synced += $insert->rowCount();
+    }
+
+    return $synced;
+}
+
 function sync_official_live(PDO $db): void
 {
     $lock = __DIR__ . '/.official-live-sync';
