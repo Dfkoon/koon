@@ -84,11 +84,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($fields as $key => $value) {
                     $firebaseSettings[$key] = $value === '1' ? true : ($value === '0' ? false : $value);
                 }
-                if ($group === 'system' && array_key_exists('exchange_campaign_enabled', $fields)) {
-                    $campaignEnabled = $fields['exchange_campaign_enabled'] === '1';
-                    $bookingEnabled = ($fields['exchange_booking_enabled'] ?? '1') === '1';
-                    $donationEnabled = ($fields['exchange_donation_enabled'] ?? '1') === '1';
-                    $statusCheckerEnabled = ($fields['material_status_checker_enabled'] ?? '1') === '1';
+                if ($group === 'system') {
+                    // إعادة حساب campaignPhase عند أي تغيير في إعدادات تبادل المواد
+                    // نجمع القيم المُرسلة مع القيم المحفوظة في قاعدة البيانات كاحتياط
+                    $campaignEnabled = isset($fields['exchange_campaign_enabled'])
+                        ? $fields['exchange_campaign_enabled'] === '1'
+                        : (($allSettings['exchange_campaign_enabled'] ?? '1') === '1');
+
+                    $bookingEnabled = isset($fields['exchange_booking_enabled'])
+                        ? $fields['exchange_booking_enabled'] === '1'
+                        : (($allSettings['exchange_booking_enabled'] ?? '0') === '1');
+
+                    $donationEnabled = isset($fields['exchange_donation_enabled'])
+                        ? $fields['exchange_donation_enabled'] === '1'
+                        : (($allSettings['exchange_donation_enabled'] ?? '1') === '1');
+
+                    $statusCheckerEnabled = isset($fields['material_status_checker_enabled'])
+                        ? $fields['material_status_checker_enabled'] === '1'
+                        : (($allSettings['material_status_checker_enabled'] ?? '1') === '1');
+
                     $firebaseSettings['campaignPhase'] = !$campaignEnabled ? 'suspended' : ($bookingEnabled ? 'exchange' : 'collection');
                     $firebaseSettings['donationFormFrozen'] = !$donationEnabled;
                     $firebaseSettings['material_status_checker_enabled'] = $statusCheckerEnabled;
@@ -499,7 +513,15 @@ require __DIR__ . '/_header.php';
                                         'material_status_checker_enabled' => ['title' => 'فتح نموذج معرفة حالة الطلبات', 'desc' => 'السماح للطلاب بالاستعلام عن حالة تبرعاتهم وحجوزاتهم'],
                                     ];
                                     foreach ($exchangeControls as $key => $control):
-                                        $enabled = ($allSettings[$key] ?? '1') === '1';
+                                        // القيم الافتراضية لكل إعداد (الحجز مغلق افتراضياً لتجنب التعارض مع Firebase)
+                                        $defaultValues = [
+                                            'exchange_campaign_enabled'       => '1',
+                                            'exchange_booking_enabled'        => '0',
+                                            'exchange_donation_enabled'       => '1',
+                                            'material_status_checker_enabled' => '1',
+                                        ];
+                                        $enabled = ($allSettings[$key] ?? $defaultValues[$key]) === '1';
+
                                         $isStatusChecker = $key === 'material_status_checker_enabled';
                                         $controlColor = $enabled ? '#16a34a' : ($isStatusChecker ? '#dc2626' : '#64748b');
                                         $controlBackground = $enabled ? '#fff' : ($isStatusChecker ? '#fff1f2' : '#f8fafc');
