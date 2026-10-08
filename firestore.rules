@@ -105,10 +105,7 @@ service cloud.firestore {
     }
 
     match /service_requests/{reqId} {
-      allow create: if true
-        && request.resource.data.keys().hasAll(['service', 'contact'])
-        && request.resource.data.service is string
-        && request.resource.data.service.size() <= 200;
+      allow create: if request.resource.data.keys().hasAll(['service', 'contact']);
       allow read, update: if isCoordinator() || isAdmin();
       allow delete: if isAdmin();
     }
