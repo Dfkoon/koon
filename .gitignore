@@ -1,5 +1,12 @@
 # ملفات مؤقتة ومحلية
 .DS_Store
+
+# ملفات إعدادات السيرفر - لا ترفع أبدًا على GitHub
+config.php
+*.bak
+*.backup-*
+database.sqlite
+database.sqlite.*.bak
 *.sqlite
 *.sqlite.before-*
 .official-live-sync
