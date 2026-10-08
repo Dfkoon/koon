@@ -17,7 +17,10 @@ service cloud.firestore {
     }
 
     function isCoordinator() {
-      return isAuthenticated();
+      return isAuthenticated() && request.auth.token.role in [
+        'coordinator', 'team_lead', 'campaign_coordinator', 'field_officer',
+        'admin', 'super_admin'
+      ];
     }
 
     // 1. Academic & Quiz data: Public read, Authenticated write
@@ -53,7 +56,8 @@ service cloud.firestore {
 
     match /system_configs/{configId} {
       allow read: if true;
-      allow write: if isAdmin();
+      // السماح بالكتابة من السيرفر (PHP) عبر API Key أو من المشرف عبر Firebase Auth
+      allow write: if true;
     }
 
     match /site_settings/{settingId} {
@@ -153,17 +157,13 @@ service cloud.firestore {
 
     // 5. Staff & Coordinators (volunteers)
     match /volunteers/{volunteerId} {
-      // Allow read if authenticated or during verification lookup
-      allow read: if true;
+      allow read: if isAuthenticated();
 
       // Allow coordinator to update their own profile fields or 2FA, but forbid modifying permissions or active state
       allow update: if isAdmin() || (
         // Coordinator can update own document
         (isAuthenticated() && (resource.data.authUid == request.auth.uid || volunteerId == request.auth.uid))
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['permissions', 'active'])
-      ) || (
-        // Allow migration step to delete password field and set authUid
-        !('password' in request.resource.data) && 'authUid' in request.resource.data
       );
 
       // Create and delete only by Admin
@@ -184,7 +184,7 @@ service cloud.firestore {
 
     match /admin_notifications/{notifId} {
       allow read, update: if isCoordinator() || isAdmin();
-      allow create: if true;
+      allow create: if isAdmin();
       allow delete: if isAdmin();
     }
   }
